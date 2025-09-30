@@ -1,0 +1,172 @@
+name: ML Training Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_name:
+        description: 'Model name to train'
+        required: true
+        default: 'reverb_ir_generator'
+        type: choice
+        options:
+          - reverb_ir_generator
+          - reverb_parameter_predictor
+      epochs:
+        description: 'Number of training epochs'
+        required: false
+        default: '100'
+  push:
+    paths:
+      - 'ml/**'
+      - '.github/workflows/ml-training.yml'
+    branches:
+      - main
+      - develop
+
+jobs:
+  train-model:
+    name: Train ML Model
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install onnx onnxruntime numpy scipy librosa matplotlib tensorboard
+          if [ -f ml/requirements.txt ]; then
+            pip install -r ml/requirements.txt
+          fi
+
+      - name: Create ML directory structure
+        run: |
+          mkdir -p ml/models
+          mkdir -p ml/data
+          mkdir -p ml/scripts
+          mkdir -p ml/outputs
+
+      - name: Train Model
+        run: |
+          echo "Training ${{ github.event.inputs.model_name || 'reverb_ir_generator' }}"
+          # Placeholder for actual training script
+          # python ml/scripts/train.py --model ${{ github.event.inputs.model_name }} --epochs ${{ github.event.inputs.epochs || '100' }}
+          echo "Model training would run here"
+
+      - name: Export to ONNX
+        run: |
+          echo "Exporting model to ONNX format"
+          # python ml/scripts/export_onnx.py --model ml/models/${{ github.event.inputs.model_name }}.pt --output ml/outputs/${{ github.event.inputs.model_name }}.onnx
+
+      - name: Validate ONNX Model
+        run: |
+          echo "Validating ONNX model"
+          # python ml/scripts/validate_onnx.py --model ml/outputs/${{ github.event.inputs.model_name }}.onnx
+
+      - name: Benchmark Performance
+        run: |
+          echo "Benchmarking ONNX model performance"
+          # python ml/scripts/benchmark.py --model ml/outputs/${{ github.event.inputs.model_name }}.onnx --iterations 1000
+
+      - name: Upload Model Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-models-${{ github.sha }}
+          path: |
+            ml/outputs/*.onnx
+            ml/outputs/*.json
+            ml/outputs/*.txt
+          retention-days: 90
+
+      - name: Upload Training Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-logs-${{ github.sha }}
+          path: |
+            ml/outputs/logs/**
+            ml/outputs/checkpoints/**
+          retention-days: 30
+
+  test-onnx-integration:
+    name: Test ONNX Integration
+    needs: train-model
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-13]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download ONNX models
+        uses: actions/download-artifact@v4
+        with:
+          name: ml-models-${{ github.sha }}
+          path: ml/outputs
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libjack-jackd2-dev libfreetype6-dev libx11-dev
+
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Test ONNX Runtime Integration
+        run: |
+          echo "Testing ONNX Runtime C++ integration"
+          # This would compile a minimal test program that loads the ONNX model
+          # cmake -B build -DTEST_ONNX=ON
+          # cmake --build build --target test_onnx_integration
+
+  publish-models:
+    name: Publish ML Models
+    needs: [train-model, test-onnx-integration]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ONNX models
+        uses: actions/download-artifact@v4
+        with:
+          name: ml-models-${{ github.sha }}
+          path: ml/outputs
+
+      - name: Create model release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ML Models - ${{ github.sha }}
+          tag_name: ml-model-${{ github.run_number }}
+          body: |
+            ## ML Models Release
+
+            **Commit**: ${{ github.sha }}
+            **Date**: ${{ github.event.head_commit.timestamp }}
+
+            ### Models Included
+            - Reverb IR Generator (ONNX)
+            - Model metadata and performance benchmarks
+
+            ### Integration
+            These models can be integrated into the ADSR-Echo plugin build.
+
+          files: |
+            ml/outputs/*.onnx
+            ml/outputs/*.json
+          draft: false
+          prerelease: true

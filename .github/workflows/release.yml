@@ -1,0 +1,163 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-release:
+    name: Build Release ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - name: Windows-VST3
+            os: windows-latest
+            artifact_name: ADSREcho-Windows-VST3
+            cmake_args: -DCMAKE_BUILD_TYPE=Release
+
+          - name: macOS-Universal-VST3-AU
+            os: macos-13
+            artifact_name: ADSREcho-macOS-VST3-AU
+            cmake_args: -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
+
+          - name: Linux-VST3
+            os: ubuntu-22.04
+            artifact_name: ADSREcho-Linux-VST3
+            cmake_args: -DCMAKE_BUILD_TYPE=Release
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libcurl4-openssl-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libwebkit2gtk-4.0-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev
+
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure CMake
+        run: cmake -B build ${{ matrix.cmake_args }}
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        run: |
+          mkdir release
+          cp -r build/*_artefacts/Release/VST3/* release/
+          cd release
+          7z a ../${{ matrix.artifact_name }}-${{ steps.version.outputs.VERSION }}.zip *
+        shell: bash
+
+      - name: Package macOS
+        if: runner.os == 'macOS'
+        run: |
+          mkdir release
+          cp -r build/*_artefacts/Release/VST3/* release/ || true
+          cp -r build/*_artefacts/Release/AU/* release/ || true
+          cd release
+          zip -r ../${{ matrix.artifact_name }}-${{ steps.version.outputs.VERSION }}.zip *
+
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        run: |
+          mkdir release
+          cp -r build/*_artefacts/Release/VST3/* release/
+          cd release
+          tar -czf ../${{ matrix.artifact_name }}-${{ steps.version.outputs.VERSION }}.tar.gz *
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            *.zip
+            *.tar.gz
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ADSR-Echo v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## ADSR-Echo Multi-Effect Plugin v${{ steps.version.outputs.VERSION }}
+
+            ### Features
+            - Algorithmic Reverb (Hall & Plate models)
+            - Delay with Haas effect and Ping-Pong stereo
+            - Convolution engine with custom IR loading
+            - Compression and EQ modules
+            - Flexible routing and mixing system
+
+            ### Downloads
+            - **Windows**: VST3 format
+            - **macOS**: Universal Binary (Intel + Apple Silicon) - VST3 and AU formats
+            - **Linux**: VST3 format
+
+            ### Installation
+            1. Download the appropriate package for your platform
+            2. Extract the archive
+            3. Copy the plugin files to your DAW's plugin directory
+
+            ### System Requirements
+            - Windows 10 or later / macOS 10.13+ / Linux (Ubuntu 20.04+)
+            - VST3 / AU compatible DAW
+
+            ---
+            Built with JUCE Framework | Licensed under GPLv3
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
+          draft: false
+          prerelease: false
+
+  # Optional: Create installers using NSIS (Windows), pkgbuild (macOS), etc.
+  # This would be added in a future iteration
