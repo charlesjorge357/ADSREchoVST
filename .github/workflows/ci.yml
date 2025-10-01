@@ -97,9 +97,9 @@ jobs:
           path: |
             build
             ~/.cache/ccache
-          key: ${{ matrix.name }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
+          key: ${{ matrix.name }}-cmake-v2-${{ hashFiles('**/CMakeLists.txt') }}
           restore-keys: |
-            ${{ matrix.name }}-cmake-
+            ${{ matrix.name }}-cmake-v2-
 
       - name: Configure CMake
         run: cmake -B build ${{ matrix.cmake_args }}
