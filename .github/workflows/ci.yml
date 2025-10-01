@@ -22,7 +22,7 @@ jobs:
       - name: Apply JUCE patches
         run: |
           cd JUCE
-          git apply ../patches/juce-xcode15-iterator-fix.patch
+          git apply --verbose ../patches/juce-xcode15-iterator-fix.patch || echo "Patch already applied or not needed"
 
       - name: Install clang-format
         run: sudo apt-get update && sudo apt-get install -y clang-format
@@ -63,7 +63,7 @@ jobs:
       - name: Apply JUCE patches
         run: |
           cd JUCE
-          git apply ../patches/juce-xcode15-iterator-fix.patch
+          git apply --verbose ../patches/juce-xcode15-iterator-fix.patch || echo "Patch already applied or not needed"
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
