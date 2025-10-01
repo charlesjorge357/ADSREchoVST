@@ -90,6 +90,14 @@ if(APPLE)
     )
     target_compile_options(ADSREcho PRIVATE
         -Wno-deprecated-declarations
+        -stdlib=libc++
+        -std=c++17
+    )
+    # Ensure C++17 is strictly enforced
+    set_target_properties(ADSREcho PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
     )
 endif()
 
