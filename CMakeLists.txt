@@ -6,6 +6,11 @@ project(ADSREchoVST VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# macOS Xcode 15+ compatibility
+if(APPLE)
+    add_compile_definitions(_LIBCPP_ENABLE_CXX17_REMOVED_ITERATOR_BASE=1)
+endif()
+
 # Add JUCE
 add_subdirectory(JUCE)
 
@@ -83,21 +88,10 @@ target_include_directories(ADSREcho
         Source
 )
 
-# Workaround for macOS Xcode 15+ C++20 iterator compatibility issue with JUCE
+# macOS specific compiler options
 if(APPLE)
-    target_compile_definitions(ADSREcho PRIVATE
-        _LIBCPP_ENABLE_CXX17_REMOVED_ITERATOR_BASE=1
-    )
     target_compile_options(ADSREcho PRIVATE
-        -Wno-deprecated-declarations
-        -stdlib=libc++
-        -std=c++17
-    )
-    # Ensure C++17 is strictly enforced
-    set_target_properties(ADSREcho PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF
+        $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-declarations>
     )
 endif()
 
