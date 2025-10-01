@@ -50,3 +50,16 @@ void ADSREchoAudioProcessor::setStateInformation(const void* data, int sizeInByt
     // Restore plugin state
     juce::MemoryInputStream(data, static_cast<size_t> (sizeInBytes), false).readInt();
 }
+
+//==============================================================================
+juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
+{
+    return new ADSREchoAudioProcessorEditor(*this);
+}
+
+//==============================================================================
+// This creates new instances of the plugin
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new ADSREchoAudioProcessor();
+}
