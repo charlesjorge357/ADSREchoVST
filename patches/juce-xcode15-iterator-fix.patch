@@ -1,0 +1,31 @@
+From 0ed88f088d1f8a458a1c5f710f8de51eb524f973 Mon Sep 17 00:00:00 2001
+From: AWheeler13 <160177439+AWheeler13@users.noreply.github.com>
+Date: Wed, 1 Oct 2025 15:01:46 -0400
+Subject: [PATCH] Add C++20 iterator traits to StrideIterator for Xcode 15+
+ compatibility
+
+---
+ modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp b/modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp
+index cb28286d55..88e8eb2aeb 100644
+--- a/modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp
++++ b/modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp
+@@ -1061,6 +1061,13 @@ private:
+     template <typename Iterator>
+     struct StrideIterator
+     {
++        // C++20 iterator traits
++        using iterator_category = std::random_access_iterator_tag;
++        using value_type = typename std::iterator_traits<Iterator>::value_type;
++        using difference_type = ptrdiff_t;
++        using pointer = typename std::iterator_traits<Iterator>::pointer;
++        using reference = typename std::iterator_traits<Iterator>::reference;
++
+         StrideIterator (Iterator iteratorIn, ptrdiff_t strideIn)
+             : iterator (std::move (iteratorIn)), stride (strideIn) {}
+ 
+-- 
+2.43.0.windows.1
+
