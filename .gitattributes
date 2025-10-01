@@ -1,0 +1,2 @@
+# Preserve Unix line endings in patch files
+patches/*.patch text eol=lf
