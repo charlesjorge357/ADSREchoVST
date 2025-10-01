@@ -15,11 +15,10 @@ public:
 
 #if JucePlugin_Enable_Editor
     bool hasEditor() const override { return true; }
-    juce::AudioProcessorEditor* createEditor() override;
 #else
     bool hasEditor() const override { return false; }
-    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
 #endif
+    juce::AudioProcessorEditor* createEditor() override;
 
     //==============================================================================
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
