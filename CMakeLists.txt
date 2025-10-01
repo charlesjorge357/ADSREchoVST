@@ -83,6 +83,16 @@ target_include_directories(ADSREcho
         Source
 )
 
+# Workaround for macOS Xcode 15+ C++20 iterator compatibility issue with JUCE
+if(APPLE)
+    target_compile_definitions(ADSREcho PRIVATE
+        _LIBCPP_ENABLE_CXX17_REMOVED_ITERATOR_BASE=1
+    )
+    target_compile_options(ADSREcho PRIVATE
+        -Wno-deprecated-declarations
+    )
+endif()
+
 # Optional: Enable testing
 option(BUILD_TESTS "Build unit tests" OFF)
 
