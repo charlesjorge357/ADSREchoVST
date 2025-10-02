@@ -20,6 +20,7 @@ jobs:
           submodules: recursive
 
       - name: Apply JUCE patches
+        shell: bash
         run: |
           cd JUCE
           # Check if patch is already applied
@@ -94,6 +95,7 @@ jobs:
           submodules: recursive
 
       - name: Apply JUCE patches
+        shell: bash
         run: |
           cd JUCE
           # Check if patch is already applied
