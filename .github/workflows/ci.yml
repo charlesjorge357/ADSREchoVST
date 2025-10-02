@@ -22,7 +22,13 @@ jobs:
       - name: Apply JUCE patches
         run: |
           cd JUCE
-          git apply --verbose ../patches/juce-xcode15-iterator-fix.patch || echo "Patch already applied or not needed"
+          # Check if patch is already applied
+          if ! grep -q "iterator_category" modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp; then
+            echo "Applying JUCE Xcode 15 iterator fix patch..."
+            git apply --verbose ../patches/juce-xcode15-iterator-fix.patch
+          else
+            echo "Patch already applied"
+          fi
 
       - name: Install clang-format
         run: sudo apt-get update && sudo apt-get install -y clang-format
@@ -63,7 +69,13 @@ jobs:
       - name: Apply JUCE patches
         run: |
           cd JUCE
-          git apply --verbose ../patches/juce-xcode15-iterator-fix.patch || echo "Patch already applied or not needed"
+          # Check if patch is already applied
+          if ! grep -q "iterator_category" modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp; then
+            echo "Applying JUCE Xcode 15 iterator fix patch..."
+            git apply --verbose ../patches/juce-xcode15-iterator-fix.patch
+          else
+            echo "Patch already applied"
+          fi
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
