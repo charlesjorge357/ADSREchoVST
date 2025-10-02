@@ -21,8 +21,10 @@ add_executable(ADSREchoTests
 target_link_libraries(ADSREchoTests
     PRIVATE
         Catch2::Catch2WithMain
+        ADSREcho
         juce::juce_audio_utils
         juce::juce_audio_processors
+        juce::juce_audio_basics
         juce::juce_dsp
 )
 
@@ -30,6 +32,13 @@ target_link_libraries(ADSREchoTests
 target_include_directories(ADSREchoTests
     PRIVATE
         ${CMAKE_SOURCE_DIR}/Source
+)
+
+# Compile definitions to match the plugin
+target_compile_definitions(ADSREchoTests
+    PRIVATE
+        JUCE_MODAL_LOOPS_PERMITTED=1
+        JUCE_UNIT_TESTS=1
 )
 
 # Register tests with CTest

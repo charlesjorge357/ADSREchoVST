@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
-#include <JuceHeader.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+#include "../Source/PluginProcessor.h"
 
 TEST_CASE("Plugin Basic Tests", "[plugin]")
 {
