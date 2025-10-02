@@ -27,32 +27,32 @@ jobs:
             echo "Applying JUCE Xcode 15 iterator fix..."
             # Use python for cross-platform file modification
             python3 << 'EOF'
-import re
-
-file_path = 'modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp'
-with open(file_path, 'r') as f:
-    content = f.read()
-
-# Find StrideIterator struct and add iterator traits
-pattern = r'(struct StrideIterator\s*\{)'
-replacement = r'''\1
-        using iterator_category = std::random_access_iterator_tag;
-        using value_type = typename std::iterator_traits<Iterator>::value_type;
-        using difference_type = ptrdiff_t;
-        using pointer = typename std::iterator_traits<Iterator>::pointer;
-        using reference = typename std::iterator_traits<Iterator>::reference;
-'''
-
-new_content = re.sub(pattern, replacement, content)
-
-if new_content != content:
-    with open(file_path, 'w') as f:
-        f.write(new_content)
-    print("Iterator traits added successfully")
-else:
-    print("ERROR: Could not find StrideIterator struct")
-    exit(1)
-EOF
+          import re
+          
+          file_path = 'modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp'
+          with open(file_path, 'r') as f:
+              content = f.read()
+          
+          # Find StrideIterator struct and add iterator traits
+          pattern = r'(struct StrideIterator\s*\{)'
+          replacement = r'''\1
+                  using iterator_category = std::random_access_iterator_tag;
+                  using value_type = typename std::iterator_traits<Iterator>::value_type;
+                  using difference_type = ptrdiff_t;
+                  using pointer = typename std::iterator_traits<Iterator>::pointer;
+                  using reference = typename std::iterator_traits<Iterator>::reference;
+          '''
+          
+          new_content = re.sub(pattern, replacement, content)
+          
+          if new_content != content:
+              with open(file_path, 'w') as f:
+                  f.write(new_content)
+              print("Iterator traits added successfully")
+          else:
+              print("ERROR: Could not find StrideIterator struct")
+              exit(1)
+          EOF
           else
             echo "Patch already applied"
           fi
@@ -101,32 +101,32 @@ EOF
             echo "Applying JUCE Xcode 15 iterator fix..."
             # Use python for cross-platform file modification
             python3 << 'EOF'
-import re
-
-file_path = 'modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp'
-with open(file_path, 'r') as f:
-    content = f.read()
-
-# Find StrideIterator struct and add iterator traits
-pattern = r'(struct StrideIterator\s*\{)'
-replacement = r'''\1
-        using iterator_category = std::random_access_iterator_tag;
-        using value_type = typename std::iterator_traits<Iterator>::value_type;
-        using difference_type = ptrdiff_t;
-        using pointer = typename std::iterator_traits<Iterator>::pointer;
-        using reference = typename std::iterator_traits<Iterator>::reference;
-'''
-
-new_content = re.sub(pattern, replacement, content)
-
-if new_content != content:
-    with open(file_path, 'w') as f:
-        f.write(new_content)
-    print("Iterator traits added successfully")
-else:
-    print("ERROR: Could not find StrideIterator struct")
-    exit(1)
-EOF
+          import re
+          
+          file_path = 'modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp'
+          with open(file_path, 'r') as f:
+              content = f.read()
+          
+          # Find StrideIterator struct and add iterator traits
+          pattern = r'(struct StrideIterator\s*\{)'
+          replacement = r'''\1
+                  using iterator_category = std::random_access_iterator_tag;
+                  using value_type = typename std::iterator_traits<Iterator>::value_type;
+                  using difference_type = ptrdiff_t;
+                  using pointer = typename std::iterator_traits<Iterator>::pointer;
+                  using reference = typename std::iterator_traits<Iterator>::reference;
+          '''
+          
+          new_content = re.sub(pattern, replacement, content)
+          
+          if new_content != content:
+              with open(file_path, 'w') as f:
+                  f.write(new_content)
+              print("Iterator traits added successfully")
+          else:
+              print("ERROR: Could not find StrideIterator struct")
+              exit(1)
+          EOF
           else
             echo "Patch already applied"
           fi
