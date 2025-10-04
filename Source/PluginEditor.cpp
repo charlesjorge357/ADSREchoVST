@@ -10,7 +10,7 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-ASDREchoAudioProcessorEditor::ASDREchoAudioProcessorEditor (ASDREchoAudioProcessor& p)
+ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     // Make sure that before the constructor has finished, you've set the
@@ -18,21 +18,22 @@ ASDREchoAudioProcessorEditor::ASDREchoAudioProcessorEditor (ASDREchoAudioProcess
     setSize (400, 300);
 }
 
-ASDREchoAudioProcessorEditor::~ASDREchoAudioProcessorEditor()
+ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
 {
 }
 
 //==============================================================================
-void ASDREchoAudioProcessorEditor::paint (juce::Graphics& g)
+void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll(juce::Colours::black);
-    g.setColour(juce::Colours::white);
-    g.setFont(20.0f);
-    g.drawFittedText("ADSREcho", getLocalBounds(), juce::Justification::centred, 1);
+    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+
+    g.setColour (juce::Colours::white);
+    g.setFont (juce::FontOptions (15.0f));
+    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
 
-void ASDREchoAudioProcessorEditor::resized()
+void ADSREchoAudioProcessorEditor::resized()
 {
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..

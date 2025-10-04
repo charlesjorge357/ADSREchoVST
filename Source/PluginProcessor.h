@@ -13,12 +13,12 @@
 //==============================================================================
 /**
 */
-class ASDREchoAudioProcessor  : public juce::AudioProcessor
+class ADSREchoAudioProcessor  : public juce::AudioProcessor
 {
 public:
     //==============================================================================
-    ASDREchoAudioProcessor();
-    ~ASDREchoAudioProcessor() override;
+    ADSREchoAudioProcessor();
+    ~ADSREchoAudioProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -55,5 +55,5 @@ public:
 
 private:
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ASDREchoAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };

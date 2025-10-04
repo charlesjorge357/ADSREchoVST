@@ -10,7 +10,7 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-ASDREchoAudioProcessor::ASDREchoAudioProcessor()
+ADSREchoAudioProcessor::ADSREchoAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
@@ -24,17 +24,17 @@ ASDREchoAudioProcessor::ASDREchoAudioProcessor()
 {
 }
 
-ASDREchoAudioProcessor::~ASDREchoAudioProcessor()
+ADSREchoAudioProcessor::~ADSREchoAudioProcessor()
 {
 }
 
 //==============================================================================
-const juce::String ASDREchoAudioProcessor::getName() const
+const juce::String ADSREchoAudioProcessor::getName() const
 {
     return JucePlugin_Name;
 }
 
-bool ASDREchoAudioProcessor::acceptsMidi() const
+bool ADSREchoAudioProcessor::acceptsMidi() const
 {
    #if JucePlugin_WantsMidiInput
     return true;
@@ -43,7 +43,7 @@ bool ASDREchoAudioProcessor::acceptsMidi() const
    #endif
 }
 
-bool ASDREchoAudioProcessor::producesMidi() const
+bool ADSREchoAudioProcessor::producesMidi() const
 {
    #if JucePlugin_ProducesMidiOutput
     return true;
@@ -52,7 +52,7 @@ bool ASDREchoAudioProcessor::producesMidi() const
    #endif
 }
 
-bool ASDREchoAudioProcessor::isMidiEffect() const
+bool ADSREchoAudioProcessor::isMidiEffect() const
 {
    #if JucePlugin_IsMidiEffect
     return true;
@@ -61,50 +61,50 @@ bool ASDREchoAudioProcessor::isMidiEffect() const
    #endif
 }
 
-double ASDREchoAudioProcessor::getTailLengthSeconds() const
+double ADSREchoAudioProcessor::getTailLengthSeconds() const
 {
     return 0.0;
 }
 
-int ASDREchoAudioProcessor::getNumPrograms()
+int ADSREchoAudioProcessor::getNumPrograms()
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
-int ASDREchoAudioProcessor::getCurrentProgram()
+int ADSREchoAudioProcessor::getCurrentProgram()
 {
     return 0;
 }
 
-void ASDREchoAudioProcessor::setCurrentProgram (int index)
+void ADSREchoAudioProcessor::setCurrentProgram (int index)
 {
 }
 
-const juce::String ASDREchoAudioProcessor::getProgramName (int index)
+const juce::String ADSREchoAudioProcessor::getProgramName (int index)
 {
     return {};
 }
 
-void ASDREchoAudioProcessor::changeProgramName (int index, const juce::String& newName)
+void ADSREchoAudioProcessor::changeProgramName (int index, const juce::String& newName)
 {
 }
 
 //==============================================================================
-void ASDREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
 }
 
-void ASDREchoAudioProcessor::releaseResources()
+void ADSREchoAudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
-bool ASDREchoAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool ADSREchoAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
   #if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
@@ -129,7 +129,7 @@ bool ASDREchoAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
 }
 #endif
 
-void ASDREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
@@ -159,25 +159,25 @@ void ASDREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 }
 
 //==============================================================================
-bool ASDREchoAudioProcessor::hasEditor() const
+bool ADSREchoAudioProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor* ASDREchoAudioProcessor::createEditor()
+juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
 {
-    return new ASDREchoAudioProcessorEditor (*this);
+    return new ADSREchoAudioProcessorEditor (*this);
 }
 
 //==============================================================================
-void ASDREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
 }
 
-void ASDREchoAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
@@ -187,5 +187,5 @@ void ASDREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new ASDREchoAudioProcessor();
+    return new ADSREchoAudioProcessor();
 }
