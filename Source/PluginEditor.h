@@ -1,20 +1,33 @@
+/*
+  ==============================================================================
+
+    This file contains the basic framework code for a JUCE plugin editor.
+
+  ==============================================================================
+*/
+
 #pragma once
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
 //==============================================================================
-class ADSREchoAudioProcessorEditor : public juce::AudioProcessorEditor
+/**
+*/
+class ASDREchoAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
-    explicit ADSREchoAudioProcessorEditor(ADSREchoAudioProcessor&);
-    ~ADSREchoAudioProcessorEditor() override;
+    ASDREchoAudioProcessorEditor (ASDREchoAudioProcessor&);
+    ~ASDREchoAudioProcessorEditor() override;
 
-    void paint(juce::Graphics&) override;
+    //==============================================================================
+    void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
-    ADSREchoAudioProcessor& audioProcessor;
+    // This reference is provided as a quick way for your editor to
+    // access the processor object that created it.
+    ASDREchoAudioProcessor& audioProcessor;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ADSREchoAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ASDREchoAudioProcessorEditor)
 };
