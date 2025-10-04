@@ -8,7 +8,12 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#if __has_include("JuceHeader.h")
+  #include "JuceHeader.h"  // for Projucer
+#else
+  #include <juce_audio_processors/juce_audio_processors.h> // for CMake
+  #include <juce_dsp/juce_dsp.h>
+#endif
 
 //==============================================================================
 /**
