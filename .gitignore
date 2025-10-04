@@ -433,7 +433,7 @@ _deps/
 # JUCE
 *_artefacts/
 *.jucer.bak
-JuceLibraryCode/
+# JuceLibraryCode/
 
 # Builds
 Builds/
