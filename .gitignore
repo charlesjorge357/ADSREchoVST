@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
+*.pdf
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -416,3 +417,39 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# CMake
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# JUCE
+*_artefacts/
+*.jucer.bak
+# JuceLibraryCode/
+
+# Builds
+Builds/
+
+# Audio plugin formats
+*.vst3
+*.component
+*.aaxplugin
+
+# ML outputs
+ml/outputs/
+ml/models/*.pt
+ml/models/*.pth
+ml/data/cache/
+*.onnx
+
+# macOS
+.DS_Store
+*.dSYM

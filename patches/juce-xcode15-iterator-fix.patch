@@ -1,0 +1,17 @@
+diff --git a/modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp b/modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp
+index cb28286d55..0d7b1b18fb 100644
+--- a/modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp
++++ b/modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp
+@@ -1061,6 +1061,12 @@ private:
+     template <typename Iterator>
+     struct StrideIterator
+     {
++        using iterator_category = std::random_access_iterator_tag;
++        using value_type = typename std::iterator_traits<Iterator>::value_type;
++        using difference_type = ptrdiff_t;
++        using pointer = typename std::iterator_traits<Iterator>::pointer;
++        using reference = typename std::iterator_traits<Iterator>::reference;
++
+         StrideIterator (Iterator iteratorIn, ptrdiff_t strideIn)
+             : iterator (std::move (iteratorIn)), stride (strideIn) {}
+ 

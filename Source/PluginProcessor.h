@@ -1,31 +1,46 @@
+/*
+  ==============================================================================
+
+    This file contains the basic framework code for a JUCE plugin processor.
+
+  ==============================================================================
+*/
+
 #pragma once
 
-#include <JuceHeader.h>
+#if __has_include("JuceHeader.h")
+  #include "JuceHeader.h"  // for Projucer
+#else
+  #include <juce_audio_processors/juce_audio_processors.h> // for CMake
+  #include <juce_dsp/juce_dsp.h>
+#endif
 
 //==============================================================================
-class ADSREchoAudioProcessor : public juce::AudioProcessor
+/**
+*/
+class ADSREchoAudioProcessor  : public juce::AudioProcessor
 {
 public:
+    //==============================================================================
     ADSREchoAudioProcessor();
     ~ADSREchoAudioProcessor() override;
 
     //==============================================================================
-    void prepareToPlay(double sampleRate, int samplesPerBlock) override;
+    void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 
-#if JucePlugin_Enable_Editor
-    bool hasEditor() const override { return true; }
+   #ifndef JucePlugin_PreferredChannelConfigurations
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
+   #endif
+
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+
+    //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
-#else
-    bool hasEditor() const override { return false; }
-    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
-#endif
+    bool hasEditor() const override;
 
     //==============================================================================
-    void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
-
-    //==============================================================================
-    const juce::String getName() const override { return JucePlugin_Name; }
+    const juce::String getName() const override;
 
     bool acceptsMidi() const override;
     bool producesMidi() const override;
@@ -35,14 +50,15 @@ public:
     //==============================================================================
     int getNumPrograms() override;
     int getCurrentProgram() override;
-    void setCurrentProgram(int index) override;
-    const juce::String getProgramName(int index) override;
-    void changeProgramName(int index, const juce::String& newName) override;
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
+    void changeProgramName (int index, const juce::String& newName) override;
 
     //==============================================================================
-    void getStateInformation(juce::MemoryBlock& destData) override;
-    void setStateInformation(const void* data, int sizeInBytes) override;
+    void getStateInformation (juce::MemoryBlock& destData) override;
+    void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ADSREchoAudioProcessor)
+    //==============================================================================
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };

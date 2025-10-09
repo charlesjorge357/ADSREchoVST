@@ -1,25 +1,40 @@
+/*
+  ==============================================================================
+
+    This file contains the basic framework code for a JUCE plugin editor.
+
+  ==============================================================================
+*/
+
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
 //==============================================================================
-ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor(ADSREchoAudioProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p)
+ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcessor& p)
+    : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    setSize(400, 300); // Default UI size
+    // Make sure that before the constructor has finished, you've set the
+    // editor's size to whatever you need it to be.
+    setSize (400, 300);
 }
 
-ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor() {}
+ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
+{
+}
 
 //==============================================================================
-void ADSREchoAudioProcessorEditor::paint(juce::Graphics& g)
+void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll(juce::Colours::black);
-    g.setColour(juce::Colours::white);
-    g.setFont(20.0f);
-    g.drawFittedText("ADSREcho", getLocalBounds(), juce::Justification::centred, 1);
+    // (Our component is opaque, so we must completely fill the background with a solid colour)
+    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+
+    g.setColour (juce::Colours::white);
+    g.setFont (juce::FontOptions (15.0f));
+    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
 
 void ADSREchoAudioProcessorEditor::resized()
 {
-    // Layout components here
+    // This is generally where you'll want to lay out the positions of any
+    // subcomponents in your editor..
 }
