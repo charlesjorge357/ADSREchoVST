@@ -166,7 +166,8 @@ bool ADSREchoAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
 {
-    return new ADSREchoAudioProcessorEditor (*this);
+    //return new ADSREchoAudioProcessorEditor (*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -181,6 +182,15 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain", juce::NormalisableRange<float>(-6.f, 6.f, .01f, 1.f), 0.f));
+    
+    return layout;
 }
 
 //==============================================================================
