@@ -72,7 +72,55 @@ public:
 
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
+    // Effect modules access
+    auto& getDelayProcessor() { return delayProcessor; }
+    auto& getReverbProcessor() { return reverbProcessor; }
+    auto& getConvolutionProcessor() { return convolutionProcessor; }
+    auto& getCompressorProcessor() { return compressorProcessor; }
+    auto& getEQProcessor() { return eqProcessor; }
+
+    // System access
+    auto& getRoutingMatrix() { return routingMatrix; }
+    auto& getPresetManager() { return presetManager; }
+
+    // Tempo/BPM sync
+    void updateTempo(double bpm);
+    double getCurrentTempo() const { return currentTempo; }
+    bool isTempoValid() const { return tempoValid; }
+
 private:
+    // Forward declarations
+    class DelayProcessor;
+    class ReverbProcessor;
+    class ConvolutionProcessor;
+    class CompressorProcessor;
+    class EQProcessor;
+    class RoutingMatrix;
+    class PresetManager;
+
+    // Effect modules (using unique_ptr for forward declaration)
+    std::unique_ptr<DelayProcessor> delayProcessor;
+    std::unique_ptr<ReverbProcessor> reverbProcessor;
+    std::unique_ptr<ConvolutionProcessor> convolutionProcessor;
+    std::unique_ptr<CompressorProcessor> compressorProcessor;
+    std::unique_ptr<EQProcessor> eqProcessor;
+
+    // System modules
+    std::unique_ptr<RoutingMatrix> routingMatrix;
+    std::unique_ptr<PresetManager> presetManager;
+
+    // Tempo/BPM sync
+    double currentTempo = 120.0;
+    bool tempoValid = false;
+
+    // Signal chain state
+    juce::AudioBuffer<float> dryBuffer;
+    juce::AudioBuffer<float> wetBuffer;
+
+    // Helper methods
+    void updateAllParameters();
+    void routeSignalChain(juce::AudioBuffer<float>& buffer);
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };
