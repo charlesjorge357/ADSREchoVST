@@ -9,7 +9,8 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
 #include "DatorroHall.h"
 
 class ReverbProcessor
@@ -40,8 +41,8 @@ public:
 
 private:
     // Reverb algorithm instances
-    std::unique_ptr<DatorroHall<float>> hallReverbL;
-    std::unique_ptr<DatorroHall<float>> hallReverbR;
+    std::unique_ptr<DatorroHall> hallReverbL;
+    std::unique_ptr<DatorroHall> hallReverbR;
 
     // Plate reverb (will use different topology)
     juce::dsp::Reverb plateReverb;

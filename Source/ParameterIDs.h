@@ -9,8 +9,6 @@
 
 #pragma once
 
-#include <JuceHeader.h>
-
 namespace ParameterIDs
 {
     // DELAY PARAMETERS
@@ -33,6 +31,10 @@ namespace ParameterIDs
     inline constexpr auto reverbSize { "reverbSize" };
     inline constexpr auto reverbDiffusion { "reverbDiffusion" };
     inline constexpr auto reverbDecay { "reverbDecay" };
+    inline constexpr auto reverbDecayTime { "reverbDecayTime" };
+    inline constexpr auto reverbDamping { "reverbDamping" };
+    inline constexpr auto reverbWidth { "reverbWidth" };
+    inline constexpr auto reverbModulation { "reverbModulation" };
     inline constexpr auto reverbMix { "reverbMix" };
     inline constexpr auto reverbPreDelay { "reverbPreDelay" };
 

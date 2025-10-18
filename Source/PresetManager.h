@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#include <juce_data_structures/juce_data_structures.h>
 
 class PresetManager
 {

@@ -5,8 +5,8 @@ Delay based on juce::dsp::DelayLine, but allows access to the underlying buffer 
 
 #pragma once
 
-#include <JuceHeader.h>
-// #include "Utilities.h"
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
 
 template <typename SampleType>
 class DelayLineWithSampleAccess
