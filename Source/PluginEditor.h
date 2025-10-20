@@ -10,8 +10,8 @@
 
 #if __has_include("JuceHeader.h")
   #include "JuceHeader.h"  // for Projucer
-#else
-  #include <juce_audio_basics/juce_audio_basics.h> // for Cmake
+#else // for Cmake
+  #include <juce_audio_basics/juce_audio_basics.h>
   #include <juce_audio_formats/juce_audio_formats.h>
   #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
   #include <juce_audio_processors/juce_audio_processors.h>
