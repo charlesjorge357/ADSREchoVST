@@ -19,7 +19,8 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+                    apvts(*this, nullptr, "Parameters", createParameterLayout())
 #endif
 {
 }

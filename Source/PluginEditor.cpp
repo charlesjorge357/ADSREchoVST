@@ -15,6 +15,14 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
+
+
+    for (auto* comp : getComps()) {
+        addAndMakeVisible(comp);
+    }
+    
+
+   
     setSize (400, 300);
 }
 
@@ -37,4 +45,18 @@ void ADSREchoAudioProcessorEditor::resized()
 {
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
+    auto bounds = getLocalBounds();
+
+    auto resposiveArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+
+    for (auto* comp : getComps()) {
+        comp->setBounds(getWidth() / 2 - 50, getHeight() / 2 - 50, 100, 100);
+    } 
+       
+
+
+}
+
+std::vector<juce::Component*> ADSREchoAudioProcessorEditor::getComps() {
+    return {&proKnob};
 }
