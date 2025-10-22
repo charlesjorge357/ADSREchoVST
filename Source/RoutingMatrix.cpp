@@ -11,6 +11,13 @@
 
 RoutingMatrix::RoutingMatrix()
 {
+    // Initialize all effects as enabled
+    effectEnabled[EffectSlot::Delay] = true;
+    effectEnabled[EffectSlot::AlgorithmicReverb] = true;
+    effectEnabled[EffectSlot::ConvolutionReverb] = true;
+    effectEnabled[EffectSlot::EQ] = true;
+    effectEnabled[EffectSlot::Compressor] = true;
+
     setTopology(RoutingTopology::Classic);
 }
 
@@ -21,106 +28,180 @@ RoutingMatrix::~RoutingMatrix()
 void RoutingMatrix::setTopology(RoutingTopology topology)
 {
     currentTopology = topology;
-    updateProcessingOrder();
-}
-
-void RoutingMatrix::updateProcessingOrder()
-{
-    processingOrder.clear();
+    connections.clear();
 
     switch (currentTopology)
     {
         case RoutingTopology::Classic:
-            // EQ → Comp → Delay → AlgReverb → ConvReverb
-            processingOrder = {
-                EffectSlot::EQ,
-                EffectSlot::Compressor,
-                EffectSlot::Delay,
-                EffectSlot::AlgorithmicReverb,
-                EffectSlot::ConvolutionReverb
-            };
+            setupClassicTopology();
             break;
 
         case RoutingTopology::ReverbBlend:
-            // Delay → (AlgReverb + ConvReverb parallel) → EQ
-            processingOrder = {
-                EffectSlot::Delay,
-                EffectSlot::AlgorithmicReverb,
-                EffectSlot::ConvolutionReverb,
-                EffectSlot::EQ
-            };
+            setupReverbBlendTopology();
             break;
 
         case RoutingTopology::DelayToConvolution:
-            // EQ → Comp → Delay → ConvReverb → AlgReverb
-            processingOrder = {
-                EffectSlot::EQ,
-                EffectSlot::Compressor,
-                EffectSlot::Delay,
-                EffectSlot::ConvolutionReverb,
-                EffectSlot::AlgorithmicReverb
-            };
+            setupDelayToConvolutionTopology();
             break;
 
         case RoutingTopology::ConvolutionFirst:
-            // ConvReverb → Delay → AlgReverb → EQ → Comp
-            processingOrder = {
-                EffectSlot::ConvolutionReverb,
-                EffectSlot::Delay,
-                EffectSlot::AlgorithmicReverb,
-                EffectSlot::EQ,
-                EffectSlot::Compressor
-            };
+            setupConvolutionFirstTopology();
             break;
 
         case RoutingTopology::ParallelProcessing:
-            // All effects in parallel
-            processingOrder = {
-                EffectSlot::EQ,
-                EffectSlot::Compressor,
-                EffectSlot::Delay,
-                EffectSlot::AlgorithmicReverb,
-                EffectSlot::ConvolutionReverb
-            };
+            setupParallelTopology();
             break;
 
         case RoutingTopology::Custom:
-            // User-defined order (default to Classic for now)
-            processingOrder = {
-                EffectSlot::EQ,
-                EffectSlot::Compressor,
-                EffectSlot::Delay,
-                EffectSlot::AlgorithmicReverb,
-                EffectSlot::ConvolutionReverb
-            };
+            // User-defined, don't set up anything
             break;
     }
 }
 
+void RoutingMatrix::setupClassicTopology()
+{
+    // EQ → Comp → Delay → AlgReverb → ConvReverb
+    addConnection(EffectSlot::EQ, EffectSlot::Compressor);
+    addConnection(EffectSlot::Compressor, EffectSlot::Delay);
+    addConnection(EffectSlot::Delay, EffectSlot::AlgorithmicReverb);
+    addConnection(EffectSlot::AlgorithmicReverb, EffectSlot::ConvolutionReverb);
+}
+
+void RoutingMatrix::setupReverbBlendTopology()
+{
+    // Delay → (AlgReverb + ConvReverb parallel) → EQ
+    addConnection(EffectSlot::Delay, EffectSlot::AlgorithmicReverb);
+    addConnection(EffectSlot::Delay, EffectSlot::ConvolutionReverb);
+    addConnection(EffectSlot::AlgorithmicReverb, EffectSlot::EQ);
+    addConnection(EffectSlot::ConvolutionReverb, EffectSlot::EQ);
+}
+
+void RoutingMatrix::setupDelayToConvolutionTopology()
+{
+    // EQ → Comp → Delay → ConvReverb → AlgReverb
+    addConnection(EffectSlot::EQ, EffectSlot::Compressor);
+    addConnection(EffectSlot::Compressor, EffectSlot::Delay);
+    addConnection(EffectSlot::Delay, EffectSlot::ConvolutionReverb);
+    addConnection(EffectSlot::ConvolutionReverb, EffectSlot::AlgorithmicReverb);
+}
+
+void RoutingMatrix::setupConvolutionFirstTopology()
+{
+    // ConvReverb → Delay → AlgReverb → EQ → Comp
+    addConnection(EffectSlot::ConvolutionReverb, EffectSlot::Delay);
+    addConnection(EffectSlot::Delay, EffectSlot::AlgorithmicReverb);
+    addConnection(EffectSlot::AlgorithmicReverb, EffectSlot::EQ);
+    addConnection(EffectSlot::EQ, EffectSlot::Compressor);
+}
+
+void RoutingMatrix::setupParallelTopology()
+{
+    // All effects in parallel (no connections)
+    // Each effect processes independently
+}
+
 std::vector<RoutingMatrix::EffectSlot> RoutingMatrix::getProcessingOrder() const
 {
-    return processingOrder;
+    return buildProcessingOrder();
 }
 
-bool RoutingMatrix::isEffectEnabled(EffectSlot slot) const
+std::vector<RoutingMatrix::EffectSlot> RoutingMatrix::buildProcessingOrder() const
 {
-    // For now, all effects are enabled
-    // TODO: Implement per-effect enable/disable
-    juce::ignoreUnused(slot);
-    return true;
+    // Simple topological sort would go here
+    // For now, return a simple default order
+    std::vector<EffectSlot> order;
+
+    // Add all effects that are enabled
+    if (isEffectEnabled(EffectSlot::EQ))
+        order.push_back(EffectSlot::EQ);
+    if (isEffectEnabled(EffectSlot::Compressor))
+        order.push_back(EffectSlot::Compressor);
+    if (isEffectEnabled(EffectSlot::Delay))
+        order.push_back(EffectSlot::Delay);
+    if (isEffectEnabled(EffectSlot::AlgorithmicReverb))
+        order.push_back(EffectSlot::AlgorithmicReverb);
+    if (isEffectEnabled(EffectSlot::ConvolutionReverb))
+        order.push_back(EffectSlot::ConvolutionReverb);
+
+    return order;
 }
 
-RoutingMatrix::RoutingTopology RoutingMatrix::getCurrentTopology() const
+void RoutingMatrix::addConnection(EffectSlot source, EffectSlot dest, float sendAmount)
 {
-    return currentTopology;
+    EffectConnection conn;
+    conn.source = source;
+    conn.destination = dest;
+    conn.sendAmount = sendAmount;
+    connections.push_back(conn);
+}
+
+void RoutingMatrix::removeConnection(EffectSlot source, EffectSlot dest)
+{
+    connections.erase(
+        std::remove_if(connections.begin(), connections.end(),
+            [source, dest](const EffectConnection& conn) {
+                return conn.source == source && conn.destination == dest;
+            }),
+        connections.end()
+    );
+}
+
+void RoutingMatrix::clearAllConnections()
+{
+    connections.clear();
+}
+
+void RoutingMatrix::setEffectEnabled(EffectSlot effect, bool enabled)
+{
+    effectEnabled[effect] = enabled;
+}
+
+bool RoutingMatrix::isEffectEnabled(EffectSlot effect) const
+{
+    auto it = effectEnabled.find(effect);
+    return it != effectEnabled.end() ? it->second : true;
 }
 
 void RoutingMatrix::setReverbBlendRatio(float ratio)
 {
-    reverbBlend = juce::jlimit(0.0f, 1.0f, ratio);
+    reverbBlendRatio = juce::jlimit(0.0f, 1.0f, ratio);
 }
 
-float RoutingMatrix::getReverbBlendRatio() const
+bool RoutingMatrix::areEffectsParallel(EffectSlot a, EffectSlot b) const
 {
-    return reverbBlend;
+    // Simple check: if both receive from same source, they're parallel
+    EffectSlot commonSource = EffectSlot::Delay;
+    bool aHasSource = false;
+    bool bHasSource = false;
+
+    for (const auto& conn : connections)
+    {
+        if (conn.destination == a && conn.source == commonSource)
+            aHasSource = true;
+        if (conn.destination == b && conn.source == commonSource)
+            bHasSource = true;
+    }
+
+    return aHasSource && bHasSource;
+}
+
+juce::ValueTree RoutingMatrix::serialize() const
+{
+    juce::ValueTree tree("RoutingMatrix");
+    tree.setProperty("topology", static_cast<int>(currentTopology), nullptr);
+    tree.setProperty("reverbBlend", reverbBlendRatio, nullptr);
+
+    // TODO: Serialize connections and effect enables
+    return tree;
+}
+
+void RoutingMatrix::deserialize(const juce::ValueTree& tree)
+{
+    if (tree.hasType("RoutingMatrix"))
+    {
+        currentTopology = static_cast<RoutingTopology>(static_cast<int>(tree.getProperty("topology")));
+        reverbBlendRatio = tree.getProperty("reverbBlend");
+
+        // TODO: Deserialize connections and effect enables
+    }
 }
