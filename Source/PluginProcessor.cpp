@@ -142,34 +142,44 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // Clear extra output channels
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // Store dry signal for mixing
-    juce::AudioBuffer<float> dryBuffer;
-    dryBuffer.makeCopyOf(buffer);
+    // Store ORIGINAL dry signal for master mix
+    juce::AudioBuffer<float> masterDryBuffer;
+    masterDryBuffer.makeCopyOf(buffer);
     
-    // Get mix parameter (0 = dry, 1 = wet)
-    float mixValue = apvts.getRawParameterValue("Mix")->load();
+    // ============ PER-EFFECT PROCESSING ============
+    // Each effect handles its own internal dry/wet
     
-    // Process wet signal through reverb
+    // Effect 1: Reverb (has its own dry/wet via parameters.mix)
     juce::dsp::AudioBlock<float> block(buffer);
     DatorroHall.process(juce::dsp::ProcessContextReplacing<float>(block));
     
-    // Blend dry and wet
+    // Future: Effect 2: Delay (has its own dry/wet)
+    // DelayEffect.process(block);
+    
+    // Future: Effect 3: Convolution (has its own dry/wet)
+    // ConvolutionEffect.process(block);
+    
+    // ============ MASTER DRY/WET MIX ============
+    // Get MASTER mix parameter (0 = original dry, 1 = all processed effects)
+    float masterMixValue = apvts.getRawParameterValue("MasterMix")->load();
+    
+    // Blend original dry with all processed effects
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        auto* wetData = buffer.getWritePointer(channel);
-        auto* dryData = dryBuffer.getReadPointer(channel);
+        auto* processedData = buffer.getWritePointer(channel);
+        auto* originalDryData = masterDryBuffer.getReadPointer(channel);
         
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            wetData[sample] = dryData[sample] * (1.0f - mixValue) + wetData[sample] * mixValue;
+            processedData[sample] = originalDryData[sample] * (1.0f - masterMixValue) 
+                                   + processedData[sample] * masterMixValue;
         }
     }
     
-    // Apply output gain
+    // Apply master output gain
     float gainValue = juce::Decibels::decibelsToGain(apvts.getRawParameterValue("Gain")->load());
     buffer.applyGain(gainValue);
 }
@@ -204,9 +214,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain", juce::NormalisableRange<float>(-6.f, 6.f, .01f, 1.f), 0.f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Mix", "Mix", juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
+    // Master controls
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain", 
+        juce::NormalisableRange<float>(-6.f, 6.f, .01f, 1.f), 0.f));
+    
+    layout.add(std::make_unique<juce::AudioParameterFloat>("MasterMix", "Master Mix", 
+        juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
+    
+    // Per-effect controls (reverb example)
+    layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix", 
+        juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
+    
+    // Future: Delay, Convolution, etc. each get their own mix
     
     return layout;
 }
