@@ -8,6 +8,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "DatorroHall.h"
 
 //==============================================================================
 ADSREchoAudioProcessor::ADSREchoAudioProcessor()
@@ -95,6 +96,12 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate = sampleRate;
+    spec.maximumBlockSize = samplesPerBlock;
+    spec.numChannels = getTotalNumOutputChannels();
+
+    DatorroHall.prepare(spec);
 }
 
 void ADSREchoAudioProcessor::releaseResources()
@@ -135,27 +142,36 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
+    // Clear extra output channels
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
+    // Store dry signal for mixing
+    juce::AudioBuffer<float> dryBuffer;
+    dryBuffer.makeCopyOf(buffer);
+    
+    // Get mix parameter (0 = dry, 1 = wet)
+    float mixValue = apvts.getRawParameterValue("Mix")->load();
+    
+    // Process wet signal through reverb
+    juce::dsp::AudioBlock<float> block(buffer);
+    DatorroHall.process(juce::dsp::ProcessContextReplacing<float>(block));
+    
+    // Blend dry and wet
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        auto* channelData = buffer.getWritePointer (channel);
-
-        // ..do something to the data...
+        auto* wetData = buffer.getWritePointer(channel);
+        auto* dryData = dryBuffer.getReadPointer(channel);
+        
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            wetData[sample] = dryData[sample] * (1.0f - mixValue) + wetData[sample] * mixValue;
+        }
     }
+    
+    // Apply output gain
+    float gainValue = juce::Decibels::decibelsToGain(apvts.getRawParameterValue("Gain")->load());
+    buffer.applyGain(gainValue);
 }
 
 //==============================================================================
@@ -189,6 +205,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain", juce::NormalisableRange<float>(-6.f, 6.f, .01f, 1.f), 0.f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Mix", "Mix", juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
     
     return layout;
 }

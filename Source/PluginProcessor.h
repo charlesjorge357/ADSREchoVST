@@ -24,6 +24,7 @@
   #include <juce_gui_basics/juce_gui_basics.h>
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
+#include "DatorroHall.h"
 
 //==============================================================================
 /**
@@ -73,6 +74,7 @@ public:
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
 private:
+    juce::dsp::Reverb DatorroHall;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };
