@@ -16,11 +16,18 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
 
+    /*proKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    proKnob.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 50, 20);*/
 
+   /* gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "Gain", proKnob);
+
+    
+    */
+    
     for (auto* comp : getComps()) {
         addAndMakeVisible(comp);
     }
-    
 
    
     setSize (400, 300);
@@ -33,12 +40,18 @@ ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
 //==============================================================================
 void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 {
+    auto knobBounds = proKnob.getBounds();
+
+    auto textbounds = knobBounds.translated(0,-35);
+
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
+
+
     g.setColour (juce::Colours::white);
     g.setFont (juce::FontOptions (15.0f));
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
+    g.drawFittedText ("A simple Knob!", textbounds, juce::Justification::centred, 1);
 }
 
 void ADSREchoAudioProcessorEditor::resized()
@@ -49,9 +62,11 @@ void ADSREchoAudioProcessorEditor::resized()
 
     auto resposiveArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
 
-    for (auto* comp : getComps()) {
+    proKnob.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.33));
+
+   /* for (auto* comp : getComps()) {
         comp->setBounds(getWidth() / 2 - 50, getHeight() / 2 - 50, 100, 100);
-    } 
+    } */
        
 
 
