@@ -65,6 +65,7 @@ target_sources(ADSREcho
         Source/EQProcessor.cpp
         Source/RoutingMatrix.cpp
         Source/PresetManager.cpp
+        Source/CustomDelays.cpp
 )
 
 # Compile definitions
