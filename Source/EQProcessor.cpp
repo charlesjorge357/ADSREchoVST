@@ -101,9 +101,11 @@ void EQProcessor::updateLowFilter()
     auto& lowFilter = filterChainLeft.get<ChainPositions::LowBand>();
     auto& lowFilterR = filterChainRight.get<ChainPositions::LowBand>();
 
-    *lowFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowShelf(
+    auto coeffs = juce::dsp::IIR::Coefficients<float>::makeLowShelf(
         sampleRate, lowFreq, 0.707f, juce::Decibels::decibelsToGain(lowGain));
-    *lowFilterR.state = *lowFilter.state;
+
+    *lowFilter.coefficients = *coeffs;
+    *lowFilterR.coefficients = *coeffs;
 }
 
 void EQProcessor::updateMidFilter()
@@ -111,9 +113,11 @@ void EQProcessor::updateMidFilter()
     auto& midFilter = filterChainLeft.get<ChainPositions::MidBand>();
     auto& midFilterR = filterChainRight.get<ChainPositions::MidBand>();
 
-    *midFilter.state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(
+    auto coeffs = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
         sampleRate, midFreq, midQ, juce::Decibels::decibelsToGain(midGain));
-    *midFilterR.state = *midFilter.state;
+
+    *midFilter.coefficients = *coeffs;
+    *midFilterR.coefficients = *coeffs;
 }
 
 void EQProcessor::updateHighFilter()
@@ -121,9 +125,11 @@ void EQProcessor::updateHighFilter()
     auto& highFilter = filterChainLeft.get<ChainPositions::HighBand>();
     auto& highFilterR = filterChainRight.get<ChainPositions::HighBand>();
 
-    *highFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(
+    auto coeffs = juce::dsp::IIR::Coefficients<float>::makeHighShelf(
         sampleRate, highFreq, 0.707f, juce::Decibels::decibelsToGain(highGain));
-    *highFilterR.state = *highFilter.state;
+
+    *highFilter.coefficients = *coeffs;
+    *highFilterR.coefficients = *coeffs;
 }
 
 void EQProcessor::updateAllFilters()
