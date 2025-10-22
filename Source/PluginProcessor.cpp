@@ -9,13 +9,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "ParameterIDs.h"
-#include "DelayProcessor.h"
-#include "ReverbProcessor.h"
-#include "ConvolutionProcessor.h"
-#include "CompressorProcessor.h"
-#include "EQProcessor.h"
-#include "RoutingMatrix.h"
-#include "PresetManager.h"
 
 //==============================================================================
 ADSREchoAudioProcessor::ADSREchoAudioProcessor()

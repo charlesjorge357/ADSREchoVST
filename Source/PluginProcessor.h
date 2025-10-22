@@ -25,6 +25,15 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
+// Processor modules
+#include "DelayProcessor.h"
+#include "ReverbProcessor.h"
+#include "ConvolutionProcessor.h"
+#include "CompressorProcessor.h"
+#include "EQProcessor.h"
+#include "RoutingMatrix.h"
+#include "PresetManager.h"
+
 //==============================================================================
 /**
 */
@@ -89,16 +98,7 @@ public:
     bool isTempoValid() const { return tempoValid; }
 
 private:
-    // Forward declarations
-    class DelayProcessor;
-    class ReverbProcessor;
-    class ConvolutionProcessor;
-    class CompressorProcessor;
-    class EQProcessor;
-    class RoutingMatrix;
-    class PresetManager;
-
-    // Effect modules (using unique_ptr for forward declaration)
+    // Effect modules
     std::unique_ptr<DelayProcessor> delayProcessor;
     std::unique_ptr<ReverbProcessor> reverbProcessor;
     std::unique_ptr<ConvolutionProcessor> convolutionProcessor;
