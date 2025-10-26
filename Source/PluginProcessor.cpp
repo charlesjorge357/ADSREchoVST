@@ -192,8 +192,8 @@ bool ADSREchoAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
 {
-    //return new ADSREchoAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new ADSREchoAudioProcessorEditor (*this);
+    //return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -222,7 +222,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
     
     // Per-effect controls (reverb example)
+    layout.add(std::make_unique<juce::AudioParameterBool>("algoEnabled", "Algorithmic Reverb Enabled", true));
+
     layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix", 
+        juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
+
+    // Convolution Controls
+    layout.add(std::make_unique<juce::AudioParameterBool>("convEnabled", "Convolution Reverb Enabled", true));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("ConvMix", "Convolution Mix",
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
     
     // Future: Delay, Convolution, etc. each get their own mix

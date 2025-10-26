@@ -45,5 +45,21 @@ private:
     // access the processor object that created it.
     ADSREchoAudioProcessor& audioProcessor;
 
+
+    // Sliders
+    juce::Slider masterMixSlider, gainSlider, algoWetDrySlider, convWetDrySlider;
+
+    // Checkboxes
+    juce::ToggleButton algoToggle{ "Algorithmic Reverb" };
+    juce::ToggleButton convToggle{ "Convolution Reverb" };
+
+    // Attachments
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterMixAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> algoWetDryAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> convWetDryAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> algoToggleAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> convToggleAttachment;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessorEditor)
 };
