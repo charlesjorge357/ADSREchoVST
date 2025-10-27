@@ -40,6 +40,9 @@ void ReverbProcessor::process(juce::AudioBuffer<float>& buffer)
 {
     if (currentType == ReverbType::Plate)
     {
+        // Update plate reverb parameters
+        updatePlateParameters();
+
         juce::dsp::AudioBlock<float> block(buffer);
         juce::dsp::ProcessContextReplacing<float> context(block);
         plateReverb.process(context);
@@ -77,7 +80,19 @@ void ReverbProcessor::setMix(float newMix)
     mix = juce::jlimit(0.0f, 1.0f, newMix);
 }
 
-void ReverbProcessor::setPreDelay(float preDelayMs)
+void ReverbProcessor::setPreDelay(float newPreDelayMs)
 {
-    preDelayMs = juce::jlimit(0.0f, 500.0f, preDelayMs);
+    preDelayMs = juce::jlimit(0.0f, 500.0f, newPreDelayMs);
+}
+
+void ReverbProcessor::updatePlateParameters()
+{
+    juce::dsp::Reverb::Parameters params;
+    params.roomSize = size;
+    params.damping = decay;
+    params.wetLevel = mix;
+    params.dryLevel = 1.0f - mix;
+    params.width = diffusion;
+    params.freezeMode = 0.0f;
+    plateReverb.setParameters(params);
 }

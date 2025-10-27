@@ -31,8 +31,8 @@ private:
     ReverbProcessorParameters parameters;
     
     // filters
-    juce::dsp::DelayLine<float> inputBandwidth { 4 };
-    juce::dsp::DelayLine<float> feedbackDamping { 4 };
+    juce::dsp::FirstOrderTPTFilter<float> inputBandwidth;
+    juce::dsp::FirstOrderTPTFilter<float> feedbackDamping;
     juce::dsp::FirstOrderTPTFilter<float> loopDamping;
     // L
     juce::dsp::DelayLine<float> allpassChorusL { 1764 };

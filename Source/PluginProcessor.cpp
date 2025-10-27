@@ -346,8 +346,29 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 // Helper methods for signal routing and parameter updates
 void ADSREchoAudioProcessor::updateAllParameters()
 {
-    // This method will be called to sync all effect module parameters with APVTS
-    // Implementation will be added when effect modules are implemented
+    // Update Reverb Parameters
+    if (auto* sizeParam = apvts.getRawParameterValue(ParameterIDs::reverbSize))
+        reverbProcessor->setSize(sizeParam->load());
+
+    if (auto* dampingParam = apvts.getRawParameterValue(ParameterIDs::reverbDamping))
+    {
+        // Damping in APVTS is 0-1, but we might want to use it as decay
+        reverbProcessor->setDecay(dampingParam->load());
+    }
+
+    if (auto* mixParam = apvts.getRawParameterValue(ParameterIDs::reverbMix))
+        reverbProcessor->setMix(mixParam->load());
+
+    if (auto* preDelayParam = apvts.getRawParameterValue(ParameterIDs::reverbPreDelay))
+        reverbProcessor->setPreDelay(preDelayParam->load());
+
+    if (auto* widthParam = apvts.getRawParameterValue(ParameterIDs::reverbWidth))
+    {
+        // Width parameter - could map to diffusion
+        reverbProcessor->setDiffusion(widthParam->load());
+    }
+
+    // TODO: Add other effect parameter updates (Delay, Compressor, EQ, etc.)
 }
 
 void ADSREchoAudioProcessor::updateTempo(double bpm)
@@ -387,7 +408,8 @@ void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer)
                 break;
 
             case RoutingMatrix::EffectSlot::AlgorithmicReverb:
-                // reverbProcessor->process(buffer);
+                updateAllParameters();  // Update parameters before processing
+                reverbProcessor->process(buffer);
                 break;
 
             case RoutingMatrix::EffectSlot::ConvolutionReverb:

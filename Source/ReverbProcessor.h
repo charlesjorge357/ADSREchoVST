@@ -54,7 +54,7 @@ private:
     std::vector<Allpass<float>> plateDiffusers;
 
     // Parameters
-    ReverbType currentType = ReverbType::Hall;
+    ReverbType currentType = ReverbType::Plate;
     float size = 0.5f;
     float diffusion = 0.7f;
     float decay = 0.5f;

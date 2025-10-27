@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="KKgLE4" name="ADSREcho" projectType="audioplug" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" pluginManufacturerCode="Adsr"
+              pluginCode="Aech" pluginFormats="buildVST3" pluginAAXCategory="16,8">
+  <MAINGROUP id="OWe7gV" name="ADSREcho">
+    <GROUP id="{FB8C497F-B347-6182-F163-89087EC6E5BB}" name="Source">
+      <FILE id="l5TQvu" name="CompressorProcessor.cpp" compile="1" resource="0"
+            file="../Source/CompressorProcessor.cpp"/>
+      <FILE id="nLRxWc" name="CompressorProcessor.h" compile="0" resource="0"
+            file="../Source/CompressorProcessor.h"/>
+      <FILE id="umpR1d" name="ConvolutionProcessor.cpp" compile="1" resource="0"
+            file="../Source/ConvolutionProcessor.cpp"/>
+      <FILE id="Nyq9GU" name="ConvolutionProcessor.h" compile="0" resource="0"
+            file="../Source/ConvolutionProcessor.h"/>
+      <FILE id="cSXYl6" name="CustomDelays.cpp" compile="1" resource="0"
+            file="../Source/CustomDelays.cpp"/>
+      <FILE id="piPQKv" name="CustomDelays.h" compile="0" resource="0" file="../Source/CustomDelays.h"/>
+      <FILE id="Rm0fPI" name="DatorroHall.cpp" compile="1" resource="0" file="../Source/DatorroHall.cpp"/>
+      <FILE id="qgdy1W" name="DatorroHall.h" compile="0" resource="0" file="../Source/DatorroHall.h"/>
+      <FILE id="PWoV0m" name="DelayProcessor.cpp" compile="1" resource="0"
+            file="../Source/DelayProcessor.cpp"/>
+      <FILE id="nmSrXP" name="DelayProcessor.h" compile="0" resource="0"
+            file="../Source/DelayProcessor.h"/>
+      <FILE id="tkw8p7" name="EQProcessor.cpp" compile="1" resource="0" file="../Source/EQProcessor.cpp"/>
+      <FILE id="WfLD20" name="EQProcessor.h" compile="0" resource="0" file="../Source/EQProcessor.h"/>
+      <FILE id="N62teU" name="LFO.cpp" compile="1" resource="0" file="../Source/LFO.cpp"/>
+      <FILE id="kYvC1I" name="LFO.h" compile="0" resource="0" file="../Source/LFO.h"/>
+      <FILE id="ipUK52" name="ParameterIDs.h" compile="0" resource="0" file="../Source/ParameterIDs.h"/>
+      <FILE id="e0hm53" name="PluginEditor.cpp" compile="1" resource="0"
+            file="../Source/PluginEditor.cpp"/>
+      <FILE id="VbXB9w" name="PluginEditor.h" compile="0" resource="0" file="../Source/PluginEditor.h"/>
+      <FILE id="ZnstpE" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="../Source/PluginProcessor.cpp"/>
+      <FILE id="rNgzLh" name="PluginProcessor.h" compile="0" resource="0"
+            file="../Source/PluginProcessor.h"/>
+      <FILE id="Yuz4pV" name="PresetManager.cpp" compile="1" resource="0"
+            file="../Source/PresetManager.cpp"/>
+      <FILE id="lyxrUy" name="PresetManager.h" compile="0" resource="0" file="../Source/PresetManager.h"/>
+      <FILE id="EQGupT" name="ProcessorBase.h" compile="0" resource="0" file="../Source/ProcessorBase.h"/>
+      <FILE id="jNzQQk" name="ReverbProcessor.cpp" compile="1" resource="0"
+            file="../Source/ReverbProcessor.cpp"/>
+      <FILE id="VXkm1l" name="ReverbProcessor.h" compile="0" resource="0"
+            file="../Source/ReverbProcessor.h"/>
+      <FILE id="OcrTx8" name="RoutingMatrix.cpp" compile="1" resource="0"
+            file="../Source/RoutingMatrix.cpp"/>
+      <FILE id="fQO2pV" name="RoutingMatrix.h" compile="0" resource="0" file="../Source/RoutingMatrix.h"/>
+      <FILE id="ghdOuS" name="Utilities.h" compile="0" resource="0" file="../Source/Utilities.h"/>
+    </GROUP>
+  </MAINGROUP>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
+  <EXPORTFORMATS>
+    <VS2022 targetFolder="Builds/VisualStudio2022">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="ADSREcho"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="ADSREcho"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_dsp" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../JUCE/modules"/>
+      </MODULEPATHS>
+    </VS2022>
+  </EXPORTFORMATS>
+</JUCERPROJECT>
