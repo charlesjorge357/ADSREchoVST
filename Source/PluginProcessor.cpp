@@ -8,7 +8,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "DatorroHall.h"
+#include "ParameterIDs.h"
 
 //==============================================================================
 ADSREchoAudioProcessor::ADSREchoAudioProcessor()
@@ -23,6 +23,19 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
                        )
 #endif
 {
+    // Initialize effect modules
+    delayProcessor = std::make_unique<DelayProcessor>();
+    reverbProcessor = std::make_unique<ReverbProcessor>();
+    convolutionProcessor = std::make_unique<ConvolutionProcessor>();
+    compressorProcessor = std::make_unique<CompressorProcessor>();
+    eqProcessor = std::make_unique<EQProcessor>();
+
+    // Initialize system modules
+    routingMatrix = std::make_unique<RoutingMatrix>();
+    presetManager = std::make_unique<PresetManager>();
+
+    // Load factory presets
+    presetManager->loadFactoryPresets();
 }
 
 ADSREchoAudioProcessor::~ADSREchoAudioProcessor()
@@ -94,14 +107,25 @@ void ADSREchoAudioProcessor::changeProgramName (int index, const juce::String& n
 //==============================================================================
 void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    // Prepare DSP spec
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
-    spec.maximumBlockSize = samplesPerBlock;
-    spec.numChannels = getTotalNumOutputChannels();
+    spec.maximumBlockSize = static_cast<juce::uint32>(samplesPerBlock);
+    spec.numChannels = static_cast<juce::uint32>(getTotalNumOutputChannels());
 
-    DatorroHall.prepare(spec);
+    // Prepare all effect modules
+    delayProcessor->prepare(spec);
+    reverbProcessor->prepare(spec);
+    convolutionProcessor->prepare(spec);
+    compressorProcessor->prepare(spec);
+    eqProcessor->prepare(spec);
+
+    // Prepare internal buffers
+    dryBuffer.setSize(spec.numChannels, samplesPerBlock);
+    wetBuffer.setSize(spec.numChannels, samplesPerBlock);
+
+    // Update all parameters from APVTS
+    updateAllParameters();
 }
 
 void ADSREchoAudioProcessor::releaseResources()
@@ -142,46 +166,61 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    // Get tempo from host
+    if (auto* playHead = getPlayHead())
+    {
+        if (auto positionInfo = playHead->getPosition())
+        {
+            if (auto bpm = positionInfo->getBpm())
+            {
+                currentTempo = *bpm;
+                tempoValid = true;
+
+                // Update delay processor with current tempo
+                delayProcessor->setTempo(currentTempo);
+            }
+            else
+            {
+                tempoValid = false;
+            }
+        }
+    }
+
+    // Clear unused output channels
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // Store ORIGINAL dry signal for master mix
-    juce::AudioBuffer<float> masterDryBuffer;
-    masterDryBuffer.makeCopyOf(buffer);
-    
-    // ============ PER-EFFECT PROCESSING ============
-    // Each effect handles its own internal dry/wet
-    
-    // Effect 1: Reverb (has its own dry/wet via parameters.mix)
-    juce::dsp::AudioBlock<float> block(buffer);
-    DatorroHall.process(juce::dsp::ProcessContextReplacing<float>(block));
-    
-    // Future: Effect 2: Delay (has its own dry/wet)
-    // DelayEffect.process(block);
-    
-    // Future: Effect 3: Convolution (has its own dry/wet)
-    // ConvolutionEffect.process(block);
-    
-    // ============ MASTER DRY/WET MIX ============
-    // Get MASTER mix parameter (0 = original dry, 1 = all processed effects)
-    float masterMixValue = apvts.getRawParameterValue("MasterMix")->load();
-    
-    // Blend original dry with all processed effects
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    // Store dry signal for parallel processing
+    dryBuffer.makeCopyOf(buffer);
+
+    // Route through effect chain based on current topology
+    routeSignalChain(buffer);
+
+    // Apply global dry/wet mix
+    auto* dryWetParam = apvts.getRawParameterValue(ParameterIDs::dryWetMix);
+    if (dryWetParam != nullptr)
     {
-        auto* processedData = buffer.getWritePointer(channel);
-        auto* originalDryData = masterDryBuffer.getReadPointer(channel);
-        
-        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        float dryWet = dryWetParam->load();
+        for (int channel = 0; channel < totalNumInputChannels; ++channel)
         {
-            processedData[sample] = originalDryData[sample] * (1.0f - masterMixValue) 
-                                   + processedData[sample] * masterMixValue;
+            auto* dryData = dryBuffer.getReadPointer(channel);
+            auto* wetData = buffer.getWritePointer(channel);
+
+            for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+            {
+                wetData[sample] = dryData[sample] * (1.0f - dryWet) + wetData[sample] * dryWet;
+            }
         }
     }
-    
-    // Apply master output gain
-    float gainValue = juce::Decibels::decibelsToGain(apvts.getRawParameterValue("Gain")->load());
-    buffer.applyGain(gainValue);
+
+    // Apply output gain
+    auto* outputGainParam = apvts.getRawParameterValue(ParameterIDs::outputGain);
+    if (outputGainParam != nullptr)
+    {
+        float gainDb = outputGainParam->load();
+        float gain = juce::Decibels::decibelsToGain(gainDb);
+        buffer.applyGain(gain);
+    }
 }
 
 //==============================================================================
@@ -192,8 +231,8 @@ bool ADSREchoAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
 {
-    //return new ADSREchoAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new ADSREchoAudioProcessorEditor (*this);
+    //return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -214,20 +253,181 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    // Master controls
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain", 
-        juce::NormalisableRange<float>(-6.f, 6.f, .01f, 1.f), 0.f));
-    
-    layout.add(std::make_unique<juce::AudioParameterFloat>("MasterMix", "Master Mix", 
-        juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
-    
-    // Per-effect controls (reverb example)
-    layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix", 
-        juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
-    
-    // Future: Delay, Convolution, etc. each get their own mix
-    
+    // DELAY PARAMETERS
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::delayTimeLeft, "Delay Time L", juce::NormalisableRange<float>(1.0f, 2000.0f, 1.0f), 500.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::delayTimeRight, "Delay Time R", juce::NormalisableRange<float>(1.0f, 2000.0f, 1.0f), 500.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::delayFeedback, "Delay Feedback", juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 0.3f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::delayMix, "Delay Mix", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        ParameterIDs::delaySyncEnabled, "Delay Sync", false));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::delayLowCut, "Delay Low Cut", juce::NormalisableRange<float>(20.0f, 1000.0f, 1.0f), 20.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::delayHighCut, "Delay High Cut", juce::NormalisableRange<float>(1000.0f, 20000.0f, 1.0f), 20000.0f));
+
+    // REVERB PARAMETERS
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::reverbSize, "Reverb Size", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::reverbDamping, "Reverb Damping", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::reverbWidth, "Reverb Width", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 1.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::reverbMix, "Reverb Mix", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.3f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::reverbPreDelay, "Reverb Pre-Delay", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::reverbDecayTime, "Reverb Decay", juce::NormalisableRange<float>(0.1f, 10.0f, 0.1f), 0.5f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::reverbModulation, "Reverb Modulation", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+
+    // CONVOLUTION PARAMETERS
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        ParameterIDs::convolutionEnabled, "Convolution Enable", false));
+    layout.add(std::make_unique<juce::AudioParameterInt>(
+        ParameterIDs::convolutionIRIndex, "IR Selection", 0, 10, 0));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::convolutionMix, "Convolution Mix", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::convolutionPreDelay, "Conv Pre-Delay", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::convolutionStretch, "IR Stretch", juce::NormalisableRange<float>(0.5f, 2.0f, 0.01f), 1.0f));
+
+    // COMPRESSOR PARAMETERS
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        ParameterIDs::compressorEnabled, "Compressor Enable", false));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::compressorThreshold, "Threshold", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::compressorRatio, "Ratio", juce::NormalisableRange<float>(1.0f, 20.0f, 0.1f), 4.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::compressorAttack, "Attack", juce::NormalisableRange<float>(0.1f, 100.0f, 0.1f), 10.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::compressorRelease, "Release", juce::NormalisableRange<float>(10.0f, 1000.0f, 1.0f), 100.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::compressorKnee, "Knee", juce::NormalisableRange<float>(0.0f, 12.0f, 0.1f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::compressorMakeup, "Makeup Gain", juce::NormalisableRange<float>(0.0f, 24.0f, 0.1f), 0.0f));
+
+    // EQUALIZER PARAMETERS
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        ParameterIDs::eqEnabled, "EQ Enable", false));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::eqLowFreq, "Low Freq", juce::NormalisableRange<float>(20.0f, 500.0f, 1.0f), 80.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::eqLowGain, "Low Gain", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::eqMidFreq, "Mid Freq", juce::NormalisableRange<float>(200.0f, 5000.0f, 1.0f), 1000.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::eqMidGain, "Mid Gain", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::eqMidQ, "Mid Q", juce::NormalisableRange<float>(0.1f, 10.0f, 0.1f), 0.707f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::eqHighFreq, "High Freq", juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f), 8000.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::eqHighGain, "High Gain", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+
+    // GLOBAL PARAMETERS
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        ParameterIDs::masterBypass, "Master Bypass", false));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::outputGain, "Output Gain", juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        ParameterIDs::dryWetMix, "Dry/Wet Mix", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+
     return layout;
+}
+
+//==============================================================================
+// Helper methods for signal routing and parameter updates
+void ADSREchoAudioProcessor::updateAllParameters()
+{
+    // Update Reverb Parameters
+    if (auto* sizeParam = apvts.getRawParameterValue(ParameterIDs::reverbSize))
+        reverbProcessor->setSize(sizeParam->load());
+
+    if (auto* dampingParam = apvts.getRawParameterValue(ParameterIDs::reverbDamping))
+    {
+        // Damping in APVTS is 0-1, but we might want to use it as decay
+        reverbProcessor->setDecay(dampingParam->load());
+    }
+
+    if (auto* mixParam = apvts.getRawParameterValue(ParameterIDs::reverbMix))
+        reverbProcessor->setMix(mixParam->load());
+
+    if (auto* preDelayParam = apvts.getRawParameterValue(ParameterIDs::reverbPreDelay))
+        reverbProcessor->setPreDelay(preDelayParam->load());
+
+    if (auto* widthParam = apvts.getRawParameterValue(ParameterIDs::reverbWidth))
+    {
+        // Width parameter - could map to diffusion
+        reverbProcessor->setDiffusion(widthParam->load());
+    }
+
+    // TODO: Add other effect parameter updates (Delay, Compressor, EQ, etc.)
+}
+
+void ADSREchoAudioProcessor::updateTempo(double bpm)
+{
+    if (bpm > 0.0 && bpm <= 300.0)
+    {
+        currentTempo = bpm;
+        tempoValid = true;
+        delayProcessor->setTempo(currentTempo);
+    }
+}
+
+void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer)
+{
+    // Route signal through effect chain based on routing matrix
+    // This allows flexible effect ordering configured by the user
+
+    auto processingOrder = routingMatrix->getProcessingOrder();
+
+    for (auto effectSlot : processingOrder)
+    {
+        if (!routingMatrix->isEffectEnabled(effectSlot))
+            continue;
+
+        switch (effectSlot)
+        {
+            case RoutingMatrix::EffectSlot::EQ:
+                // eqProcessor->process(buffer);
+                break;
+
+            case RoutingMatrix::EffectSlot::Compressor:
+                // compressorProcessor->process(buffer);
+                break;
+
+            case RoutingMatrix::EffectSlot::Delay:
+                // delayProcessor->process(buffer);
+                break;
+
+            case RoutingMatrix::EffectSlot::AlgorithmicReverb:
+                updateAllParameters();  // Update parameters before processing
+                reverbProcessor->process(buffer);
+                break;
+
+            case RoutingMatrix::EffectSlot::ConvolutionReverb:
+                // convolutionProcessor->process(buffer);
+                break;
+        }
+    }
+
+    // Handle parallel processing if routing matrix specifies it
+    // For example, blending algorithmic and convolution reverbs
+    if (routingMatrix->getCurrentTopology() == RoutingMatrix::RoutingTopology::ReverbBlend)
+    {
+        // Implementation for parallel reverb blending will go here
+        // wetBuffer.makeCopyOf(dryBuffer);
+        // Process algorithmic reverb on buffer
+        // Process convolution on wetBuffer
+        // Blend based on reverbBlendRatio
+    }
 }
 
 //==============================================================================

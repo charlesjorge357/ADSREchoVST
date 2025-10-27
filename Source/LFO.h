@@ -11,8 +11,6 @@
     #define M_PI 3.14159265358979323846
 #endif
 
-#include <JuceHeader.h>
-
 struct SignalGenData
 {
 	SignalGenData() {}
@@ -51,6 +49,7 @@ struct OscillatorParameters
 	
 	generatorWaveform waveform = generatorWaveform::triangle;
 	double frequency_Hz = 0.0;
+	double depth = 1.0;
 };
 
 inline double unipolarToBipolar(double value)

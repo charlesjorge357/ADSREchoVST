@@ -1,6 +1,9 @@
 // Sine/tri/saw LFO with quadrature output
 
 #include "LFO.h"
+#include <cstdint>
+#include <ctime>
+
 LFO::LFO() { srand(static_cast<uint32_t>(time(NULL))); }
 
 LFO::~LFO() = default;

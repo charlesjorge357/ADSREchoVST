@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <JuceHeader.h>
-
 inline float scale(float input, float inLow, float inHi, float outLow, float outHi)
 {
     float scaleFactor = (outHi - outLow)/(inHi - inLow);
@@ -54,6 +52,8 @@ struct ReverbProcessorParameters
     float modDepth = 0;
     float modRate = 0.35f;
     float roomSize = 1.0f;
+    float mix = 0.5f;
+    float inputBandwidth = 20000.0f;
 };
 
 //template <typename SampleType>
