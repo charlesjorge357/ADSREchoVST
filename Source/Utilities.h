@@ -2,7 +2,22 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#if __has_include("JuceHeader.h")
+  #include "JuceHeader.h"  // for Projucer
+#else // for Cmake
+  #include <juce_audio_basics/juce_audio_basics.h>
+  #include <juce_audio_formats/juce_audio_formats.h>
+  #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
+  #include <juce_audio_processors/juce_audio_processors.h>
+  #include <juce_audio_utils/juce_audio_utils.h>
+  #include <juce_core/juce_core.h>
+  #include <juce_data_structures/juce_data_structures.h>
+  #include <juce_dsp/juce_dsp.h>
+  #include <juce_events/juce_events.h>
+  #include <juce_graphics/juce_graphics.h>
+  #include <juce_gui_basics/juce_gui_basics.h>
+  #include <juce_gui_extra/juce_gui_extra.h>
+#endif
 
 inline float scale(float input, float inLow, float inHi, float outLow, float outHi)
 {
@@ -31,6 +46,8 @@ struct ReverbProcessorParameters
             modDepth = params.modDepth;
             modRate = params.modRate;
             roomSize = params.roomSize;
+            mix = params.mix;
+            inputBandwidth = params.inputBandwidth;
         }
         return *this;
     }
@@ -42,7 +59,9 @@ struct ReverbProcessorParameters
             params.diffusion == diffusion &&
             params.modDepth == modDepth &&
             params.modRate == modRate &&
-            params.roomSize == roomSize)
+            params.roomSize == roomSize &&
+            params.mix == mix &&
+            params.inputBandwidth == inputBandwidth)
             return true;
         
         return false;
@@ -54,6 +73,8 @@ struct ReverbProcessorParameters
     float modDepth = 0;
     float modRate = 0.35f;
     float roomSize = 1.0f;
+    float mix = 0.5f;
+    float inputBandwidth = 1.0f;
 };
 
 //template <typename SampleType>
