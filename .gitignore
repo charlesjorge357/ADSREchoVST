@@ -453,8 +453,3 @@ ml/data/cache/
 # macOS
 .DS_Store
 *.dSYM
-
-# Internal documentation
-IMPLEMENTATION_ROADMAP.md
-ARCHITECTURE_SUMMARY.md
-ARCHITECTURE_UPDATED.md

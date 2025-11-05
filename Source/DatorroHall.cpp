@@ -56,7 +56,8 @@ void DatorroHall::prepare(const juce::dsp::ProcessSpec& spec)
     lfoParameters.frequency_Hz = 0.5f;
     lfoParameters.depth = 1.0f;
     lfo.setParameters(lfoParameters);
-    lfo.reset(spec.sampleRate);
+    lfo.prepare(spec);
+    lfo.reset();
 
     // Resize channel vectors
     channelInput.assign(2, 0.0f);
@@ -103,7 +104,7 @@ void DatorroHall::reset()
     resetDelay(allpassChorusL);
     resetDelay(allpassChorusR);
 
-    lfo.reset(sampleRate);
+    lfo.reset();
 }
 
 //==============================================================================
@@ -135,12 +136,14 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
             (channel == 0 ? allpassL2 : allpassR2).pushSample(0, ap1 + feedback2);
 
             // LFO modulation
-            const float lfoValue = static_cast<float>(lfo.renderAudioOutput().normalOutput);
+            const float lfoValue = lfo.popSample(0);
             const float modDepth = parameters.modDepth;
             const float modulatedDelay = (1.0f + modDepth * lfoValue) * parameters.roomSize;
 
-            // Main delay network (TODO: implement properly with custom delay class)
-            float delayOutput = ap2;
+            // Main delay network
+            auto& loopDelay = (channel == 0 ? loopDelayL2 : loopDelayR2);
+            float delayOutput = loopDelay.popSample(0);
+            loopDelay.pushSample(0, ap2 + modulatedDelay);
 
             // Late diffusion & damping
             float damped = loopDamping.processSample(channel, delayOutput);
@@ -167,8 +170,8 @@ void DatorroHall::setParameters(const ReverbProcessorParameters& params)
     parameters.roomSize = juce::jlimit(0.25f, 1.75f, parameters.roomSize);
 
     // Update filters
-    inputBandwidth.setCutoffFrequency(parameters.inputBandwidth);
-    feedbackDamping.setCutoffFrequency(parameters.damping);
+    inputBandwidth.setDelay(parameters.inputBandwidth);
+    feedbackDamping.setDelay(parameters.damping);
     loopDamping.setCutoffFrequency(parameters.damping);
 
     // Update LFO

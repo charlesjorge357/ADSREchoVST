@@ -58,15 +58,7 @@ target_sources(ADSREcho
     PRIVATE
         Source/PluginEditor.cpp
         Source/PluginProcessor.cpp
-        Source/DelayProcessor.cpp
-        Source/ReverbProcessor.cpp
-        Source/ConvolutionProcessor.cpp
-        Source/CompressorProcessor.cpp
-        Source/EQProcessor.cpp
-        Source/RoutingMatrix.cpp
-        Source/PresetManager.cpp
-        Source/CustomDelays.cpp
-)
+ "Source/DatorroHall.h")
 
 # Compile definitions
 target_compile_definitions(ADSREcho

@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include <juce_audio_basics/juce_audio_basics.h>
-#include <juce_dsp/juce_dsp.h>
+#include <JuceHeader.h>
 
+//#include "DelayLineWithSampleAccess.h"
 #include "CustomDelays.h"
 #include "LFO.h"
 #include "ProcessorBase.h"
@@ -31,8 +31,8 @@ private:
     ReverbProcessorParameters parameters;
     
     // filters
-    juce::dsp::FirstOrderTPTFilter<float> inputBandwidth;
-    juce::dsp::FirstOrderTPTFilter<float> feedbackDamping;
+    juce::dsp::DelayLine<float> inputBandwidth { 4 };
+    juce::dsp::DelayLine<float> feedbackDamping { 4 };
     juce::dsp::FirstOrderTPTFilter<float> loopDamping;
     // L
     juce::dsp::DelayLine<float> allpassChorusL { 1764 };
