@@ -24,7 +24,9 @@
   #include <juce_gui_basics/juce_gui_basics.h>
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
+
 #include "DatorroHall.h"
+#include "RoutingMatrix.h"
 
 //==============================================================================
 /**
@@ -73,8 +75,12 @@ public:
 
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
+    void routeSignalChain(juce::AudioBuffer<float>& buffer);
+
 private:
     juce::dsp::Reverb DatorroHall;
+
+    std::unique_ptr<RoutingMatrix> routingMatrix;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };

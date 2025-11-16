@@ -9,6 +9,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "DatorroHall.h"
+#include "RoutingMatrix.h"
 
 //==============================================================================
 ADSREchoAudioProcessor::ADSREchoAudioProcessor()
@@ -23,6 +24,7 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
                        )
 #endif
 {
+    routingMatrix = std::make_unique<RoutingMatrix>();
 }
 
 ADSREchoAudioProcessor::~ADSREchoAudioProcessor()
@@ -101,6 +103,8 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = getTotalNumOutputChannels();
 
+    //routingMatrix->setEffectEnabled(RoutingMatrix::EffectSlot::AlgorithmicReverb, apvts.getRawParameterValue("algoEnabled")->load());
+
     DatorroHall.prepare(spec);
 }
 
@@ -149,12 +153,16 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     juce::AudioBuffer<float> masterDryBuffer;
     masterDryBuffer.makeCopyOf(buffer);
     
+    bool algoEnabled = apvts.getRawParameterValue("algoEnabled")->load();
+    routingMatrix->setEffectEnabled(RoutingMatrix::EffectSlot::AlgorithmicReverb, algoEnabled);
+    routeSignalChain(buffer);
     // ============ PER-EFFECT PROCESSING ============
     // Each effect handles its own internal dry/wet
     
     // Effect 1: Reverb (has its own dry/wet via parameters.mix)
-    juce::dsp::AudioBlock<float> block(buffer);
-    DatorroHall.process(juce::dsp::ProcessContextReplacing<float>(block));
+    // 
+    // juce::dsp::AudioBlock<float> block(buffer);
+    // DatorroHall.process(juce::dsp::ProcessContextReplacing<float>(block));
     
     // Future: Effect 2: Delay (has its own dry/wet)
     // DelayEffect.process(block);
@@ -236,6 +244,49 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     // Future: Delay, Convolution, etc. each get their own mix
     
     return layout;
+}
+
+void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer)
+{
+    // Route signal through effect chain based on routing matrix
+    // This allows flexible effect ordering configured by the user
+
+    auto processingOrder = routingMatrix->getProcessingOrder();
+
+    for (auto effectSlot : processingOrder)
+    {
+        if (!routingMatrix->isEffectEnabled(effectSlot))
+            continue;
+
+        switch (effectSlot)
+        {
+        case RoutingMatrix::EffectSlot::EQ:
+            // eqProcessor->process(buffer);
+            break;
+
+        case RoutingMatrix::EffectSlot::Compressor:
+            // compressorProcessor->process(buffer);
+            break;
+
+        case RoutingMatrix::EffectSlot::Delay:
+            // delayProcessor->process(buffer);
+            break;
+
+        case RoutingMatrix::EffectSlot::AlgorithmicReverb:
+        {
+            juce::dsp::AudioBlock<float> block(buffer);
+            DatorroHall.process(juce::dsp::ProcessContextReplacing<float>(block));
+        }
+            break;
+
+        case RoutingMatrix::EffectSlot::ConvolutionReverb:
+            // convolutionProcessor->process(buffer);
+            break;
+        }
+    }
+
+    // Handle parallel processing if routing matrix specifies it
+    // For example, blending algorithmic and convolution reverbs
 }
 
 //==============================================================================

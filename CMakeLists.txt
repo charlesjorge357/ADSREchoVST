@@ -58,6 +58,7 @@ target_sources(ADSREcho
     PRIVATE
         Source/PluginEditor.cpp
         Source/PluginProcessor.cpp
+	Source/RoutingMatrix.cpp
  "Source/DatorroHall.h")
 
 # Compile definitions
