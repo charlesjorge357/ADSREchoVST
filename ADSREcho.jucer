@@ -4,6 +4,15 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
     <GROUP id="{618D5F69-5971-EB1B-AEB0-4D399985702C}" name="Source">
+      <FILE id="rph9pM" name="CustomDelays.cpp" compile="1" resource="0"
+            file="Source/CustomDelays.cpp"/>
+      <FILE id="a5FOZB" name="CustomDelays.h" compile="0" resource="0" file="Source/CustomDelays.h"/>
+      <FILE id="kPcDDr" name="DatorroHall.cpp" compile="1" resource="0" file="Source/DatorroHall.cpp"/>
+      <FILE id="KEljIF" name="DatorroHall.h" compile="0" resource="0" file="Source/DatorroHall.h"/>
+      <FILE id="iXkWEW" name="LFO.cpp" compile="1" resource="0" file="Source/LFO.cpp"/>
+      <FILE id="eIHqHW" name="LFO.h" compile="0" resource="0" file="Source/LFO.h"/>
+      <FILE id="IjrF4B" name="ProcessorBase.h" compile="0" resource="0" file="Source/ProcessorBase.h"/>
+      <FILE id="HDEqaF" name="Utilities.h" compile="0" resource="0" file="Source/Utilities.h"/>
       <FILE id="H4DcER" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="zkMzQx" name="PluginProcessor.h" compile="0" resource="0"

@@ -74,7 +74,7 @@ public:
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
 private:
-    juce::dsp::Reverb DatorroHall;
+    DatorroHall datorroReverb;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };

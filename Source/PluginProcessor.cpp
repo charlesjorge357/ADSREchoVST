@@ -101,7 +101,7 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = getTotalNumOutputChannels();
 
-    DatorroHall.prepare(spec);
+    datorroReverb.prepare(spec);
 }
 
 void ADSREchoAudioProcessor::releaseResources()
@@ -154,7 +154,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     
     // Effect 1: Reverb (has its own dry/wet via parameters.mix)
     juce::dsp::AudioBlock<float> block(buffer);
-    DatorroHall.process(juce::dsp::ProcessContextReplacing<float>(block));
+    datorroReverb.processBlock(buffer, midiMessages);
     
     // Future: Effect 2: Delay (has its own dry/wet)
     // DelayEffect.process(block);
