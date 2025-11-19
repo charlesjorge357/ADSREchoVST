@@ -4,6 +4,9 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
     <GROUP id="{618D5F69-5971-EB1B-AEB0-4D399985702C}" name="Source">
+      <FILE id="lnYvBR" name="RoutingMatrix.cpp" compile="1" resource="0"
+            file="Source/RoutingMatrix.cpp"/>
+      <FILE id="P3t9X6" name="RoutingMatrix.h" compile="0" resource="0" file="Source/RoutingMatrix.h"/>
       <FILE id="rph9pM" name="CustomDelays.cpp" compile="1" resource="0"
             file="Source/CustomDelays.cpp"/>
       <FILE id="h8CNSq" name="HybridPlate.cpp" compile="1" resource="0" file="Source/HybridPlate.cpp"/>
@@ -44,7 +47,7 @@
   <EXPORTFORMATS>
     <VS2022 targetFolder="Builds/VisualStudio2022">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="ADSREcho"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="ADSREcho" enablePluginBinaryCopyStep="0"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="ADSREcho" enablePluginBinaryCopyStep="1"/>
       </CONFIGURATIONS>
       <MODULEPATHS>

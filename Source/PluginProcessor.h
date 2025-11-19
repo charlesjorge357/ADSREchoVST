@@ -26,6 +26,7 @@
 #endif
 #include "DatorroHall.h"
 #include "HybridPlate.h"
+#include "RoutingMatrix.h"
 
 //==============================================================================
 /**
@@ -74,10 +75,11 @@ public:
 
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
+    void routeSignalChain(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages);
+
 private:
     DatorroHall datorroReverb;
-    //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
+    std::unique_ptr<RoutingMatrix> routingMatrix;
 
     HybridPlate hybridReverb;
     //==============================================================================
