@@ -27,6 +27,8 @@ template <typename SampleType>
 class DelayLineWithSampleAccess
 {
 public:
+    DelayLineWithSampleAccess() : DelayLineWithSampleAccess(4) {}
+
     DelayLineWithSampleAccess(int maximumDelayInSamples);
     
     ~DelayLineWithSampleAccess();
@@ -38,6 +40,9 @@ public:
     SampleType getSampleAtDelay(int channel, int delay) const;
     
     void setDelay(int newLength);
+    void setDelay(float newDelayInSamples);
+
+    SampleType readFractional(int channel, float delayInSamples) const;
     
     void setSize(const int numChannels, const int newSize);
     
@@ -54,6 +59,7 @@ private:
     SampleType delay = 0.0, delayFrac = 0.0;
     int delayInSamples = 0;
     int totalSize = 4;
+    float fractionalDelay = 0.0f;
     
     double sampleRate = 44100.0;
 };
@@ -83,7 +89,7 @@ public:
     void setGain(SampleType newGain);
     
 private:
-    juce::dsp::DelayLine<SampleType> delayLine { 44100 };
+    DelayLineWithSampleAccess<SampleType> delayLine;
     
     int delayInSamples = 4;
     
