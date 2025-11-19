@@ -25,6 +25,7 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 #include "DatorroHall.h"
+#include "HybridPlate.h"
 
 //==============================================================================
 /**
@@ -75,6 +76,10 @@ public:
 
 private:
     DatorroHall datorroReverb;
+    //==============================================================================
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
+
+    HybridPlate hybridReverb;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };

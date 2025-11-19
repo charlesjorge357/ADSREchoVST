@@ -155,7 +155,11 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     // Effect 1: Reverb (has its own dry/wet via parameters.mix)
     juce::dsp::AudioBlock<float> block(buffer);
     datorroReverb.processBlock(buffer, midiMessages);
+
+    // this is for calling our other algo --v
+    // hybridReverb.processBlock(buffer, midiMessages);
     
+
     // Future: Effect 2: Delay (has its own dry/wet)
     // DelayEffect.process(block);
     
