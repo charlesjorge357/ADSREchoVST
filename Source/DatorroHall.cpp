@@ -120,6 +120,10 @@ void DatorroHall::prepare(const juce::dsp::ProcessSpec& spec)
     channelFeedback.assign(2, 0.0f);
     channelOutput.assign(2, 0.0f);
 
+    estimatedLoopTimeSeconds =
+      (12.0f + 20.0f + 35.0f + 60.0f + (baseDelaySamplesL / sampleRate)) * 0.001f;
+
+
     updateInternalParamsFromUserParams();
     reset();
 }
@@ -156,7 +160,28 @@ void DatorroHall::updateInternalParamsFromUserParams()
 {
     // Clamp and derive things that are used in DSP
     parameters.roomSize = juce::jlimit(0.25f, 1.75f, parameters.roomSize);
-    parameters.decayTime = juce::jlimit(0.0f, 0.99f, parameters.decayTime);
+
+
+
+
+    float userDecaySeconds = parameters.decayTime;
+
+    // Prevent tiny or zero decay
+    userDecaySeconds = juce::jlimit(0.1f, 20.0f, userDecaySeconds);
+
+    // Convert to feedback coefficient
+    // RT60 formula: feedback = exp( -3 / (decaySeconds * (delayTimeSeconds)) )
+    // But we approximate using sample rate for symmetrical tank
+    float fb = std::exp(-3.0f * estimatedLoopTimeSeconds / userDecaySeconds);
+
+    // clamp for safety
+    fb = juce::jlimit(0.0f, 0.9999f, fb);
+
+    parameters.decayTime = fb;
+
+
+
+
     parameters.mix = juce::jlimit(0.0f, 1.0f, parameters.mix);
 
     // Update damping filter cut-off

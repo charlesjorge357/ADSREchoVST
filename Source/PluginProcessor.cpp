@@ -241,7 +241,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
         juce::NormalisableRange<float>(0.25f, 1.75f, 0.01f), 1.0f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("Decay", "Decay Time",
-        juce::NormalisableRange<float>(0.0f, 0.99f, 0.001f), 0.7f));
+        juce::NormalisableRange<float>(0.1f, 6.0f, 0.001f), 1.8f));
+
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("Damping", "Damping",
         juce::NormalisableRange<float>(200.0f, 12000.0f, 1.f), 6000.0f)); 

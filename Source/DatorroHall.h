@@ -37,6 +37,9 @@ private:
     float currentDelayL_samps = 0.0f;
     float currentDelayR_samps = 0.0f;
 
+    float estimatedLoopTimeSeconds = 0.2f; // default safety value
+
+
     // Early diffusion allpasses (per channel)
     Allpass<float> earlyL1;
     Allpass<float> earlyL2;
