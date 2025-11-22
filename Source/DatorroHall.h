@@ -1,10 +1,9 @@
-// Datorro Hall
+// Datorro Hall - using custom delay lines and allpasses
 
 #pragma once
 
 #include <JuceHeader.h>
 
-//#include "DelayLineWithSampleAccess.h"
 #include "CustomDelays.h"
 #include "LFO.h"
 #include "ProcessorBase.h"
@@ -14,83 +13,65 @@ class DatorroHall : public ReverbProcessorBase
 {
 public:
     DatorroHall();
-    
     ~DatorroHall() override;
-    
+
     void prepare(const juce::dsp::ProcessSpec& spec) override;
-    
-    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) override;
-    
+    void processBlock(juce::AudioBuffer<float>& buffer,
+                      juce::MidiBuffer& midiMessages) override;
     void reset() override;
-    
+
     ReverbProcessorParameters& getParameters() override;
-    
     void setParameters(const ReverbProcessorParameters& params) override;
-private:    
-    // parameter class
+
+private:
+    // Current parameter state
     ReverbProcessorParameters parameters;
-    
-    // filters
-    juce::dsp::DelayLine<float> inputBandwidth { 4 };
-    juce::dsp::DelayLine<float> feedbackDamping { 4 };
+
+    // Tank damping (high-cut in the feedback loop)
     juce::dsp::FirstOrderTPTFilter<float> loopDamping;
-    // L
-    juce::dsp::DelayLine<float> allpassChorusL { 1764 };
-    // R
-    juce::dsp::DelayLine<float> allpassChorusR { 1764 };
 
-    // delays
-    juce::dsp::DelayLine<float> inputZ { 4 };
-    // L
-    DelayLineWithSampleAccess<float> loopDelayL1 { 8 };
-    DelayLineWithSampleAccess<float> loopDelayL2 { 4410 };
-    DelayLineWithSampleAccess<float> loopDelayL3 { 4410 };
-    DelayLineWithSampleAccess<float> loopDelayL4 { 4410 };
-    // R
-    DelayLineWithSampleAccess<float> loopDelayR1 { 8 };
-    DelayLineWithSampleAccess<float> loopDelayR2 { 4410 };
-    DelayLineWithSampleAccess<float> loopDelayR3 { 4410 };
-    DelayLineWithSampleAccess<float> loopDelayR4 { 4410 };
+    // Main tank delay lines (per channel)
+    DelayLineWithSampleAccess<float> loopDelayL { 44100 }; // up to ~1s @ 44.1k
+    DelayLineWithSampleAccess<float> loopDelayR { 44100 };
 
-    // allpasses
-    
-    // L
-    juce::dsp::DelayLine<float> allpassL1 { 4410 };
-    juce::dsp::DelayLine<float> allpassL2 { 4410 };
-    juce::dsp::DelayLine<float> allpassL3Inner { 4410 };
-    juce::dsp::DelayLine<float> allpassL3Outer { 4410 };
-    juce::dsp::DelayLine<float> allpassL4Innermost { 4410 };
-    juce::dsp::DelayLine<float> allpassL4Inner { 4410 };
-    juce::dsp::DelayLine<float> allpassL4Outer { 4410 };
+    float currentDelayL_samps = 0.0f;
+    float currentDelayR_samps = 0.0f;
 
-    // R
-    juce::dsp::DelayLine<float> allpassR1 { 4410 };
-    juce::dsp::DelayLine<float> allpassR2 { 4410 };
-    juce::dsp::DelayLine<float> allpassR3Inner { 4410 };
-    juce::dsp::DelayLine<float> allpassR3Outer { 4410 };
-    juce::dsp::DelayLine<float> allpassR4Innermost { 4410 };
-    juce::dsp::DelayLine<float> allpassR4Inner { 4410 };
-    juce::dsp::DelayLine<float> allpassR4Outer { 4410 };
+    // Early diffusion allpasses (per channel)
+    Allpass<float> earlyL1;
+    Allpass<float> earlyL2;
+    Allpass<float> earlyR1;
+    Allpass<float> earlyR2;
 
+    // Late/tank diffusion allpasses (per channel)
+    Allpass<float> tankL1;
+    Allpass<float> tankL2;
+    Allpass<float> tankR1;
+    Allpass<float> tankR2;
+
+    // LFO for delay modulation
     OscillatorParameters lfoParameters;
-    SignalGenData lfoOutput;
-    LFO lfo;
+    SignalGenData       lfoOutput;
+    LFO                 lfo;
 
-    float allpassOutputInnermost = 0;
-    float allpassOutputInner = 0;
-    float allpassOutputOuter = 0;
+    // Per-channel I/O and feedback
+    std::vector<float> channelInput   { 0.0f, 0.0f };
+    std::vector<float> channelFeedback{ 0.0f, 0.0f };
+    std::vector<float> channelOutput  { 0.0f, 0.0f };
 
-    float feedforwardInnermost = 0;
-    float feedforwardInner = 0;
-    float feedforwardOuter = 0;
+    // Base tank delays and limits (in samples)
+    float baseDelaySamplesL = 0.0f;
+    float baseDelaySamplesR = 0.0f;
+    float maxDelaySamplesL  = 0.0f;
+    float maxDelaySamplesR  = 0.0f;
 
-    float feedbackInnermost = 0;
-    float feedbackInner = 0;
-    float feedbackOuter = 0;
-
-    std::vector<float> channelInput {0, 0};
-    std::vector<float> channelFeedback {0, 0};
-    std::vector<float> channelOutput {0, 0};
-    
     int sampleRate = 44100;
+
+    // Helpers
+    void prepareAllpass(Allpass<float>& ap,
+                        const juce::dsp::ProcessSpec& spec,
+                        float delayMs,
+                        float gain);
+
+    void updateInternalParamsFromUserParams();
 };

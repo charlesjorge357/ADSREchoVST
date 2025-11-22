@@ -9,6 +9,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "DatorroHall.h"
+#include "HybridPlate.h"
 
 //==============================================================================
 ADSREchoAudioProcessor::ADSREchoAudioProcessor()
@@ -142,6 +143,16 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    // ===== Read user parameters into reverb =====
+    ReverbProcessorParameters params;
+    params.roomSize = apvts.getRawParameterValue("RoomSize")->load();
+    params.decayTime = apvts.getRawParameterValue("Decay")->load();
+    params.damping = apvts.getRawParameterValue("Damping")->load();
+    params.modRate = apvts.getRawParameterValue("ModRate")->load();
+    params.modDepth = apvts.getRawParameterValue("ModDepth")->load();
+    params.mix = apvts.getRawParameterValue("ReverbMix")->load();
+    datorroReverb.setParameters(params);
+
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
@@ -225,9 +236,25 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     layout.add(std::make_unique<juce::AudioParameterFloat>("MasterMix", "Master Mix", 
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
     
-    // Per-effect controls (reverb example)
-    layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix", 
-        juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
+        // Reverb parameters
+    layout.add(std::make_unique<juce::AudioParameterFloat>("RoomSize", "Room Size",
+        juce::NormalisableRange<float>(0.25f, 1.75f, 0.01f), 1.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Decay", "Decay Time",
+        juce::NormalisableRange<float>(0.0f, 0.99f, 0.001f), 0.7f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Damping", "Damping",
+        juce::NormalisableRange<float>(200.0f, 12000.0f, 1.f), 6000.0f)); 
+    // This cutoff maps to loopDamping TPT low-pass
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("ModRate", "Mod Rate",
+        juce::NormalisableRange<float>(0.05f, 5.0f, 0.001f), 0.30f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("ModDepth", "Mod Depth",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix",
+        juce::NormalisableRange<float>(0.f, 1.f, 0.01f), 0.5f)); 
     
     // Future: Delay, Convolution, etc. each get their own mix
     
