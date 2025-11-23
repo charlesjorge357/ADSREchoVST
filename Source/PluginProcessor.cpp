@@ -103,6 +103,7 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     spec.numChannels = getTotalNumOutputChannels();
 
     datorroReverb.prepare(spec);
+    hybridReverb.prepare(spec);
 }
 
 void ADSREchoAudioProcessor::releaseResources()
@@ -152,7 +153,10 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     params.modDepth = apvts.getRawParameterValue("ModDepth")->load();
     params.mix = apvts.getRawParameterValue("ReverbMix")->load();
     params.preDelay = apvts.getRawParameterValue("PreDelay")->load();
-    datorroReverb.setParameters(params);
+
+    // TOGGLE ALGORITHM HERE #1
+    hybridReverb.setParameters(params);
+    //datorroReverb.setParameters(params);
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
@@ -166,7 +170,10 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     
     // Effect 1: Reverb (has its own dry/wet via parameters.mix)
     juce::dsp::AudioBlock<float> block(buffer);
-    datorroReverb.processBlock(buffer, midiMessages);
+
+    // TOGGLE ALGORITHM HERE #2
+    hybridReverb.processBlock(buffer, midiMessages);
+    //datorroReverb.processBlock(buffer, midiMessages);
 
     // this is for calling our other algo --v
     // hybridReverb.processBlock(buffer, midiMessages);
