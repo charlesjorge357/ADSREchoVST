@@ -1,4 +1,6 @@
 #include "DatorroHall.h"
+#include <algorithm>
+#include <cmath>
 
 //==============================================================================
 
@@ -31,100 +33,147 @@ void DatorroHall::prepare(const juce::dsp::ProcessSpec& spec)
 
     sampleRate = (int) spec.sampleRate;
 
-    //-------------------------------------------
-    // Tank damping filter (feedback high-cut)
-    //-------------------------------------------
+    //=====================================
+    // Reset channels / feedback
+    //=====================================
+    channelInput.assign(2, 0.0f);
+    channelOutput.assign(2, 0.0f);
+
+    std::fill(std::begin(feedbackL), std::end(feedbackL), 0.0f);
+    std::fill(std::begin(feedbackR), std::end(feedbackR), 0.0f);
+
+    //=====================================
+    // Loop Damping Filter
+    //=====================================
     loopDamping.prepare(spec);
     loopDamping.setType(juce::dsp::FirstOrderTPTFilterType::lowpass);
     loopDamping.setCutoffFrequency(parameters.damping);
     loopDamping.reset();
 
-    //-------------------------------------------
-    // Prepare main tank delays
-    //-------------------------------------------
-    auto prepareDelay = [&](DelayLineWithSampleAccess<float>& d)
+    // Pre Delay
+    preDelayL.prepare(spec);
+    preDelayR.prepare(spec);
+    preDelayL.reset();
+    preDelayR.reset();
+
+
+    //=====================================
+    // Prepare delay lines (4 per channel)
+    //=====================================
+    auto prepDL = [&](DelayLineWithSampleAccess<float>& d)
     {
         d.prepare(spec);
         d.reset();
     };
 
-    prepareDelay(loopDelayL);
-    prepareDelay(loopDelayR);
+    prepDL(tankDelayL1);
+    prepDL(tankDelayL2);
+    prepDL(tankDelayL3);
+    prepDL(tankDelayL4);
 
-    
+    prepDL(tankDelayR1);
+    prepDL(tankDelayR2);
+    prepDL(tankDelayR3);
+    prepDL(tankDelayR4);
 
+    //=====================================
+    // Bright-hall base delay times (ms)
+    // Valhalla-ish spacing
+    //=====================================
+    constexpr float baseMs[4] = {
+        130.0f,   // line 1
+        155.0f,   // line 2
+        177.0f,   // line 3
+        199.0f    // line 4
+    };
 
-    // We’ll use ~80–90 ms base tank delays by default, scaled by roomSize later.
-    const float defaultTankDelayL_ms = 80.0f;
-    const float defaultTankDelayR_ms = 93.0f;
+    // Convert to samples & clamp
+    DelayLineWithSampleAccess<float>* linesL[4] =
+    { &tankDelayL1, &tankDelayL2, &tankDelayL3, &tankDelayL4 };
 
-    const float defaultTankDelayL_samps =
-        (defaultTankDelayL_ms * 0.001f) * (float) sampleRate;
-    const float defaultTankDelayR_samps =
-        (defaultTankDelayR_ms * 0.001f) * (float) sampleRate;
+    DelayLineWithSampleAccess<float>* linesR[4] =
+    { &tankDelayR1, &tankDelayR2, &tankDelayR3, &tankDelayR4 };
 
-    maxDelaySamplesL  = (float) (loopDelayL.getNumSamples() - 2);
-    maxDelaySamplesR  = (float) (loopDelayR.getNumSamples() - 2);
+    for (int i = 0; i < 4; ++i)
+    {
+        const float baseSamps = baseMs[i] * 0.001f * sampleRate;
 
-    baseDelaySamplesL = juce::jlimit(1.0f, maxDelaySamplesL, defaultTankDelayL_samps);
-    baseDelaySamplesR = juce::jlimit(1.0f, maxDelaySamplesR, defaultTankDelayR_samps);
+        maxDelaySamplesL[i] = (float) (linesL[i]->getNumSamples() - 2);
+        maxDelaySamplesR[i] = (float) (linesR[i]->getNumSamples() - 2);
 
-    currentDelayL_samps = baseDelaySamplesL;
-    currentDelayR_samps = baseDelaySamplesR;
+        baseDelaySamplesL[i] = juce::jlimit(1.0f, maxDelaySamplesL[i], baseSamps);
+        baseDelaySamplesR[i] = juce::jlimit(1.0f, maxDelaySamplesR[i], baseSamps);
 
-    //-------------------------------------------
+        currentDelayL_samps[i] = baseDelaySamplesL[i];
+        currentDelayR_samps[i] = baseDelaySamplesR[i];
+    }
+
+    //=====================================
     // Prepare early diffusion allpasses
-    // (values are Dattorro-ish, but not strict)
-    //-------------------------------------------
-    // Early: relatively short allpasses, fairly strong feedback
-    const float earlyAP1_ms = 12.0f;
-    const float earlyAP2_ms = 20.0f;
+    //=====================================
+    auto prepAP = [&](Allpass<float>& ap, float delayMs, float gain)
+    {
+        prepareAllpass(ap, spec, delayMs, gain);
+    };
 
-    // Gains < 1.0, higher = more diffusion / more coloration
-    const float earlyG1 = 0.75f;
-    const float earlyG2 = 0.70f;
+    // Early diffusion (4 APs), strong diffusion
+    prepAP(earlyL1,  8.0f, 0.70f);
+    prepAP(earlyL2, 12.0f, 0.72f);
+    prepAP(earlyL3, 15.0f, 0.68f);
+    prepAP(earlyL4, 22.0f, 0.70f);
 
-    prepareAllpass(earlyL1, spec, earlyAP1_ms, earlyG1);
-    prepareAllpass(earlyL2, spec, earlyAP2_ms, earlyG2);
-    prepareAllpass(earlyR1, spec, earlyAP1_ms * 1.1f, earlyG1);
-    prepareAllpass(earlyR2, spec, earlyAP2_ms * 0.9f, earlyG2);
+    prepAP(earlyR1,  8.8f, 0.70f);
+    prepAP(earlyR2, 10.5f, 0.72f);
+    prepAP(earlyR3, 16.0f, 0.68f);
+    prepAP(earlyR4, 21.0f, 0.70f);
 
-    //-------------------------------------------
-    // Prepare late/tank diffusion allpasses
-    //-------------------------------------------
-    const float tankAP1_ms = 35.0f;
-    const float tankAP2_ms = 60.0f;
+    //=====================================
+    // Prepare tank diffusion APs (per-line)
+    //=====================================
+    prepAP(tankLAP1, 35.0f, 0.72f);
+    prepAP(tankLAP2, 55.0f, 0.70f);
+    prepAP(tankLAP3, 78.0f, 0.72f);
+    prepAP(tankLAP4, 92.0f, 0.70f);
 
-    const float tankG1 = 0.72f;
-    const float tankG2 = 0.70f;
+    prepAP(tankRAP1, 35.0f, 0.72f);
+    prepAP(tankRAP2, 55.0f, 0.70f);
+    prepAP(tankRAP3, 78.0f, 0.72f);
+    prepAP(tankRAP4, 92.0f, 0.70f);
 
-    prepareAllpass(tankL1, spec, tankAP1_ms, tankG1);
-    prepareAllpass(tankL2, spec, tankAP2_ms, tankG2);
-    prepareAllpass(tankR1, spec, tankAP1_ms * 1.1f, tankG1);
-    prepareAllpass(tankR2, spec, tankAP2_ms * 0.9f, tankG2);
-
-    //-------------------------------------------
-    // LFO for tank modulation
-    //-------------------------------------------
+    //=====================================
+    // LFO Setup
+    //=====================================
     lfoParameters.waveform     = generatorWaveform::sin;
-    lfoParameters.frequency_Hz = parameters.modRate;   // Hz
-    lfoParameters.depth        = parameters.modDepth;  // 0..1
+    lfoParameters.frequency_Hz = parameters.modRate;   // user param
+    lfoParameters.depth        = parameters.modDepth;
+
     lfo.setParameters(lfoParameters);
     lfo.prepare(spec);
-    lfo.reset(spec.sampleRate);
+    lfo.reset(sampleRate);
 
-    //-------------------------------------------
-    // Channel buffers
-    //-------------------------------------------
-    channelInput.assign(2,  0.0f);
-    channelFeedback.assign(2, 0.0f);
-    channelOutput.assign(2, 0.0f);
+    //=====================================
+    // Estimate loop time for RT60 mapping
+    // (sum of delays + AP times)
+    //=====================================
+    float totalDelaySamps = 0.0f;
+    for (int i = 0; i < 4; ++i)
+        totalDelaySamps += baseDelaySamplesL[i];
+
+    // Convert early+late AP delays to seconds
+    const float apDelayMs =
+          8.0f  + 12.0f + 15.0f + 22.0f   // early
+        + 35.0f + 55.0f + 78.0f + 92.0f;  // tank
 
     estimatedLoopTimeSeconds =
-      (12.0f + 20.0f + 35.0f + 60.0f + (baseDelaySamplesL / sampleRate)) * 0.001f;
+        (totalDelaySamps / sampleRate) +
+        (apDelayMs * 0.001f);
 
-
+    // Clamp / update internal params (no RT60 remap here)
     updateInternalParamsFromUserParams();
+
+    //=====================================
+    // Done
+    //=====================================
     reset();
 }
 
@@ -135,21 +184,53 @@ void DatorroHall::reset()
     loopDamping.reset();
 
     auto resetAP = [&](Allpass<float>& ap) { ap.reset(); };
+
+    // Early APs
     resetAP(earlyL1);
     resetAP(earlyL2);
+    resetAP(earlyL3);
+    resetAP(earlyL4);
+
     resetAP(earlyR1);
     resetAP(earlyR2);
-    resetAP(tankL1);
-    resetAP(tankL2);
-    resetAP(tankR1);
-    resetAP(tankR2);
+    resetAP(earlyR3);
+    resetAP(earlyR4);
 
-    loopDelayL.reset();
-    loopDelayR.reset();
+    // Tank APs
+    resetAP(tankLAP1);
+    resetAP(tankLAP2);
+    resetAP(tankLAP3);
+    resetAP(tankLAP4);
 
-    std::fill(channelInput.begin(),    channelInput.end(),    0.0f);
-    std::fill(channelFeedback.begin(), channelFeedback.end(), 0.0f);
-    std::fill(channelOutput.begin(),   channelOutput.end(),   0.0f);
+    resetAP(tankRAP1);
+    resetAP(tankRAP2);
+    resetAP(tankRAP3);
+    resetAP(tankRAP4);
+
+    // Tank delay lines
+    tankDelayL1.reset();
+    tankDelayL2.reset();
+    tankDelayL3.reset();
+    tankDelayL4.reset();
+
+    tankDelayR1.reset();
+    tankDelayR2.reset();
+    tankDelayR3.reset();
+    tankDelayR4.reset();
+
+    // Feedback & buffers
+    std::fill(std::begin(feedbackL), std::end(feedbackL), 0.0f);
+    std::fill(std::begin(feedbackR), std::end(feedbackR), 0.0f);
+
+    std::fill(channelInput.begin(),  channelInput.end(),  0.0f);
+    std::fill(channelOutput.begin(), channelOutput.end(), 0.0f);
+
+    // Smoothed delay times
+    for (int i = 0; i < 4; ++i)
+    {
+        currentDelayL_samps[i] = baseDelaySamplesL[i];
+        currentDelayR_samps[i] = baseDelaySamplesR[i];
+    }
 
     lfo.reset(sampleRate);
 }
@@ -158,40 +239,26 @@ void DatorroHall::reset()
 
 void DatorroHall::updateInternalParamsFromUserParams()
 {
-    // Clamp and derive things that are used in DSP
     parameters.roomSize = juce::jlimit(0.25f, 1.75f, parameters.roomSize);
 
-
-
-
-    float userDecaySeconds = parameters.decayTime;
-
-    // Prevent tiny or zero decay
-    userDecaySeconds = juce::jlimit(0.1f, 20.0f, userDecaySeconds);
-
-    // Convert to feedback coefficient
-    // RT60 formula: feedback = exp( -3 / (decaySeconds * (delayTimeSeconds)) )
-    // But we approximate using sample rate for symmetrical tank
-    float fb = std::exp(-3.0f * estimatedLoopTimeSeconds / userDecaySeconds);
-
-    // clamp for safety
-    fb = juce::jlimit(0.0f, 0.9999f, fb);
-
-    parameters.decayTime = fb;
-
-
-
+    // keep decay in SECONDS
+    parameters.decayTime = juce::jlimit(0.1f, 20.0f, parameters.decayTime);
 
     parameters.mix = juce::jlimit(0.0f, 1.0f, parameters.mix);
 
-    // Update damping filter cut-off
     loopDamping.setCutoffFrequency(parameters.damping);
 
-    // Update LFO params
     lfoParameters.frequency_Hz = parameters.modRate;
     lfoParameters.depth        = parameters.modDepth;
     lfo.setParameters(lfoParameters);
+
+    float pdMs = parameters.preDelay;     // new param (ms)
+    pdMs = juce::jlimit(0.0f, 200.0f, pdMs);
+
+    preDelaySamples = pdMs * 0.001f * sampleRate;
+
 }
+
 
 //==============================================================================
 
@@ -206,133 +273,214 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
     auto* left  = buffer.getWritePointer(0);
     auto* right = (numChannels > 1 ? buffer.getWritePointer(1) : nullptr);
 
-    // Snap/derive parameters once per block
+    //===============================
+    // Snap parameters
+    //===============================
     const float mix      = parameters.mix;
     const float dryMix   = 1.0f - mix;
-    const float decay    = parameters.decayTime;
-    const float roomSize = parameters.roomSize;
-    const float modDepth = juce::jlimit(0.0f, 1.0f, parameters.modDepth);
+    const float decaySec = juce::jlimit(0.1f, 20.0f, parameters.decayTime);
+    const float roomSize = juce::jlimit(0.25f, 1.75f, parameters.roomSize);
+    const float modDepth = parameters.modDepth;
 
-    // Scale base delays by room size
-    const float baseL = juce::jlimit(1.0f, maxDelaySamplesL,
-                                     baseDelaySamplesL * roomSize);
-    const float baseR = juce::jlimit(1.0f, maxDelaySamplesR,
-                                     baseDelaySamplesR * roomSize);
+    //===============================
+    // Compute RT60 feedback gain
+    // Using e^(-3T_loop / RT60)
+    //===============================
+    const float fb = std::exp(-3.0f * estimatedLoopTimeSeconds / decaySec);
 
- 
 
-    // Stereo cross-feedback amount
-    const float crossFeed = 0.30f;
+    const float feedbackGain = juce::jlimit(0.0f, 0.9999f, fb);
 
+    //===============================
+    // Stereo crossfeed (light)
+    //===============================
+    const float stereoCross = 0.15f;
+
+    const float slew = 0.001f; // Smooth modulation
+
+    //===============================
+    // Process samples
+    //===============================
     for (int n = 0; n < numSamples; ++n)
     {
-        const float inL = left[n];
-        const float inR = (right != nullptr ? right[n] : inL);
+        float inL = left[n];
+        float inR = (right ? right[n] : inL);
+
+        // --- PRE-DELAY ---
+        preDelayL.pushSample(0, inL);
+        preDelayR.pushSample(0, inR);
+
+        inL = preDelayL.readFractional(0, preDelaySamples);
+        inR = preDelayR.readFractional(0, preDelaySamples);
 
         channelInput[0] = inL;
         channelInput[1] = inR;
 
-        //--------------------------------------------------------------
-        // Early diffusion per channel (two allpasses L, two allpasses R)
-        //--------------------------------------------------------------
-        // LEFT
-        earlyL1.pushSample(0, channelInput[0]);
-        float earlyL = earlyL1.popSample(0);
 
-        earlyL2.pushSample(0, earlyL);
-        earlyL = earlyL2.popSample(0);
+        //===========================
+        // EARLY DIFFUSION (4 APs)
+        //===========================
+        float eL = channelInput[0];
+        earlyL1.pushSample(0, eL);
+        eL = earlyL1.popSample(0);
+        earlyL2.pushSample(0, eL);
+        eL = earlyL2.popSample(0);
+        earlyL3.pushSample(0, eL);
+        eL = earlyL3.popSample(0);
+        earlyL4.pushSample(0, eL);
+        eL = earlyL4.popSample(0);
 
-        // RIGHT
-        earlyR1.pushSample(0, channelInput[1]);
-        float earlyR = earlyR1.popSample(0);
+        float eR = channelInput[1];
+        earlyR1.pushSample(0, eR);
+        eR = earlyR1.popSample(0);
+        earlyR2.pushSample(0, eR);
+        eR = earlyR2.popSample(0);
+        earlyR3.pushSample(0, eR);
+        eR = earlyR3.popSample(0);
+        earlyR4.pushSample(0, eR);
+        eR = earlyR4.popSample(0);
 
-        earlyR2.pushSample(0, earlyR);
-        earlyR = earlyR2.popSample(0);
-
-        //--------------------------------------------------------------
-        // LFO modulation (one per sample, used for both channels)
-        //--------------------------------------------------------------
+        //===========================
+        // LFO per-sample
+        //===========================
         lfoOutput = lfo.renderAudioOutput();
-        const float lfoL = (float) lfoOutput.normalOutput;          // left
-        const float lfoR = (float) lfoOutput.quadPhaseOutput_pos;   // right
+            // LFO gives us only 2 useful outputs: normal + quad
+        const float lfo0 = (float) lfoOutput.normalOutput;
+        const float lfo90 = (float) lfoOutput.quadPhaseOutput_pos;
 
-        // Much gentler modulation (0.5% instead of 3%)
-        const float modRatio = 0.005f;
-
-        const float maxModL_samps = baseL * modRatio * modDepth;
-        const float maxModR_samps = baseR * modRatio * modDepth;
-
-        // raw target delay from LFO
-        float targetDelayL_samps = baseL + maxModL_samps * lfoL;
-        float targetDelayR_samps = baseR + maxModR_samps * lfoR;
-
-        // clamp
-        targetDelayL_samps = juce::jlimit(1.0f, maxDelaySamplesL, targetDelayL_samps);
-        targetDelayR_samps = juce::jlimit(1.0f, maxDelaySamplesR, targetDelayR_samps);
-
-        // slew-smoothed delay to avoid zippering
-        const float slew = 0.001f; // very gentle smoothing
-        currentDelayL_samps += slew * (targetDelayL_samps - currentDelayL_samps);
-        currentDelayR_samps += slew * (targetDelayR_samps - currentDelayR_samps);
-
-        const float delayL_samps = currentDelayL_samps;
-        const float delayR_samps = currentDelayR_samps;
+        // Synthesize 4 decorrelated modulation values
+        // (simple nonlinear warping—cheap but effective)
+        const float lfoVals[4] =
+        {
+            lfo0,
+            lfo90,
+            std::tanh(lfo0 + 0.5f * lfo90),
+            std::tanh(lfo90 - 0.5f * lfo0)
+        };
 
 
-        //--------------------------------------------------------------
-        // Push early-diffused + feedback into tank delay lines
-        //--------------------------------------------------------------
-        const float tankInL = 0.5f * (earlyL + channelFeedback[0]);
-        const float tankInR = 0.5f * (earlyR + channelFeedback[1]);
+        //===========================
+        // PER-LINE MODULATION
+        //===========================
+        for (int i = 0; i < 4; ++i)
+        {
+            // Base delay scaled by room size
+            const float baseL = juce::jlimit(1.0f, maxDelaySamplesL[i],
+                                             baseDelaySamplesL[i] * roomSize);
+            const float baseR = juce::jlimit(1.0f, maxDelaySamplesR[i],
+                                             baseDelaySamplesR[i] * roomSize);
+
+            const float modRatio  = 0.01f;  // 1% of base delay
+            const float modSampsL = baseL * modRatio * modDepth * lfoVals[i];
+            const float modSampsR = baseR * modRatio * modDepth * lfoVals[i];
+
+            const float targetL = juce::jlimit(1.0f, maxDelaySamplesL[i],
+                                               baseL + modSampsL);
+            const float targetR = juce::jlimit(1.0f, maxDelaySamplesR[i],
+                                               baseR + modSampsR);
+
+            currentDelayL_samps[i] += slew * (targetL - currentDelayL_samps[i]);
+            currentDelayR_samps[i] += slew * (targetR - currentDelayR_samps[i]);
+        }
 
 
-        loopDelayL.pushSample(0, tankInL);
-        loopDelayR.pushSample(0, tankInR);
+        //===========================
+        // PUSH INPUT + FEEDBACK
+        //===========================
+        float tankInputL[4];
+        float tankInputR[4];
 
-        // Fractional read with your custom delay line
-        float tankOutL = loopDelayL.readFractional(0, delayL_samps);
-        float tankOutR = loopDelayR.readFractional(0, delayR_samps);
+        // Merge early-diffused input with feedback
+        for (int i = 0; i < 4; ++i)
+        {
+            // 0.5 to keep internal gain under control
+            tankInputL[i] = 0.5f * (eL + feedbackL[i]);
+            tankInputR[i] = 0.5f * (eR + feedbackR[i]);
+        }
 
-        //--------------------------------------------------------------
-        // Late diffusion: two allpasses in series per channel
-        //--------------------------------------------------------------
-        // LEFT
-        tankL1.pushSample(0, tankOutL);
-        float diffL = tankL1.popSample(0);
+        // Push to tank delay lines
+        tankDelayL1.pushSample(0, tankInputL[0]);
+        tankDelayL2.pushSample(0, tankInputL[1]);
+        tankDelayL3.pushSample(0, tankInputL[2]);
+        tankDelayL4.pushSample(0, tankInputL[3]);
 
-        tankL2.pushSample(0, diffL);
-        diffL = tankL2.popSample(0);
+        tankDelayR1.pushSample(0, tankInputR[0]);
+        tankDelayR2.pushSample(0, tankInputR[1]);
+        tankDelayR3.pushSample(0, tankInputR[2]);
+        tankDelayR4.pushSample(0, tankInputR[3]);
 
-        // RIGHT
-        tankR1.pushSample(0, tankOutR);
-        float diffR = tankR1.popSample(0);
+        //===========================
+        // READ TANK OUTPUTS
+        //===========================
+        float rawL[4] = {
+            tankDelayL1.readFractional(0, currentDelayL_samps[0]),
+            tankDelayL2.readFractional(0, currentDelayL_samps[1]),
+            tankDelayL3.readFractional(0, currentDelayL_samps[2]),
+            tankDelayL4.readFractional(0, currentDelayL_samps[3])
+        };
 
-        tankR2.pushSample(0, diffR);
-        diffR = tankR2.popSample(0);
+        float rawR[4] = {
+            tankDelayR1.readFractional(0, currentDelayR_samps[0]),
+            tankDelayR2.readFractional(0, currentDelayR_samps[1]),
+            tankDelayR3.readFractional(0, currentDelayR_samps[2]),
+            tankDelayR4.readFractional(0, currentDelayR_samps[3])
+        };
 
-        //--------------------------------------------------------------
-        // Damping and feedback update (with stereo cross-feed)
-        //--------------------------------------------------------------
-        float dampedL = loopDamping.processSample(0, diffL);
-        float dampedR = loopDamping.processSample(1, diffR);
+        //===========================
+        // TANK INTERNAL DIFFUSION
+        // one AP per line
+        //===========================
+        float diffL[4] = { rawL[0], rawL[1], rawL[2], rawL[3] };
+        float diffR[4] = { rawR[0], rawR[1], rawR[2], rawR[3] };
 
+        tankLAP1.pushSample(0, diffL[0]); diffL[0] = tankLAP1.popSample(0);
+        tankLAP2.pushSample(0, diffL[1]); diffL[1] = tankLAP2.popSample(0);
+        tankLAP3.pushSample(0, diffL[2]); diffL[2] = tankLAP3.popSample(0);
+        tankLAP4.pushSample(0, diffL[3]); diffL[3] = tankLAP4.popSample(0);
 
-        const float fbL = (dampedL + crossFeed * dampedR) * decay;
-        const float fbR = (dampedR + crossFeed * dampedL) * decay;
+        tankRAP1.pushSample(0, diffR[0]); diffR[0] = tankRAP1.popSample(0);
+        tankRAP2.pushSample(0, diffR[1]); diffR[1] = tankRAP2.popSample(0);
+        tankRAP3.pushSample(0, diffR[2]); diffR[2] = tankRAP3.popSample(0);
+        tankRAP4.pushSample(0, diffR[3]); diffR[3] = tankRAP4.popSample(0);
 
-        channelFeedback[0] = fbL;
-        channelFeedback[1] = fbR;
+        //===========================
+        // APPLY FDN SCATTERING (Householder)
+        //===========================
+        float scatterL[4];
+        float scatterR[4];
 
-        channelOutput[0] = dampedL;
-        channelOutput[1] = dampedR;
+        applyFDNScattering(diffL, scatterL);
+        applyFDNScattering(diffR, scatterR);
 
-        //--------------------------------------------------------------
-        // Mix dry/wet and write back
-        //--------------------------------------------------------------
-        left[n] = dryMix * inL + mix * channelOutput[0];
+        //===========================
+        // DAMPING + FEEDBACK UPDATE WITH STEREO CROSSFEED
+        //===========================
+        for (int i = 0; i < 4; ++i)
+        {
+            // scatterL/R are already damped & scattered
+            const float sL = scatterL[i];
+            const float sR = scatterR[i];
 
-        if (right != nullptr)
-            right[n] = dryMix * inR + mix * channelOutput[1];
+            // Stereo crossfeed
+            const float dL = sL + stereoCross * sR;
+            const float dR = sR + stereoCross * sL;
+
+            feedbackL[i] = dL * feedbackGain;
+            feedbackR[i] = dR * feedbackGain;
+        }
+
+        //===========================
+        // OUTPUT MIX (use scattered signal for richness)
+        //===========================
+        float outL = 0.25f * (scatterL[0] + scatterL[1] + scatterL[2] + scatterL[3]);
+        float outR = 0.25f * (scatterR[0] + scatterR[1] + scatterR[2] + scatterR[3]);
+
+        channelOutput[0] = outL;
+        channelOutput[1] = outR;
+
+        left[n] = dryMix * inL + mix * outL;
+        if (right)
+            right[n] = dryMix * inR + mix * outR;
     }
 }
 
@@ -349,4 +497,28 @@ void DatorroHall::setParameters(const ReverbProcessorParameters& params)
 {
     parameters = params;
     updateInternalParamsFromUserParams();
+}
+
+//==============================================================================
+
+void DatorroHall::applyFDNScattering(const float in[4], float (&out)[4]) const
+{
+    // A 4x4 Householder matrix:
+    // H = I - (2 / N) * 11^T   → for N = 4 → I - 0.5 * 11^T
+    //
+    // Output line i:
+    // out[i] = in[i] - 0.5 * (in[0] + in[1] + in[2] + in[3])
+
+    const float sum =
+        in[0] +
+        in[1] +
+        in[2] +
+        in[3];
+
+    const float scaled = 0.5f * sum;
+
+    out[0] = in[0] - scaled;
+    out[1] = in[1] - scaled;
+    out[2] = in[2] - scaled;
+    out[3] = in[3] - scaled;
 }

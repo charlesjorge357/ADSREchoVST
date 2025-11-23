@@ -151,6 +151,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     params.modRate = apvts.getRawParameterValue("ModRate")->load();
     params.modDepth = apvts.getRawParameterValue("ModDepth")->load();
     params.mix = apvts.getRawParameterValue("ReverbMix")->load();
+    params.preDelay = apvts.getRawParameterValue("PreDelay")->load();
     datorroReverb.setParameters(params);
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
@@ -240,12 +241,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     layout.add(std::make_unique<juce::AudioParameterFloat>("RoomSize", "Room Size",
         juce::NormalisableRange<float>(0.25f, 1.75f, 0.01f), 1.0f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Decay", "Decay Time",
-        juce::NormalisableRange<float>(0.1f, 6.0f, 0.001f), 1.8f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Decay",
+        "Decay Time (s)",
+        juce::NormalisableRange<float>(0.1f, 20.0f, 0.01f, 0.5f),
+        5.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("PreDelay", "Pre Delay (ms)",
+        juce::NormalisableRange<float>(0.0f, 200.0f, 0.1f), 0.0f));
+
+
 
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("Damping", "Damping",
-        juce::NormalisableRange<float>(200.0f, 12000.0f, 1.f), 6000.0f)); 
+        juce::NormalisableRange<float>(500.0f, 18000.0f, 1.f, 0.5f), 8000.0f));
+
     // This cutoff maps to loopDamping TPT low-pass
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("ModRate", "Mod Rate",
