@@ -303,15 +303,18 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
     //===============================
     for (int n = 0; n < numSamples; ++n)
     {
-        float inL = left[n];
-        float inR = (right ? right[n] : inL);
+        // --- TRUE DRY signal (captured before any pre-delay!) ---
+        const float dryL = left[n];
+        const float dryR = (right ? right[n] : dryL);
 
-        // --- PRE-DELAY ---
-        preDelayL.pushSample(0, inL);
-        preDelayR.pushSample(0, inR);
+        //=========================================================
+        // PRE-DELAY (WET PATH ONLY)
+        //=========================================================
+        preDelayL.pushSample(0, dryL);
+        preDelayR.pushSample(0, dryR);
 
-        inL = preDelayL.readFractional(0, preDelaySamples);
-        inR = preDelayR.readFractional(0, preDelaySamples);
+        float inL = preDelayL.readFractional(0, preDelaySamples);
+        float inR = preDelayR.readFractional(0, preDelaySamples);
 
         channelInput[0] = inL;
         channelInput[1] = inR;
@@ -478,10 +481,11 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         channelOutput[0] = outL;
         channelOutput[1] = outR;
 
-        left[n] = dryMix * inL + mix * outL;
+        left[n] = dryMix * dryL + mix * outL;
+
         if (right)
-            right[n] = dryMix * inR + mix * outR;
-    }
+            right[n] = dryMix * dryR + mix * outR;
+     }
 }
 
 //==============================================================================
