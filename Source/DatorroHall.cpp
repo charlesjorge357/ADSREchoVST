@@ -56,6 +56,12 @@ void DatorroHall::prepare(const juce::dsp::ProcessSpec& spec)
     preDelayL.reset();
     preDelayR.reset();
 
+    erL.prepare(spec);
+    erR.prepare(spec);
+    erL.reset();
+    erR.reset();
+
+
 
     //=====================================
     // Prepare delay lines (4 per channel)
@@ -86,6 +92,13 @@ void DatorroHall::prepare(const juce::dsp::ProcessSpec& spec)
         dampingFiltersR[i].setType(juce::dsp::FirstOrderTPTFilterType::lowpass);
         dampingFiltersR[i].reset();
     }
+
+    for (int i = 0; i < 4; ++i)
+    {
+        extraDampingL[i].prepare(sampleRate, 0.25f);
+        extraDampingR[i].prepare(sampleRate, 0.25f);
+    }
+
 
 
     //=====================================
@@ -127,6 +140,13 @@ void DatorroHall::prepare(const juce::dsp::ProcessSpec& spec)
     {
         prepareAllpass(ap, spec, delayMs, gain);
     };
+
+    for (int i = 0; i < ER_count; ++i)
+    {
+        ER_tapSamplesLeft[i]  = ER_tapTimesMsLeft[i]  * 0.001f * sampleRate;
+        ER_tapSamplesRight[i] = ER_tapTimesMsRight[i] * 0.001f * sampleRate;
+    }
+
 
     // Early diffusion (4 APs), strong diffusion
     prepAP(earlyL1,  8.0f, 0.70f);
@@ -338,11 +358,26 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         channelInput[0] = inL;
         channelInput[1] = inR;
 
+        erL.pushSample(0, dryL);
+        erR.pushSample(0, dryR);
+
+        float erOutL = 0.0f;
+        float erOutR = 0.0f;
+
+        for (int i = 0; i < 6; ++i)
+        {
+            erOutL += ER_gains[i] * erL.readFractional(0, ER_tapSamplesLeft[i]);
+            erOutR += ER_gains[i] * erR.readFractional(0, ER_tapSamplesRight[i]);
+        }
+
+
 
         //===========================
         // EARLY DIFFUSION (4 APs)
         //===========================
-        float eL = channelInput[0];
+
+        // Replace dry → diffusion input with early reflections
+        float eL = erOutL;
         earlyL1.pushSample(0, eL);
         eL = earlyL1.popSample(0);
         earlyL2.pushSample(0, eL);
@@ -352,7 +387,7 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         earlyL4.pushSample(0, eL);
         eL = earlyL4.popSample(0);
 
-        float eR = channelInput[1];
+        float eR = erOutR;
         earlyR1.pushSample(0, eR);
         eR = earlyR1.popSample(0);
         earlyR2.pushSample(0, eR);
@@ -361,6 +396,7 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         eR = earlyR3.popSample(0);
         earlyR4.pushSample(0, eR);
         eR = earlyR4.popSample(0);
+
 
         //===========================
         // LFO per-sample
@@ -381,18 +417,26 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         };
 
 
+
+
         //===========================
-        // PER-LINE MODULATION
+        // PER-LINE MODULATION (with decay-dependent density scaling)
         //===========================
+
+        // Decay → echo-density scaling factor
+        const float normDecay = juce::jlimit(0.0f, 1.0f, decaySec / 20.0f);
+        const float densityScale = 1.0f + 0.20f * normDecay;  // up to +20% delay stretch
+
         for (int i = 0; i < 4; ++i)
         {
-            // Base delay scaled by room size
+            // Base delay now stretches with decay length
             const float baseL = juce::jlimit(1.0f, maxDelaySamplesL[i],
-                                             baseDelaySamplesL[i] * roomSize);
-            const float baseR = juce::jlimit(1.0f, maxDelaySamplesR[i],
-                                             baseDelaySamplesR[i] * roomSize);
+                                             baseDelaySamplesL[i] * roomSize * densityScale);
 
-            const float modRatio  = 0.01f;  // 1% of base delay
+            const float baseR = juce::jlimit(1.0f, maxDelaySamplesR[i],
+                                             baseDelaySamplesR[i] * roomSize * densityScale);
+
+            const float modRatio  = 0.01f;  // 1% modulation
             const float modSampsL = baseL * modRatio * modDepth * lfoVals[i];
             const float modSampsR = baseR * modRatio * modDepth * lfoVals[i];
 
@@ -406,6 +450,7 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         }
 
 
+
         //===========================
         // PUSH INPUT + FEEDBACK
         //===========================
@@ -416,8 +461,8 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         for (int i = 0; i < 4; ++i)
         {
             // 0.5 to keep internal gain under control
-            tankInputL[i] = 0.5f * (eL + feedbackL[i]);
-            tankInputR[i] = 0.5f * (eR + feedbackR[i]);
+            tankInputL[i] = 0.8f * (eL + feedbackL[i]);
+            tankInputR[i] = 0.8f * (eR + feedbackR[i]);
         }
 
         // Push to tank delay lines
@@ -447,6 +492,18 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
             tankDelayR3.readFractional(0, currentDelayR_samps[2]),
             tankDelayR4.readFractional(0, currentDelayR_samps[3])
         };
+
+        //=====================================
+        // PER-LINE DAMPING (Valhalla-style HF shaping)
+        //=====================================
+        for (int i = 0; i < 4; ++i)
+        {
+            rawL[i] = extraDampingL[i].process(rawL[i]);
+            rawR[i] = extraDampingR[i].process(rawR[i]);
+
+        }
+
+
 
         //===========================
         // TANK INTERNAL DIFFUSION
@@ -505,8 +562,8 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         float outL = 0.35f * (scatterL[0] + scatterL[2])
            + 0.25f * (scatterL[1] + scatterL[3]);
 
-        float outR = 0.35f * (scatterL[0] + scatterL[2])
-           + 0.25f * (scatterL[1] + scatterL[3]);
+        float outR = 0.35f * (scatterR[0] + scatterR[2])
+           + 0.25f * (scatterR[1] + scatterR[3]);
 
 
         channelOutput[0] = outL;

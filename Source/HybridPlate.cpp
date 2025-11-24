@@ -85,6 +85,10 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
         dampingFilters[i].setType(juce::dsp::FirstOrderTPTFilterType::lowpass);
     }
 
+    for (int i = 0; i < fdnCount; ++i)
+        extraDampL[i].prepare(sampleRate, parameters.damping);
+
+
     // high shelf for no ring
     for (int i = 0; i < fdnCount; ++i)
     {
@@ -179,6 +183,9 @@ void HybridPlate::updateInternalParamsFromUserParams()
     // Damping filter cutoff
     for (int i = 0; i < fdnCount; ++i)
         dampingFilters[i].setCutoffFrequency(parameters.damping);
+    for (int i = 0; i < fdnCount; ++i)
+        extraDampL[i].setDamping(parameters.damping);
+
 
     // LFO parameters
     lfoParameters.frequency_Hz = parameters.modRate;
@@ -324,8 +331,10 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
             // first-order lowpass damping
             float damped = dampingFilters[i].processSample(0, newSample);
 
+            float psycho = extraDampL[i].process(damped);
+
             // high-shelf to tame metallic ringing
-            float softened = highShelfFilters[i].processSample(damped);
+            float softened = highShelfFilters[i].processSample(psycho);
 
 
             // write into delay line

@@ -4,6 +4,9 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
     <GROUP id="{618D5F69-5971-EB1B-AEB0-4D399985702C}" name="Source">
+      <FILE id="Dd1WQt" name="PsychoDamping.cpp" compile="1" resource="0"
+            file="Source/PsychoDamping.cpp"/>
+      <FILE id="A7OewH" name="PsychoDamping.h" compile="0" resource="0" file="Source/PsychoDamping.h"/>
       <FILE id="rph9pM" name="CustomDelays.cpp" compile="1" resource="0"
             file="Source/CustomDelays.cpp"/>
       <FILE id="h8CNSq" name="HybridPlate.cpp" compile="1" resource="0" file="Source/HybridPlate.cpp"/>

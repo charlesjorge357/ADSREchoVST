@@ -8,6 +8,7 @@
 #include "LFO.h"
 #include "ProcessorBase.h"
 #include "Utilities.h"
+#include "PsychoDamping.h"
 
 class DatorroHall : public ReverbProcessorBase
 {
@@ -43,8 +44,8 @@ private:
     //======================================================================
     
     // Pre-delay (mono-in / stereo-out)
-    DelayLineWithSampleAccess<float> preDelayL { 48000 };
-    DelayLineWithSampleAccess<float> preDelayR { 48000 };
+    DelayLineWithSampleAccess<float> preDelayL { 44100 };
+    DelayLineWithSampleAccess<float> preDelayR { 44100 };
     float preDelaySamples = 0.0f;   // smoothed
 
 
@@ -64,6 +65,10 @@ private:
     DelayLineWithSampleAccess<float> tankDelayR2 { 44100 };
     DelayLineWithSampleAccess<float> tankDelayR3 { 44100 };
     DelayLineWithSampleAccess<float> tankDelayR4 { 44100 };
+
+
+    DelayLineWithSampleAccess<float> erL { 44100 };
+    DelayLineWithSampleAccess<float> erR { 44100 };
 
     // Smoothed delay times per FDN line per channel (for modulation)
     float currentDelayL_samps[4] { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -105,6 +110,11 @@ private:
     Allpass<float> tankRAP3;
     Allpass<float> tankRAP4;
 
+    // Psycho Filters
+    PsychoDamping::OnePole extraDampingL[4];
+    PsychoDamping::OnePole extraDampingR[4];
+
+
     //======================================================================
     // LFO for modulation of tank delay times (per-line modulation)
     //======================================================================
@@ -121,6 +131,28 @@ private:
     // Feedback per FDN line per channel (4 lines x 2 channels)
     float feedbackL[4] { 0.0f, 0.0f, 0.0f, 0.0f };
     float feedbackR[4] { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    // Early Reflections (simple 6-tap stereo cluster)
+    static constexpr int ER_count = 6;
+
+    float ER_gains[ER_count] =
+    {
+        0.60f,  // tap 1
+        0.45f,  // tap 2
+        0.32f,  // tap 3
+        0.28f,  // tap 4
+        0.22f,  // tap 5
+        0.18f   // tap 6
+    };
+
+    // Times in milliseconds
+    float ER_tapTimesMsLeft[ER_count]  = { 5.2f,  12.8f,  21.5f,  32.2f,  45.0f,  60.0f };
+    float ER_tapTimesMsRight[ER_count] = { 7.9f,  17.3f,  25.8f,  37.1f,  48.6f,  64.0f };
+
+    // Converted to samples (computed in prepare)
+    float ER_tapSamplesLeft[ER_count];
+    float ER_tapSamplesRight[ER_count];
+
 
     int sampleRate = 44100;
 

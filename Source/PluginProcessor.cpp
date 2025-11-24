@@ -268,7 +268,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("Decay",
         "Decay Time (s)",
-        juce::NormalisableRange<float>(0.1f, 20.0f, 0.01f, 0.5f),
+        juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f),
         5.0f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("PreDelay", "Pre Delay (ms)",
@@ -278,7 +278,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("Damping", "Damping",
-        juce::NormalisableRange<float>(500.0f, 18000.0f, 1.f, 0.5f), 8000.0f));
+        juce::NormalisableRange<float>(500.0f, 10000.0f, 1.f, 0.5f), 8000.0f));
 
     // This cutoff maps to loopDamping TPT low-pass
 

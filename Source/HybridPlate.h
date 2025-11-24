@@ -22,6 +22,7 @@
 #include "LFO.h"
 #include "ProcessorBase.h"
 #include "Utilities.h"
+#include "PsychoDamping.h"
 
 class HybridPlate : public ReverbProcessorBase
 {
@@ -42,6 +43,10 @@ private:
     // Parameters
     //======================================================================
     ReverbProcessorParameters parameters;
+
+    // New psycho damping filters for each tank line
+     PsychoOnePole extraDampL[4];
+     PsychoOnePole extraDampR[4];
 
 
     //======================================================================
