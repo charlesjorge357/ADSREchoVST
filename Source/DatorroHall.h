@@ -34,6 +34,10 @@ private:
     //======================================================================
     juce::dsp::FirstOrderTPTFilter<float> loopDamping;
 
+    // Per-line damping filters (one for each tank line, L/R)
+    juce::dsp::FirstOrderTPTFilter<float> dampingFiltersL[4];
+    juce::dsp::FirstOrderTPTFilter<float> dampingFiltersR[4];
+
     //======================================================================
     //Pre-Delay
     //======================================================================

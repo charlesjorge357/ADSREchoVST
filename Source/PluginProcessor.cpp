@@ -154,9 +154,19 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     params.mix = apvts.getRawParameterValue("ReverbMix")->load();
     params.preDelay = apvts.getRawParameterValue("PreDelay")->load();
 
+
+    int algoChoice = apvts.getRawParameterValue("Algorithm")->load();
+
+
     // TOGGLE ALGORITHM HERE #1
-    hybridReverb.setParameters(params);
-    //datorroReverb.setParameters(params);
+    // Set parameters for the active algorithm
+    if (algoChoice == 0)
+        datorroReverb.setParameters(params);
+    else
+        hybridReverb.setParameters(params);
+
+    
+
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
@@ -172,8 +182,16 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     juce::dsp::AudioBlock<float> block(buffer);
 
     // TOGGLE ALGORITHM HERE #2
-    hybridReverb.processBlock(buffer, midiMessages);
-    //datorroReverb.processBlock(buffer, midiMessages);
+    if (algoChoice == 0)
+    {
+        // Dattorro Hall
+        datorroReverb.processBlock(buffer, midiMessages);
+    }
+    else
+    {
+        // Hybrid Plate
+        hybridReverb.processBlock(buffer, midiMessages);
+    }
 
     // this is for calling our other algo --v
     // hybridReverb.processBlock(buffer, midiMessages);
@@ -269,6 +287,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("ModDepth", "Mod Depth",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
+
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        "Algorithm",            // parameter ID
+        "Reverb Algorithm",     // visible name
+        juce::StringArray{ "Dattorro Hall", "Hybrid Plate" },
+        0                       // default index (0 = Hall)
+    ));
+
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix",
         juce::NormalisableRange<float>(0.f, 1.f, 0.01f), 0.5f)); 

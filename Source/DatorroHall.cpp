@@ -76,6 +76,18 @@ void DatorroHall::prepare(const juce::dsp::ProcessSpec& spec)
     prepDL(tankDelayR3);
     prepDL(tankDelayR4);
 
+    for (int i = 0; i < 4; ++i)
+    {
+        dampingFiltersL[i].prepare(spec);
+        dampingFiltersL[i].setType(juce::dsp::FirstOrderTPTFilterType::lowpass);
+        dampingFiltersL[i].reset();
+
+        dampingFiltersR[i].prepare(spec);
+        dampingFiltersR[i].setType(juce::dsp::FirstOrderTPTFilterType::lowpass);
+        dampingFiltersR[i].reset();
+    }
+
+
     //=====================================
     // Bright-hall base delay times (ms)
     // Valhalla-ish spacing
@@ -247,6 +259,13 @@ void DatorroHall::updateInternalParamsFromUserParams()
     parameters.mix = juce::jlimit(0.0f, 1.0f, parameters.mix);
 
     loopDamping.setCutoffFrequency(parameters.damping);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        dampingFiltersL[i].setCutoffFrequency(parameters.damping);
+        dampingFiltersR[i].setCutoffFrequency(parameters.damping);
+    }
+
 
     lfoParameters.frequency_Hz = parameters.modRate;
     lfoParameters.depth        = parameters.modDepth;
@@ -468,15 +487,27 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
             const float dL = sL + stereoCross * sR;
             const float dR = sR + stereoCross * sL;
 
-            feedbackL[i] = dL * feedbackGain;
-            feedbackR[i] = dR * feedbackGain;
+            // Apply loop damping (lowpass)
+            float dampedL = dampingFiltersL[i].processSample(0, dL);
+            float dampedR = dampingFiltersR[i].processSample(0, dR);
+
+
+
+            // Then apply feedback gain
+            feedbackL[i] = dampedL * feedbackGain;
+            feedbackR[i] = dampedR * feedbackGain;
+
         }
 
         //===========================
         // OUTPUT MIX (use scattered signal for richness)
         //===========================
-        float outL = 0.25f * (scatterL[0] + scatterL[1] + scatterL[2] + scatterL[3]);
-        float outR = 0.25f * (scatterR[0] + scatterR[1] + scatterR[2] + scatterR[3]);
+        float outL = 0.35f * (scatterL[0] + scatterL[2])
+           + 0.25f * (scatterL[1] + scatterL[3]);
+
+        float outR = 0.35f * (scatterL[0] + scatterL[2])
+           + 0.25f * (scatterL[1] + scatterL[3]);
+
 
         channelOutput[0] = outL;
         channelOutput[1] = outR;
