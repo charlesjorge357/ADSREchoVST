@@ -1,111 +1,188 @@
-// Datorro Hall
+// Datorro Hall - using custom delay lines and allpasses
 
 #pragma once
 
 #if __has_include("JuceHeader.h")
-#include "JuceHeader.h"  // for Projucer
+    #include "JuceHeader.h"  // for Projucer
 #else // for Cmake
-#include <juce_audio_basics/juce_audio_basics.h>
-#include <juce_audio_formats/juce_audio_formats.h>
-#include <juce_audio_plugin_client/juce_audio_plugin_client.h>
-#include <juce_audio_processors/juce_audio_processors.h>
-#include <juce_audio_utils/juce_audio_utils.h>
-#include <juce_core/juce_core.h>
-#include <juce_data_structures/juce_data_structures.h>
-#include <juce_dsp/juce_dsp.h>
-#include <juce_events/juce_events.h>
-#include <juce_graphics/juce_graphics.h>
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_gui_extra/juce_gui_extra.h>
+    #include <juce_audio_basics/juce_audio_basics.h>
+    #include <juce_audio_formats/juce_audio_formats.h>
+    #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
+    #include <juce_audio_processors/juce_audio_processors.h>
+    #include <juce_audio_utils/juce_audio_utils.h>
+    #include <juce_core/juce_core.h>
+    #include <juce_data_structures/juce_data_structures.h>
+    #include <juce_dsp/juce_dsp.h>
+    #include <juce_events/juce_events.h>
+    #include <juce_graphics/juce_graphics.h>
+    #include <juce_gui_basics/juce_gui_basics.h>
+    #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
-//#include "DelayLineWithSampleAccess.h"
 #include "CustomDelays.h"
 #include "LFO.h"
 #include "ProcessorBase.h"
 #include "Utilities.h"
+#include "PsychoDamping.h"
 
 class DatorroHall : public ReverbProcessorBase
 {
 public:
     DatorroHall();
-    
     ~DatorroHall() override;
-    
+
     void prepare(const juce::dsp::ProcessSpec& spec) override;
-    
-    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) override;
-    
+    void processBlock(juce::AudioBuffer<float>& buffer,
+                      juce::MidiBuffer& midiMessages) override;
     void reset() override;
-    
+
     ReverbProcessorParameters& getParameters() override;
-    
     void setParameters(const ReverbProcessorParameters& params) override;
-private:    
-    // parameter class
+
+private:
+    //======================================================================
+    // Parameters (user-facing wrapped in ReverbProcessorParameters)
+    //======================================================================
     ReverbProcessorParameters parameters;
-    
-    // filters
-    juce::dsp::DelayLine<float> inputBandwidth { 4 };
-    juce::dsp::DelayLine<float> feedbackDamping { 4 };
+
+    //======================================================================
+    // Tank damping (high-cut in the feedback loop)
+    //======================================================================
     juce::dsp::FirstOrderTPTFilter<float> loopDamping;
-    // L
-    juce::dsp::DelayLine<float> allpassChorusL { 1764 };
-    // R
-    juce::dsp::DelayLine<float> allpassChorusR { 1764 };
 
-    // delays
-    juce::dsp::DelayLine<float> inputZ { 4 };
-    // L
-    DelayLineWithSampleAccess<float> loopDelayL1 { 8 };
-    DelayLineWithSampleAccess<float> loopDelayL2 { 4410 };
-    DelayLineWithSampleAccess<float> loopDelayL3 { 4410 };
-    DelayLineWithSampleAccess<float> loopDelayL4 { 4410 };
-    // R
-    DelayLineWithSampleAccess<float> loopDelayR1 { 8 };
-    DelayLineWithSampleAccess<float> loopDelayR2 { 4410 };
-    DelayLineWithSampleAccess<float> loopDelayR3 { 4410 };
-    DelayLineWithSampleAccess<float> loopDelayR4 { 4410 };
+    // Per-line damping filters (one for each tank line, L/R)
+    juce::dsp::FirstOrderTPTFilter<float> dampingFiltersL[4];
+    juce::dsp::FirstOrderTPTFilter<float> dampingFiltersR[4];
 
-    // allpasses
+    //======================================================================
+    //Pre-Delay
+    //======================================================================
     
-    // L
-    juce::dsp::DelayLine<float> allpassL1 { 4410 };
-    juce::dsp::DelayLine<float> allpassL2 { 4410 };
-    juce::dsp::DelayLine<float> allpassL3Inner { 4410 };
-    juce::dsp::DelayLine<float> allpassL3Outer { 4410 };
-    juce::dsp::DelayLine<float> allpassL4Innermost { 4410 };
-    juce::dsp::DelayLine<float> allpassL4Inner { 4410 };
-    juce::dsp::DelayLine<float> allpassL4Outer { 4410 };
+    // Pre-delay (mono-in / stereo-out)
+    DelayLineWithSampleAccess<float> preDelayL { 44100 };
+    DelayLineWithSampleAccess<float> preDelayR { 44100 };
+    float preDelaySamples = 0.0f;   // smoothed
 
-    // R
-    juce::dsp::DelayLine<float> allpassR1 { 4410 };
-    juce::dsp::DelayLine<float> allpassR2 { 4410 };
-    juce::dsp::DelayLine<float> allpassR3Inner { 4410 };
-    juce::dsp::DelayLine<float> allpassR3Outer { 4410 };
-    juce::dsp::DelayLine<float> allpassR4Innermost { 4410 };
-    juce::dsp::DelayLine<float> allpassR4Inner { 4410 };
-    juce::dsp::DelayLine<float> allpassR4Outer { 4410 };
 
+    //======================================================================
+    // Tank delay lines - 4-line FDN per channel (bright hall style)
+    //
+    // Each DelayLineWithSampleAccess is effectively mono; we run separate
+    // instances for L/R so we can crossfeed between stereo channels AND
+    // between the 4 FDN lines.
+    //======================================================================
+    DelayLineWithSampleAccess<float> tankDelayL1 { 44100 };
+    DelayLineWithSampleAccess<float> tankDelayL2 { 44100 };
+    DelayLineWithSampleAccess<float> tankDelayL3 { 44100 };
+    DelayLineWithSampleAccess<float> tankDelayL4 { 44100 };
+
+    DelayLineWithSampleAccess<float> tankDelayR1 { 44100 };
+    DelayLineWithSampleAccess<float> tankDelayR2 { 44100 };
+    DelayLineWithSampleAccess<float> tankDelayR3 { 44100 };
+    DelayLineWithSampleAccess<float> tankDelayR4 { 44100 };
+
+
+    DelayLineWithSampleAccess<float> erL { 44100 };
+    DelayLineWithSampleAccess<float> erR { 44100 };
+
+    // Smoothed delay times per FDN line per channel (for modulation)
+    float currentDelayL_samps[4] { 0.0f, 0.0f, 0.0f, 0.0f };
+    float currentDelayR_samps[4] { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    // Base & max delays per line (in samples), set up in prepare()
+    float baseDelaySamplesL[4] { 0.0f, 0.0f, 0.0f, 0.0f };
+    float baseDelaySamplesR[4] { 0.0f, 0.0f, 0.0f, 0.0f };
+    float maxDelaySamplesL[4]  { 0.0f, 0.0f, 0.0f, 0.0f };
+    float maxDelaySamplesR[4]  { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    // Estimated loop time for RT60 mapping (seconds)
+    float estimatedLoopTimeSeconds = 0.2f; // default safety value
+
+    //======================================================================
+    // Early diffusion: 4 allpasses per channel (higher echo density)
+    //======================================================================
+    Allpass<float> earlyL1;
+    Allpass<float> earlyL2;
+    Allpass<float> earlyL3;
+    Allpass<float> earlyL4;
+
+    Allpass<float> earlyR1;
+    Allpass<float> earlyR2;
+    Allpass<float> earlyR3;
+    Allpass<float> earlyR4;
+
+    //======================================================================
+    // Late/tank diffusion: 4 allpasses per channel
+    // (can be placed inside tank lines or at tank outputs)
+    //======================================================================
+    Allpass<float> tankLAP1;
+    Allpass<float> tankLAP2;
+    Allpass<float> tankLAP3;
+    Allpass<float> tankLAP4;
+
+    Allpass<float> tankRAP1;
+    Allpass<float> tankRAP2;
+    Allpass<float> tankRAP3;
+    Allpass<float> tankRAP4;
+
+    // Psycho Filters
+    PsychoDamping::OnePole extraDampingL[4];
+    PsychoDamping::OnePole extraDampingR[4];
+
+
+    //======================================================================
+    // LFO for modulation of tank delay times (per-line modulation)
+    //======================================================================
     OscillatorParameters lfoParameters;
-    SignalGenData lfoOutput;
-    LFO lfo;
+    SignalGenData       lfoOutput;
+    LFO                 lfo;
 
-    float allpassOutputInnermost = 0;
-    float allpassOutputInner = 0;
-    float allpassOutputOuter = 0;
+    //======================================================================
+    // Per-channel I/O and feedback accumulation
+    //======================================================================
+    std::vector<float> channelInput    { 0.0f, 0.0f };
+    std::vector<float> channelOutput   { 0.0f, 0.0f };
 
-    float feedforwardInnermost = 0;
-    float feedforwardInner = 0;
-    float feedforwardOuter = 0;
+    // Feedback per FDN line per channel (4 lines x 2 channels)
+    float feedbackL[4] { 0.0f, 0.0f, 0.0f, 0.0f };
+    float feedbackR[4] { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    float feedbackInnermost = 0;
-    float feedbackInner = 0;
-    float feedbackOuter = 0;
+    // Early Reflections (simple 6-tap stereo cluster)
+    static constexpr int ER_count = 6;
 
-    std::vector<float> channelInput {0, 0};
-    std::vector<float> channelFeedback {0, 0};
-    std::vector<float> channelOutput {0, 0};
-    
+    float ER_gains[ER_count] =
+    {
+        0.60f,  // tap 1
+        0.45f,  // tap 2
+        0.32f,  // tap 3
+        0.28f,  // tap 4
+        0.22f,  // tap 5
+        0.18f   // tap 6
+    };
+
+    // Times in milliseconds
+    float ER_tapTimesMsLeft[ER_count]  = { 5.2f,  12.8f,  21.5f,  32.2f,  45.0f,  60.0f };
+    float ER_tapTimesMsRight[ER_count] = { 7.9f,  17.3f,  25.8f,  37.1f,  48.6f,  64.0f };
+
+    // Converted to samples (computed in prepare)
+    float ER_tapSamplesLeft[ER_count];
+    float ER_tapSamplesRight[ER_count];
+
+
     int sampleRate = 44100;
+
+    //======================================================================
+    // Helpers
+    //======================================================================
+    void prepareAllpass(Allpass<float>& ap,
+                        const juce::dsp::ProcessSpec& spec,
+                        float delayMs,
+                        float gain);
+
+    void updateInternalParamsFromUserParams();
+
+    // Apply a simple 4x4 Householder (or other) scattering matrix
+    // to the 4 tank lines for one channel. This is where we can emulate
+    // the bright, dense hall behavior similar to Valhalla Vintage Verb.
+    void applyFDNScattering(const float in[4], float (&out)[4]) const;
 };

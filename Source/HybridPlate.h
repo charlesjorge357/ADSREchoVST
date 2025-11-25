@@ -18,10 +18,11 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
-#include "CustomDelays.h"   // DelayLineWithSampleAccess
+#include "CustomDelays.h"   // DelayLineWithSampleAccess, Allpass
 #include "LFO.h"
 #include "ProcessorBase.h"
 #include "Utilities.h"
+#include "PsychoDamping.h"
 
 class HybridPlate : public ReverbProcessorBase
 {
@@ -30,50 +31,96 @@ public:
     ~HybridPlate() override;
 
     void prepare(const juce::dsp::ProcessSpec& spec) override;
-    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) override;
+    void processBlock(juce::AudioBuffer<float>& buffer,
+                      juce::MidiBuffer& midiMessages) override;
     void reset() override;
 
     ReverbProcessorParameters& getParameters() override;
     void setParameters(const ReverbProcessorParameters& params) override;
 
 private:
-    // parameter state
+    //======================================================================
+    // Parameters
+    //======================================================================
     ReverbProcessorParameters parameters;
 
-    // --- short serial diffusers (allpass-ish behaviour). Use small JUCE delays.
-    std::vector<juce::dsp::DelayLine<float>> diffusers;
-    std::vector<float> diffuserDelayTimes { 60.0f, 75.0f, 90.0f, 110.0f }; // samples (base)
+    // New psycho damping filters for each tank line
+     PsychoOnePole extraDampL[4];
+     PsychoOnePole extraDampR[4];
 
-    // --- FDN (4x4) body using your DelayLineWithSampleAccess so it matches Datorro usage
-    std::array<DelayLineWithSampleAccess<float>, 4> fdnLines {
+
+    //======================================================================
+    // Pre-delay (stereo, using your custom delay line)
+    //======================================================================
+    DelayLineWithSampleAccess<float> preDelayL { 48000 };  // ~1s @ 48k
+    DelayLineWithSampleAccess<float> preDelayR { 48000 };
+    float preDelaySamples = 0.0f;                          // in samples
+
+    //======================================================================
+    // Early diffusion: 4 allpasses per channel
+    //======================================================================
+    Allpass<float> earlyL[4];
+    Allpass<float> earlyR[4];
+
+    //======================================================================
+    // FDN core: 4 delay lines (mono FDN, stereo decode)
+    //======================================================================
+    static constexpr int fdnCount = 4;
+    juce::dsp::IIR::Filter<float> highShelfFilters[fdnCount];
+
+    DelayLineWithSampleAccess<float> fdnLines[fdnCount] = {
         DelayLineWithSampleAccess<float>(44100),
         DelayLineWithSampleAccess<float>(44100),
         DelayLineWithSampleAccess<float>(44100),
         DelayLineWithSampleAccess<float>(44100)
     };
-    std::vector<float> fdnDelayTimes { 300.0f, 370.0f, 420.0f, 510.0f }; // base samples
 
-    // damping filters per FDN line (first order TPT)
-    std::array<juce::dsp::FirstOrderTPTFilter<float>, 4> dampingFilters;
+    float baseDelaySamples[fdnCount]    { 0.f, 0.f, 0.f, 0.f };
+    float maxDelaySamples[fdnCount]     { 0.f, 0.f, 0.f, 0.f };
+    float currentDelaySamples[fdnCount] { 0.f, 0.f, 0.f, 0.f };
 
-    // LFO (reuse the same LFO style as your project)
-    LFO lfo;
+    juce::dsp::FirstOrderTPTFilter<float> dampingFilters[fdnCount];
+
+    float estimatedLoopTimeSeconds = 0.2f;
+
+    //======================================================================
+    // LFO for FDN modulation
+    //======================================================================
     OscillatorParameters lfoParameters;
-    SignalGenData lfoOutput;
+    SignalGenData       lfoOutput;
+    LFO                 lfo;
 
-    // System constants
-    static constexpr int fdnCount = 4;
-    static constexpr int diffuserCount = 4;
+    //======================================================================
+    // Internal buffers / state
+    //======================================================================
+    std::vector<float> channelInput  { 0.0f, 0.0f };
+    std::vector<float> channelOutput { 0.0f, 0.0f };
 
-    // Hadamard-ish feedback matrix for cross-feedback
+    int sampleRate = 44100;
+
+    //======================================================================
+    // Feedback matrix (Hadamard-ish) for plate FDN
+    //======================================================================
     static constexpr float feedbackMatrix[fdnCount][fdnCount] = {
-        {  0.5f,  0.5f,  0.5f,  0.5f },
-        {  0.5f, -0.5f,  0.5f, -0.5f },
-        {  0.5f,  0.5f, -0.5f, -0.5f },
-        {  0.5f, -0.5f, -0.5f,  0.5f }
+    {  0.5f,  0.5f,  0.5f,  0.5f },
+    {  0.5f, -0.5f,  0.5f, -0.5f },
+    {  0.5f,  0.5f, -0.5f, -0.5f },
+    {  0.5f, -0.5f, -0.5f,  0.5f }
     };
 
-    // runtime state
-    float stereoWidth = 23.0f;
-    double sampleRate = 44100.0;
+    // For an orthonormal matrix, you generally want this = 1.0f
+    static constexpr float feedbackMatrixScale = 1.0f; 
+
+    //======================================================================
+    // Helpers
+    //======================================================================
+    void prepareAllpass(Allpass<float>& ap,
+                        const juce::dsp::ProcessSpec& spec,
+                        float delayMs,
+                        float gain);
+
+    void updateInternalParamsFromUserParams();
+
+    void applyFDNFeedbackMatrix(const float in[fdnCount],
+                                float (&out)[fdnCount]) const;
 };

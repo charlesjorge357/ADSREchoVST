@@ -79,9 +79,9 @@ public:
 
 private:
     DatorroHall datorroReverb;
+    HybridPlate hybridReverb;
     std::unique_ptr<RoutingMatrix> routingMatrix;
 
-    HybridPlate hybridReverb;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };

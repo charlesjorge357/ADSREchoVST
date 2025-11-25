@@ -147,6 +147,28 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    // ===== Read user parameters into reverb =====
+    ReverbProcessorParameters params;
+    params.roomSize = apvts.getRawParameterValue("RoomSize")->load();
+    params.decayTime = apvts.getRawParameterValue("Decay")->load();
+    params.damping = apvts.getRawParameterValue("Damping")->load();
+    params.modRate = apvts.getRawParameterValue("ModRate")->load();
+    params.modDepth = apvts.getRawParameterValue("ModDepth")->load();
+    params.mix = apvts.getRawParameterValue("ReverbMix")->load();
+    params.preDelay = apvts.getRawParameterValue("PreDelay")->load();
+
+
+    int algoChoice = apvts.getRawParameterValue("Algorithm")->load();
+
+
+    // TOGGLE ALGORITHM HERE #1
+    // Set parameters for the active algorithm
+    if (algoChoice == 0)
+        datorroReverb.setParameters(params);
+    else
+        hybridReverb.setParameters(params);
+
+
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
@@ -203,8 +225,8 @@ bool ADSREchoAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
 {
-    return new ADSREchoAudioProcessorEditor (*this);
-    //return new juce::GenericAudioProcessorEditor(*this);
+    //return new ADSREchoAudioProcessorEditor (*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -237,6 +259,42 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix",
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("RoomSize", "Room Size",
+        juce::NormalisableRange<float>(0.25f, 1.75f, 0.01f), 1.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Decay",
+        "Decay Time (s)",
+        juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f),
+        5.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("PreDelay", "Pre Delay (ms)",
+        juce::NormalisableRange<float>(0.0f, 200.0f, 0.1f), 0.0f));
+
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Damping", "Damping",
+        juce::NormalisableRange<float>(500.0f, 10000.0f, 1.f, 0.5f), 8000.0f));
+
+    // This cutoff maps to loopDamping TPT low-pass
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("ModRate", "Mod Rate",
+        juce::NormalisableRange<float>(0.05f, 5.0f, 0.001f), 0.30f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("ModDepth", "Mod Depth",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
+
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        "Algorithm",            // parameter ID
+        "Reverb Algorithm",     // visible name
+        juce::StringArray{ "Dattorro Hall", "Hybrid Plate" },
+        0                       // default index (0 = Hall)
+    ));
+
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix",
+        juce::NormalisableRange<float>(0.f, 1.f, 0.01f), 0.5f));
+
+
 
     // Convolution Controls
     layout.add(std::make_unique<juce::AudioParameterBool>("convEnabled", "Convolution Reverb Enabled", true));
@@ -278,10 +336,19 @@ void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer, 
         case RoutingMatrix::EffectSlot::AlgorithmicReverb:
         {
             juce::dsp::AudioBlock<float> block(buffer);
-            datorroReverb.processBlock(buffer, midiMessages);
 
-            // this is for calling our other algo --v
-            //hybridReverb.processBlock(buffer, midiMessages);
+            int algoChoice = apvts.getRawParameterValue("Algorithm")->load();
+
+            if (algoChoice == 0)
+            {
+                // Dattorro Hall
+                datorroReverb.processBlock(buffer, midiMessages);
+            }
+            else
+            {
+                // Hybrid Plate
+                hybridReverb.processBlock(buffer, midiMessages);
+            }
         }
         break;
 

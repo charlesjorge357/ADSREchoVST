@@ -48,6 +48,7 @@ struct ReverbProcessorParameters
             roomSize = params.roomSize;
             mix = params.mix;
             inputBandwidth = params.inputBandwidth;
+            preDelay = params.preDelay;
         }
         return *this;
     }
@@ -61,7 +62,8 @@ struct ReverbProcessorParameters
             params.modRate == modRate &&
             params.roomSize == roomSize &&
             params.mix == mix &&
-            params.inputBandwidth == inputBandwidth)
+            params.inputBandwidth == inputBandwidth &&
+            params.preDelay == preDelay)
             return true;
         
         return false;
@@ -75,6 +77,7 @@ struct ReverbProcessorParameters
     float roomSize = 1.0f;
     float mix = 0.5f;
     float inputBandwidth = 1.0f;
+    float preDelay       = 0.0f;   // 0–200 ms typical
 };
 
 //template <typename SampleType>
