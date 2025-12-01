@@ -77,3 +77,48 @@ private:
     float g  = 0.99f;
     float z  = 0.0f;
 };
+
+//==============================================================================
+// Simple custom one-pole high-pass filter (no JUCE dependencies)
+//==============================================================================
+
+class PsychoHighPass
+{
+public:
+    PsychoHighPass() = default;
+
+    void prepare(float sampleRate, float cutoffHz)
+    {
+        sr = sampleRate;
+
+        // One-pole HPF coefficient
+        const float pi = 3.14159265359f;
+        a = std::exp(-2.0f * pi * cutoffHz / sr);
+
+        x1 = 0.0f;
+        y1 = 0.0f;
+    }
+
+    inline float process(float x)
+    {
+        // Standard one-pole HPF:
+        // y[n] = x[n] - x[n-1] + a * y[n-1]
+        float y = (x - x1) + a * y1;
+        x1 = x;
+        y1 = y;
+        return y;
+    }
+
+    void reset()
+    {
+        x1 = 0.0f;
+        y1 = 0.0f;
+    }
+
+private:
+    float sr = 44100.0f;
+    float a  = 0.99f;   // pole coefficient
+    float x1 = 0.0f;    // previous input
+    float y1 = 0.0f;    // previous output
+};
+

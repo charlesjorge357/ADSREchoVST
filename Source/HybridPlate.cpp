@@ -97,7 +97,7 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
                 sampleRate,
                 3000.0f,   // frequency where ringing builds
                 0.707f,     // Q
-                0.5f        // gain factor < 1.0 removes ringing
+                0.7f        // gain factor < 1.0 removes ringing
             );
 
         highShelfFilters[i].prepare(spec);
@@ -106,6 +106,11 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
         
         highShelfFilters[i].reset();
     }
+
+    // High pass for no womp
+    for (int i = 0; i < fdnCount; ++i)
+        hpFDN[i].prepare(sampleRate, 90.0f);  // try 60–140 Hz
+
 
 
     // -------------------------
@@ -182,7 +187,7 @@ void HybridPlate::updateInternalParamsFromUserParams()
 
     // Damping filter cutoff
     for (int i = 0; i < fdnCount; ++i)
-        dampingFilters[i].setCutoffFrequency(parameters.damping);
+        dampingFilters[i].setCutoffFrequency(parameters.damping * 2.0f);
     for (int i = 0; i < fdnCount; ++i)
         extraDampL[i].setDamping(parameters.damping);
 
@@ -233,9 +238,9 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
     const float effectiveLoopTime = estimatedLoopTimeSeconds * roomSize;
     const float fbRaw             = std::exp(-3.0f * effectiveLoopTime / decaySec);
 
-    constexpr float feedbackSafety = 0.95f;  // global safety margin
+    constexpr float feedbackSafety = 0.99f;  // global safety margin
     float feedbackGain = fbRaw * feedbackSafety;
-    feedbackGain = juce::jlimit(0.0f, 0.90f, feedbackGain);
+    feedbackGain = juce::jlimit(0.0f, 0.985f, feedbackGain);
 
     const float slew = 0.001f; // modulation slew
 
@@ -331,7 +336,9 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
             // first-order lowpass damping
             float damped = dampingFilters[i].processSample(0, newSample);
 
-            float psycho = extraDampL[i].process(damped);
+            float hp = hpFDN[i].process(damped);
+
+            float psycho = extraDampL[i].process(hp);
 
             // high-shelf to tame metallic ringing
             float softened = highShelfFilters[i].processSample(psycho);

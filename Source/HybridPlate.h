@@ -81,6 +81,10 @@ private:
 
     juce::dsp::FirstOrderTPTFilter<float> dampingFilters[fdnCount];
 
+    // Low end buildup curber
+    PsychoHighPass hpFDN[4];
+
+
     float estimatedLoopTimeSeconds = 0.2f;
 
     //======================================================================
