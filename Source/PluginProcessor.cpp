@@ -108,6 +108,9 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     datorroReverb.prepare(spec);
     hybridReverb.prepare(spec);
     basicDelay.prepare(spec);
+
+    // Pre-allocate dry buffer to avoid allocation in processBlock
+    masterDryBuffer.setSize(spec.numChannels, samplesPerBlock);
 }
 
 void ADSREchoAudioProcessor::releaseResources()
@@ -173,9 +176,10 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // Store ORIGINAL dry signal for master mix
-    juce::AudioBuffer<float> masterDryBuffer;
-    masterDryBuffer.makeCopyOf(buffer);
+    // Copy dry signal into pre-allocated buffer (no allocation)
+    const int numSamples = buffer.getNumSamples();
+    for (int ch = 0; ch < totalNumInputChannels; ++ch)
+        masterDryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
     
     // ============ PER-EFFECT PROCESSING ============
     // Each effect handles its own internal dry/wet
@@ -205,20 +209,17 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     // ConvolutionEffect.process(block);
     
     // ============ MASTER DRY/WET MIX ============
-    // Get MASTER mix parameter (0 = original dry, 1 = all processed effects)
-    float masterMixValue = apvts.getRawParameterValue("MasterMix")->load();
-    
+    const float masterWet = apvts.getRawParameterValue("MasterMix")->load();
+    const float masterDry = 1.0f - masterWet;
+
     // Blend original dry with all processed effects
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* processedData = buffer.getWritePointer(channel);
-        auto* originalDryData = masterDryBuffer.getReadPointer(channel);
-        
-        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
-        {
-            processedData[sample] = originalDryData[sample] * (1.0f - masterMixValue) 
-                                   + processedData[sample] * masterMixValue;
-        }
+        const auto* originalDryData = masterDryBuffer.getReadPointer(channel);
+
+        for (int i = 0; i < numSamples; ++i)
+            processedData[i] = originalDryData[i] * masterDry + processedData[i] * masterWet;
     }
     
     // Apply master output gain

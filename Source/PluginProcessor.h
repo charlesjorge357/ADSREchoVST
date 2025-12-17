@@ -84,6 +84,9 @@ private:
     BasicDelay basicDelay;
     std::unique_ptr<RoutingMatrix> routingMatrix;
 
+    // Pre-allocated buffer for dry signal (avoids allocation in processBlock)
+    juce::AudioBuffer<float> masterDryBuffer;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };
