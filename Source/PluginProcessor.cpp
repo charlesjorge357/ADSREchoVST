@@ -107,6 +107,7 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
 
     datorroReverb.prepare(spec);
     hybridReverb.prepare(spec);
+    basicDelay.prepare(spec);
 }
 
 void ADSREchoAudioProcessor::releaseResources()
@@ -178,8 +179,16 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     
     // ============ PER-EFFECT PROCESSING ============
     // Each effect handles its own internal dry/wet
-    
-    // Effect 1: Reverb (has its own dry/wet via parameters.mix)
+
+    // Update delay parameters
+    basicDelay.setDelayTime(apvts.getRawParameterValue("DelayTime")->load());
+    basicDelay.setFeedback(apvts.getRawParameterValue("DelayFeedback")->load());
+    basicDelay.setMix(apvts.getRawParameterValue("DelayMix")->load());
+
+    // Enable/disable effects in routing
+    bool delayEnabled = apvts.getRawParameterValue("delayEnabled")->load();
+    routingMatrix->setEffectEnabled(RoutingMatrix::EffectSlot::Delay, delayEnabled);
+
     bool algoEnabled = apvts.getRawParameterValue("algoEnabled")->load();
     routingMatrix->setEffectEnabled(RoutingMatrix::EffectSlot::AlgorithmicReverb, algoEnabled);
     routeSignalChain(buffer, midiMessages);
@@ -302,7 +311,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     layout.add(std::make_unique<juce::AudioParameterFloat>("ConvMix", "Convolution Mix",
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
 
-    // Future: Delay, Convolution, etc. each get their own mix
+    // Delay Controls
+    layout.add(std::make_unique<juce::AudioParameterBool>("delayEnabled", "Delay Enabled", true));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayTime", "Delay Time (ms)",
+        juce::NormalisableRange<float>(1.0f, 2000.0f, 0.1f, 0.4f), 250.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayFeedback", "Delay Feedback",
+        juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 0.3f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayMix", "Delay Mix",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
     return layout;
 }
@@ -330,7 +349,7 @@ void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer, 
             break;
 
         case RoutingMatrix::EffectSlot::Delay:
-            // delayProcessor->process(buffer);
+            basicDelay.processBlock(buffer);
             break;
 
         case RoutingMatrix::EffectSlot::AlgorithmicReverb:

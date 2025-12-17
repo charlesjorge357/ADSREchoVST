@@ -27,6 +27,7 @@
 #include "DatorroHall.h"
 #include "HybridPlate.h"
 #include "RoutingMatrix.h"
+#include "BasicDelay.h"
 
 //==============================================================================
 /**
@@ -80,6 +81,7 @@ public:
 private:
     DatorroHall datorroReverb;
     HybridPlate hybridReverb;
+    BasicDelay basicDelay;
     std::unique_ptr<RoutingMatrix> routingMatrix;
 
     //==============================================================================
