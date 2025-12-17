@@ -300,12 +300,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
         0                       // default index (0 = Hall)
     ));
 
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix",
-        juce::NormalisableRange<float>(0.f, 1.f, 0.01f), 0.5f));
-
-
-
     // Convolution Controls
     layout.add(std::make_unique<juce::AudioParameterBool>("convEnabled", "Convolution Reverb Enabled", true));
 
