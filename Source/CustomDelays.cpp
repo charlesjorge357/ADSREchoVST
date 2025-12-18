@@ -24,27 +24,25 @@ DelayLineWithSampleAccess<SampleType>::~DelayLineWithSampleAccess() {}
 template <typename SampleType>
 void DelayLineWithSampleAccess<SampleType>::pushSample(int channel, SampleType newValue)
 {
-    delayBuffer.setSample(channel, writePosition[(size_t) channel], newValue);
-    writePosition[(size_t) channel] = (writePosition[(size_t) channel] + 1) % numSamples;
+    const size_t ch = static_cast<size_t>(channel);
+    delayBuffer.setSample(channel, writePosition[ch], newValue);
+    writePosition[ch] = (writePosition[ch] + 1) % numSamples;
 }
 
 template <typename SampleType>
 SampleType DelayLineWithSampleAccess<SampleType>::popSample(int channel)
 {
-    readPosition[(size_t) channel] = juce::jlimit(
-        0, numSamples - 1,
-        (writePosition[(size_t) channel] - delayInSamples + numSamples) % numSamples
-    );
-
-    return delayBuffer.getSample(channel, readPosition[(size_t) channel]);
+    const size_t ch = static_cast<size_t>(channel);
+    const int readPos = (writePosition[ch] - delayInSamples + numSamples) % numSamples;
+    readPosition[ch] = readPos;
+    return delayBuffer.getSample(channel, readPos);
 }
 
 template <typename SampleType>
 SampleType DelayLineWithSampleAccess<SampleType>::getSampleAtDelay(int channel, int delay) const
 {
-    return delayBuffer.getSample(channel,
-        (writePosition[(size_t) channel] - delay + numSamples) % numSamples
-    );
+    const int idx = (writePosition[static_cast<size_t>(channel)] - delay + numSamples) % numSamples;
+    return delayBuffer.getSample(channel, idx);
 }
 
 template <typename SampleType>
