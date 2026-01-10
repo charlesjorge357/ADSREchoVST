@@ -13,6 +13,13 @@
 ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
+    startTimerHz(30);
+    
+    addAndMakeVisible(moduleViewport);
+    moduleViewport.setViewedComponent(&moduleContainer, false);
+    moduleViewport.setScrollBarsShown(true, false);
+
+    /*
     // MASTER MIX
     addAndMakeVisible(masterMixSlider);
     masterMixSlider.setSliderStyle(juce::Slider::Rotary);
@@ -61,8 +68,17 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     // Initialize visibility based on parameter state
     algoWetDrySlider.setVisible(audioProcessor.apvts.getRawParameterValue("algoEnabled")->load() > 0.5f);
     convWetDrySlider.setVisible(audioProcessor.apvts.getRawParameterValue("convEnabled")->load() > 0.5f);
+    */
 
-    setSize(800, 400);
+    addAndMakeVisible(addButton);
+
+    addButton.onClick = [this]
+    {
+        //processor.requestAddModule(ModuleType::Dattorro);
+            testNumModules++;
+    };
+
+    setSize(600, 400);
 }
 
 ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
@@ -82,16 +98,82 @@ void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 
 void ADSREchoAudioProcessorEditor::resized()
 {
+    //auto area = getLocalBounds().reduced(10);
+
+    //auto top = area.removeFromTop(80);
+    //masterMixSlider.setBounds(top.removeFromLeft(120));
+    //gainSlider.setBounds(top.removeFromLeft(120));
+
+    //auto bottom = area.removeFromTop(100);
+    //algoToggle.setBounds(bottom.removeFromLeft(120));
+    //algoWetDrySlider.setBounds(bottom.removeFromLeft(120));
+
+    //convToggle.setBounds(bottom.removeFromLeft(120));
+    //convWetDrySlider.setBounds(bottom.removeFromLeft(120));
+
     auto area = getLocalBounds().reduced(10);
 
-    auto top = area.removeFromTop(80);
-    masterMixSlider.setBounds(top.removeFromLeft(120));
-    gainSlider.setBounds(top.removeFromLeft(120));
+    addButton.setBounds(area.removeFromTop(30));
 
-    auto bottom = area.removeFromTop(100);
-    algoToggle.setBounds(bottom.removeFromLeft(120));
-    algoWetDrySlider.setBounds(bottom.removeFromLeft(120));
+    moduleViewport.setBounds(area);
 
-    convToggle.setBounds(bottom.removeFromLeft(120));
-    convWetDrySlider.setBounds(bottom.removeFromLeft(120));
+    constexpr int slotHeight = 120;
+    int y = 0;
+
+    for (auto* editor : moduleEditors)
+    {
+        editor->setBounds(0, y, moduleViewport.getWidth(), slotHeight);
+        y += slotHeight + 6;
+    }
+
+    moduleContainer.setSize(moduleViewport.getWidth(), y);
+}
+
+void ADSREchoAudioProcessorEditor::timerCallback()
+{
+    //if (moduleEditors.size() != processor.getNumModules())
+    //    rebuildModuleEditors();
+    if (moduleEditors.size() != testNumModules)
+        rebuildModuleEditors();
+}
+
+void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
+{
+    //moduleEditors.clear();
+
+    //for (int i = 0; i < audioProcessor.getNumSlots(); ++i)
+    //{
+    //    auto info = audioProcessor.getSlotInfo(i);
+
+    //    auto* editor = new ModuleSlotEditor(
+    //        i,
+    //        info,
+    //        audioProcessor,
+    //        audioProcessor.apvts
+    //    );
+
+    //    moduleEditors.add(editor);
+    //    addAndMakeVisible(editor);
+    //}
+
+    //resized();
+
+    moduleEditors.clear();
+
+    for (int i = 0; i < testNumModules; ++i)
+    {
+        ADSREchoAudioProcessor::SlotInfo info = { "testSlotID", "testSlottype" };
+
+        auto* editor = new ModuleSlotEditor(
+            i,
+            info,
+            audioProcessor,
+            audioProcessor.apvts
+        );
+
+        moduleEditors.add(editor);
+        moduleContainer.addAndMakeVisible(editor);
+    }
+
+    resized();
 }

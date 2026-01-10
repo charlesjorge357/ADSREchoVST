@@ -4,6 +4,12 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
     <GROUP id="{618D5F69-5971-EB1B-AEB0-4D399985702C}" name="Source">
+      <GROUP id="{9D5CDAC7-64FA-EAD2-C694-A4240E21939C}" name="ModularClasses">
+        <FILE id="HcV9cp" name="ModuleSlotEditor.cpp" compile="1" resource="0"
+              file="Source/ModuleSlotEditor.cpp"/>
+        <FILE id="duX9UV" name="ModuleSlotEditor.h" compile="0" resource="0"
+              file="Source/ModuleSlotEditor.h"/>
+      </GROUP>
       <FILE id="xECwoY" name="BasicDelay.cpp" compile="1" resource="0" file="Source/BasicDelay.cpp"/>
       <FILE id="dlgVHy" name="BasicDelay.h" compile="0" resource="0" file="Source/BasicDelay.h"/>
       <FILE id="wk3eO3" name="PsychoDamping.cpp" compile="1" resource="0"

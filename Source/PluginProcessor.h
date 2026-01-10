@@ -32,6 +32,8 @@
 //==============================================================================
 /**
 */
+
+
 class ADSREchoAudioProcessor  : public juce::AudioProcessor
 {
 public:
@@ -77,6 +79,15 @@ public:
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
     void routeSignalChain(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages);
+
+    struct SlotInfo
+    {
+        juce::String slotID;
+        juce::String moduleType;
+    };
+
+    int getNumSlots() const;
+    SlotInfo getSlotInfo(int index) const;
 
 private:
     DatorroHall datorroReverb;

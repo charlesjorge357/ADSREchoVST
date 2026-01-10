@@ -26,11 +26,14 @@
 #endif
 
 #include "PluginProcessor.h"
+#include "ModuleSlotEditor.h"
 
 //==============================================================================
 /**
 */
-class ADSREchoAudioProcessorEditor  : public juce::AudioProcessorEditor
+
+
+class ADSREchoAudioProcessorEditor  : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
     ADSREchoAudioProcessorEditor (ADSREchoAudioProcessor&);
@@ -45,7 +48,13 @@ private:
     // access the processor object that created it.
     ADSREchoAudioProcessor& audioProcessor;
 
+    juce::Viewport moduleViewport;
+    juce::Component moduleContainer;
 
+    juce::TextButton addButton{ "+" };
+    juce::OwnedArray<ModuleSlotEditor> moduleEditors;
+
+    /*
     // Sliders
     juce::Slider masterMixSlider, gainSlider, algoWetDrySlider, convWetDrySlider;
 
@@ -59,7 +68,12 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> algoWetDryAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> convWetDryAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> algoToggleAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> convToggleAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> convToggleAttachment;*/
+
+    void rebuildModuleEditors();
+    void timerCallback() override;
+
+    int testNumModules = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessorEditor)
 };

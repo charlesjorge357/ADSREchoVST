@@ -235,8 +235,8 @@ bool ADSREchoAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
 {
-    //return new ADSREchoAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new ADSREchoAudioProcessorEditor (*this);
+    //return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
