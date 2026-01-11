@@ -1,14 +1,14 @@
 /*
   ==============================================================================
 
-    ModuleSlotEditor.h
-    UI Component Class for Effect Module Slots
+    EffectModule.h
+    Superclass for the module of each effect type.
 
   ==============================================================================
 */
 
 #pragma once
-
+#pragma once
 #if __has_include("JuceHeader.h")
   #include "JuceHeader.h"  // for Projucer
 #else // for Cmake
@@ -26,27 +26,17 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
-#include "PluginProcessor.h"
 
-class ModuleSlotEditor : public juce::Component
+class EffectModule
 {
 public:
-    ModuleSlotEditor(int index,
-        const SlotInfo& info,
-        ADSREchoAudioProcessor& processor,
-        juce::AudioProcessorValueTreeState& apvts);
+    virtual ~EffectModule() = default;
 
-    void resized() override;
+    virtual void prepare(const juce::dsp::ProcessSpec&) = 0;
+    virtual void process(juce::AudioBuffer<float>&, juce::MidiBuffer&) = 0;
 
-private:
-    int slotIndex;
-    juce::String slotID;
+    virtual juce::String getType() const = 0;
+    virtual juce::String getID() const = 0;
 
-    ADSREchoAudioProcessor& processor;
-
-    juce::Label title;
-    juce::Slider mixSlider;
-    juce::TextButton removeButton{ "" };
-
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
+    virtual std::vector<juce::String> getUsedParameters() const = 0;
 };

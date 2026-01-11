@@ -28,6 +28,8 @@
 #include "HybridPlate.h"
 #include "RoutingMatrix.h"
 #include "BasicDelay.h"
+#include "ModuleSlot.h"
+#include "DelayModule.h"
 
 //==============================================================================
 /**
@@ -80,16 +82,18 @@ public:
 
     void routeSignalChain(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages);
 
-    struct SlotInfo
-    {
-        juce::String slotID;
-        juce::String moduleType;
-    };
+    std::vector<std::unique_ptr<ModuleSlot>> slots;
 
     int getNumSlots() const;
-    SlotInfo getSlotInfo(int index) const;
+    SlotInfo getSlotInfo(int index);
+    bool slotIsEmpty(int index);
+
+    void requestAddModule(ModuleType type);
+    void requestRemoveModule(int slotIndex);
 
 private:
+    juce::dsp::ProcessSpec spec;
+    
     DatorroHall datorroReverb;
     HybridPlate hybridReverb;
     BasicDelay basicDelay;
@@ -97,6 +101,23 @@ private:
 
     // Pre-allocated buffer for dry signal (avoids allocation in processBlock)
     juce::AudioBuffer<float> masterDryBuffer;
+
+    struct PendingChange
+    {
+        enum Type { Add, Remove } type;
+        ModuleType moduleType;
+        int slotIndex = -1;
+    };
+
+    std::atomic<bool> hasPendingChange{ false };
+    PendingChange pendingChange;
+
+    static constexpr int MAX_SLOTS = 8;
+
+    void applyPendingChange();
+    void addModule(ModuleType moduleType);
+
+    int numModules = 0;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)

@@ -1,14 +1,13 @@
 /*
   ==============================================================================
 
-    ModuleSlotEditor.h
-    UI Component Class for Effect Module Slots
+    ModuleSlot.h
+    Stores EffectModule along with params.
 
   ==============================================================================
 */
 
 #pragma once
-
 #if __has_include("JuceHeader.h")
   #include "JuceHeader.h"  // for Projucer
 #else // for Cmake
@@ -26,27 +25,40 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
-#include "PluginProcessor.h"
+#include "EffectModule.h"
 
-class ModuleSlotEditor : public juce::Component
+class ModuleSlot
 {
 public:
-    ModuleSlotEditor(int index,
-        const SlotInfo& info,
-        ADSREchoAudioProcessor& processor,
-        juce::AudioProcessorValueTreeState& apvts);
+    explicit ModuleSlot(const juce::String& id)
+        : slotID(id)
+    {
+    }
+    
+    void prepare(const juce::dsp::ProcessSpec& spec)
+    {
+        if (module)
+            module->prepare(spec);
+    }
 
-    void resized() override;
+    void process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+    {
+        if (module && !bypassed)
+            module->process(buffer, midi);
+    }
+
+    void setModule(std::unique_ptr<EffectModule> newModule,
+        const juce::dsp::ProcessSpec& spec)
+    {
+        module = std::move(newModule);
+        module->prepare(spec);
+    }
+
+    EffectModule* get() { return module.get(); }
+
+    juce::String slotID;
+    bool bypassed = false;
 
 private:
-    int slotIndex;
-    juce::String slotID;
-
-    ADSREchoAudioProcessor& processor;
-
-    juce::Label title;
-    juce::Slider mixSlider;
-    juce::TextButton removeButton{ "" };
-
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
+    std::unique_ptr<EffectModule> module;
 };

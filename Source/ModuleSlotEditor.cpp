@@ -11,7 +11,7 @@
 
 ModuleSlotEditor::ModuleSlotEditor(
     int index,
-    const ADSREchoAudioProcessor::SlotInfo& info,
+    const SlotInfo& info,
     ADSREchoAudioProcessor& p,
     juce::AudioProcessorValueTreeState& apvts)
     : slotIndex(index),
@@ -26,13 +26,13 @@ ModuleSlotEditor::ModuleSlotEditor(
         juce::Slider::TextBoxBelow, false, 50, 18);
     addAndMakeVisible(mixSlider);
 
-    //mixAttachment =
-    //    std::make_unique<
-    //    juce::AudioProcessorValueTreeState::SliderAttachment>(
-    //        apvts,
-    //        slotID + ".mix",
-    //        mixSlider
-    //    );
+    mixAttachment =
+        std::make_unique<
+        juce::AudioProcessorValueTreeState::SliderAttachment>(
+            apvts,
+            slotID + ".mix",
+            mixSlider
+        );
 
     addAndMakeVisible(removeButton);
     removeButton.onClick = [this]

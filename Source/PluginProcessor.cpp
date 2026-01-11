@@ -25,6 +25,12 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
 #endif
 {
     routingMatrix = std::make_unique<RoutingMatrix>();
+
+    for (int i = 0; i < MAX_SLOTS; i++) {
+        juce::String prefix = "slot_" + juce::String(i);
+
+        slots.push_back(std::make_unique<ModuleSlot>(prefix));
+    }
 }
 
 ADSREchoAudioProcessor::~ADSREchoAudioProcessor()
@@ -98,7 +104,6 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
-    juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = getTotalNumOutputChannels();
@@ -111,6 +116,10 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
 
     // Pre-allocate dry buffer to avoid allocation in processBlock
     masterDryBuffer.setSize(spec.numChannels, samplesPerBlock);
+
+
+
+
 }
 
 void ADSREchoAudioProcessor::releaseResources()
@@ -151,6 +160,13 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    if (hasPendingChange.exchange(false))
+        applyPendingChange();
+
+    for (auto& slot : slots)
+        slot->process(buffer, midiMessages);
+
+    /*
     // ===== Read user parameters into reverb =====
     ReverbProcessorParameters params;
     params.roomSize = apvts.getRawParameterValue("RoomSize")->load();
@@ -225,6 +241,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     // Apply master output gain
     float gainValue = juce::Decibels::decibelsToGain(apvts.getRawParameterValue("Gain")->load());
     buffer.applyGain(gainValue);
+    */
 }
 
 //==============================================================================
@@ -253,6 +270,23 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
     // whose contents will have been created by the getStateInformation() call.
 }
 
+int ADSREchoAudioProcessor::getNumSlots() const
+{
+    return numModules;
+}
+
+SlotInfo ADSREchoAudioProcessor::getSlotInfo(int index) 
+{
+    auto& slot = slots[index];
+    if (!slot) { return {"null", "null"}; }
+    return { slot->get()->getID(), slot->get()->getType()};
+}
+
+bool ADSREchoAudioProcessor::slotIsEmpty(int index)
+{
+    return !slots[index]->get();
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
@@ -264,6 +298,34 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     layout.add(std::make_unique<juce::AudioParameterFloat>("MasterMix", "Master Mix",
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
 
+
+    for (int i = 0; i < MAX_SLOTS; i++)
+    {
+        juce::String prefix = "slot_" + juce::String(i);
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(
+            prefix + ".mix",
+            "Mix",
+            juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
+            0.5f
+        ));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(
+            prefix + ".delay time",
+            "Delay Time",
+            juce::NormalisableRange<float>(1.0f, 2000.0f, 0.1f, 0.4f), 
+            250.0f
+        ));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(
+            prefix + ".feedback",
+            "Feedback",
+            juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 
+            0.3f
+        ));
+    }
+
+    /*
     // Per-effect controls (reverb example)
     layout.add(std::make_unique<juce::AudioParameterBool>("algoEnabled", "Algorithmic Reverb Enabled", true));
 
@@ -317,6 +379,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("DelayMix", "Delay Mix",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+        */
 
     return layout;
 }
@@ -375,6 +438,53 @@ void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer, 
     // Handle parallel processing if routing matrix specifies it
     // For example, blending algorithmic and convolution reverbs
 }
+
+void ADSREchoAudioProcessor::requestAddModule(ModuleType type)
+{
+    pendingChange = { PendingChange::Add, type, -1 };
+    hasPendingChange.store(true);
+}
+
+void ADSREchoAudioProcessor::requestRemoveModule(int slotIndex)
+{
+    pendingChange = { PendingChange::Remove, ModuleType{}, slotIndex };
+    hasPendingChange.store(true);
+}
+
+void ADSREchoAudioProcessor::applyPendingChange()
+{
+    switch (pendingChange.type)
+    {
+    case PendingChange::Add:
+        addModule(pendingChange.moduleType);
+        break;
+
+    case PendingChange::Remove:
+        //removeModule(pendingChange.slotIndex);
+        break;
+    }
+}
+
+void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
+{
+    if (numModules == MAX_SLOTS) { return; }
+
+    for (auto& slot : slots) {
+        if (slot->get() == nullptr)
+        {
+            switch (moduleType)
+            {
+                case ModuleType::Delay:
+                    slot->setModule(std::make_unique<DelayModule>(slot->slotID, apvts), spec);
+            }
+            numModules++;
+            return;
+        }
+        
+    }
+}
+
+
 
 //==============================================================================
 // This creates new instances of the plugin..

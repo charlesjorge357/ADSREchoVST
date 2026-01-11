@@ -73,7 +73,7 @@ private:
     void rebuildModuleEditors();
     void timerCallback() override;
 
-    int testNumModules = 0;
+    bool attemptedChange = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessorEditor)
 };

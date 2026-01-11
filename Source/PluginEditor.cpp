@@ -74,8 +74,8 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
 
     addButton.onClick = [this]
     {
-        //processor.requestAddModule(ModuleType::Dattorro);
-            testNumModules++;
+        audioProcessor.requestAddModule(ModuleType::Delay);
+        attemptedChange = true;
     };
 
     setSize(600, 400);
@@ -133,36 +133,21 @@ void ADSREchoAudioProcessorEditor::timerCallback()
 {
     //if (moduleEditors.size() != processor.getNumModules())
     //    rebuildModuleEditors();
-    if (moduleEditors.size() != testNumModules)
+    if (attemptedChange) {
         rebuildModuleEditors();
+        attemptedChange = false;
+    }
 }
 
 void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 {
-    //moduleEditors.clear();
-
-    //for (int i = 0; i < audioProcessor.getNumSlots(); ++i)
-    //{
-    //    auto info = audioProcessor.getSlotInfo(i);
-
-    //    auto* editor = new ModuleSlotEditor(
-    //        i,
-    //        info,
-    //        audioProcessor,
-    //        audioProcessor.apvts
-    //    );
-
-    //    moduleEditors.add(editor);
-    //    addAndMakeVisible(editor);
-    //}
-
-    //resized();
-
     moduleEditors.clear();
 
-    for (int i = 0; i < testNumModules; ++i)
+    for (int i = 0; i < audioProcessor.getNumSlots(); i++)
     {
-        ADSREchoAudioProcessor::SlotInfo info = { "testSlotID", "testSlottype" };
+        if (audioProcessor.slotIsEmpty(i)) { continue; }
+        
+        auto info = audioProcessor.getSlotInfo(i);
 
         auto* editor = new ModuleSlotEditor(
             i,
@@ -176,4 +161,22 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
     }
 
     resized();
+
+
+    //for (int i = 0; i < testNumModules; ++i)
+    //{
+    //    SlotInfo info = { "testSlotID", "testSlottype" };
+
+    //    auto* editor = new ModuleSlotEditor(
+    //        i,
+    //        info,
+    //        audioProcessor,
+    //        audioProcessor.apvts
+    //    );
+
+    //    moduleEditors.add(editor);
+    //    moduleContainer.addAndMakeVisible(editor);
+    //}
+
+    //resized();
 }

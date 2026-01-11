@@ -80,6 +80,19 @@ struct ReverbProcessorParameters
     float preDelay       = 0.0f;   // 0–200 ms typical
 };
 
+struct SlotInfo
+{
+    juce::String slotID;
+    juce::String moduleType;
+};
+
+enum class ModuleType
+{
+    Dattorro,
+    HybridPlate,
+    Delay
+};
+
 //template <typename SampleType>
 //class Allpass
 //{

@@ -5,6 +5,12 @@
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
     <GROUP id="{618D5F69-5971-EB1B-AEB0-4D399985702C}" name="Source">
       <GROUP id="{9D5CDAC7-64FA-EAD2-C694-A4240E21939C}" name="ModularClasses">
+        <GROUP id="{5BA6067D-D5D0-1D4A-2C04-A23A964D8A65}" name="EffectModules">
+          <FILE id="rUkDsM" name="EffectModule.h" compile="0" resource="0" file="Source/EffectModule.h"/>
+          <FILE id="a5oZbv" name="DelayModule.cpp" compile="1" resource="0" file="Source/DelayModule.cpp"/>
+          <FILE id="Uf1JUr" name="DelayModule.h" compile="0" resource="0" file="Source/DelayModule.h"/>
+        </GROUP>
+        <FILE id="KtNE91" name="ModuleSlot.h" compile="0" resource="0" file="Source/ModuleSlot.h"/>
         <FILE id="HcV9cp" name="ModuleSlotEditor.cpp" compile="1" resource="0"
               file="Source/ModuleSlotEditor.cpp"/>
         <FILE id="duX9UV" name="ModuleSlotEditor.h" compile="0" resource="0"
