@@ -163,6 +163,17 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     if (hasPendingChange.exchange(false))
         applyPendingChange();
 
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear(i, 0, buffer.getNumSamples());
+
+
+    // Copy dry signal into pre-allocated buffer (no allocation)
+    const int numSamples = buffer.getNumSamples();
+    for (int ch = 0; ch < totalNumInputChannels; ++ch)
+        masterDryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
+
+
+    //Process the audio through each module slot effect
     for (auto& slot : slots)
         slot->process(buffer, midiMessages);
 
@@ -189,13 +200,8 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         hybridReverb.setParameters(params);
 
 
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
 
-    // Copy dry signal into pre-allocated buffer (no allocation)
-    const int numSamples = buffer.getNumSamples();
-    for (int ch = 0; ch < totalNumInputChannels; ++ch)
-        masterDryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
+
     
     // ============ PER-EFFECT PROCESSING ============
     // Each effect handles its own internal dry/wet
@@ -223,7 +229,9 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     
     // Future: Effect 3: Convolution (has its own dry/wet)
     // ConvolutionEffect.process(block);
-    
+    */
+
+
     // ============ MASTER DRY/WET MIX ============
     const float masterWet = apvts.getRawParameterValue("MasterMix")->load();
     const float masterDry = 1.0f - masterWet;
@@ -241,7 +249,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     // Apply master output gain
     float gainValue = juce::Decibels::decibelsToGain(apvts.getRawParameterValue("Gain")->load());
     buffer.applyGain(gainValue);
-    */
+    
 }
 
 //==============================================================================
@@ -278,8 +286,8 @@ int ADSREchoAudioProcessor::getNumSlots() const
 SlotInfo ADSREchoAudioProcessor::getSlotInfo(int index) 
 {
     auto& slot = slots[index];
-    if (!slot) { return {"null", "null"}; }
-    return { slot->get()->getID(), slot->get()->getType()};
+    auto effectModule = slot->get();
+        return { effectModule->getID(), effectModule->getType(), effectModule->getUsedParameters() };
 }
 
 bool ADSREchoAudioProcessor::slotIsEmpty(int index)
@@ -302,6 +310,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     for (int i = 0; i < MAX_SLOTS; i++)
     {
         juce::String prefix = "slot_" + juce::String(i);
+
+        layout.add(std::make_unique<juce::AudioParameterBool>(prefix + ".enabled", "Enabled", true));
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(
             prefix + ".mix",
@@ -441,6 +451,15 @@ void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer, 
 
 void ADSREchoAudioProcessor::requestAddModule(ModuleType type)
 {
+    if (numModules == MAX_SLOTS || pendingModule.get() != nullptr) { return; }
+
+    //Preallocates the module from the UI thread, so it can be later added from the audio thread
+    switch (type)
+    {
+        case ModuleType::Delay:
+            pendingModule = std::make_unique<DelayModule>("null", apvts);
+    }
+    
     pendingChange = { PendingChange::Add, type, -1 };
     hasPendingChange.store(true);
 }
@@ -467,21 +486,20 @@ void ADSREchoAudioProcessor::applyPendingChange()
 
 void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
 {
-    if (numModules == MAX_SLOTS) { return; }
-
     for (auto& slot : slots) {
         if (slot->get() == nullptr)
         {
-            switch (moduleType)
-            {
-                case ModuleType::Delay:
-                    slot->setModule(std::make_unique<DelayModule>(slot->slotID, apvts), spec);
-            }
+
+            pendingModule->setID(slot->slotID);
+            slot->setModule(std::move(pendingModule), spec);
+            
             numModules++;
+            juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
             return;
         }
         
     }
+
 }
 
 

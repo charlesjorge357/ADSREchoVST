@@ -45,8 +45,15 @@ private:
     ADSREchoAudioProcessor& processor;
 
     juce::Label title;
+    juce::ToggleButton enableToggle{ "Enabled" };
+
     juce::Slider mixSlider;
-    juce::TextButton removeButton{ "" };
+    std::vector<std::unique_ptr<juce::Slider>> sliders;
+    juce::TextButton removeButton{ "-" };
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableToggleAttachment;
+    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;
+
+    void addSliderForParameter(juce::String id);
 };

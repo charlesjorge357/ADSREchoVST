@@ -23,7 +23,8 @@ void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
     delay.setDelayTime( *state.getRawParameterValue(moduleID + ".delay time"));
     delay.setFeedback( *state.getRawParameterValue(moduleID + ".feedback"));
 
-    delay.processBlock(buffer);
+    if (*state.getRawParameterValue(moduleID + ".enabled") == true) { delay.processBlock(buffer); }
+
 }
 
 std::vector<juce::String> DelayModule::getUsedParameters() const
@@ -34,6 +35,8 @@ std::vector<juce::String> DelayModule::getUsedParameters() const
        "feedback",
     };
 }
+
+void DelayModule::setID(juce::String& newID) { moduleID = newID; }
 
 juce::String DelayModule::getID() const { return moduleID; }
 juce::String DelayModule::getType() const { return "Delay"; }

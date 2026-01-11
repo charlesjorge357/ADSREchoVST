@@ -84,6 +84,7 @@ struct SlotInfo
 {
     juce::String slotID;
     juce::String moduleType;
+    std::vector<juce::String> usedParameters;
 };
 
 enum class ModuleType

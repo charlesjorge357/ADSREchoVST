@@ -36,7 +36,7 @@
 */
 
 
-class ADSREchoAudioProcessor  : public juce::AudioProcessor
+class ADSREchoAudioProcessor  : public juce::AudioProcessor, public juce::ChangeBroadcaster
 {
 public:
     //==============================================================================
@@ -111,6 +111,7 @@ private:
 
     std::atomic<bool> hasPendingChange{ false };
     PendingChange pendingChange;
+    std::unique_ptr<EffectModule> pendingModule;
 
     static constexpr int MAX_SLOTS = 8;
 

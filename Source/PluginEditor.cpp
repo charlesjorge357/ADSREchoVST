@@ -14,25 +14,34 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     startTimerHz(30);
+    audioProcessor.addChangeListener(this);
     
     addAndMakeVisible(moduleViewport);
     moduleViewport.setViewedComponent(&moduleContainer, false);
     moduleViewport.setScrollBarsShown(true, false);
 
-    /*
+    
     // MASTER MIX
     addAndMakeVisible(masterMixSlider);
     masterMixSlider.setSliderStyle(juce::Slider::Rotary);
     masterMixSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     masterMixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         audioProcessor.apvts, "MasterMix", masterMixSlider);
+    masterMixLabel.setText("Master Mix", juce::dontSendNotification);
+    masterMixLabel.setJustificationType(juce::Justification::horizontallyCentred);
+    addAndMakeVisible(masterMixLabel);
 
+    //GAIN
     addAndMakeVisible(gainSlider);
     gainSlider.setSliderStyle(juce::Slider::Rotary);
     gainSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         audioProcessor.apvts, "Gain", gainSlider);
+    gainLabel.setText("Gain", juce::dontSendNotification);
+    gainLabel.setJustificationType(juce::Justification::horizontallyCentred);
+    addAndMakeVisible(gainLabel);
 
+    /*
     // ALGORITHMIC
     addAndMakeVisible(algoToggle);
     algoToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
@@ -78,7 +87,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
         attemptedChange = true;
     };
 
-    setSize(600, 400);
+    setSize(600, 600);
 }
 
 ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
@@ -113,6 +122,14 @@ void ADSREchoAudioProcessorEditor::resized()
 
     auto area = getLocalBounds().reduced(10);
 
+    auto top = area.removeFromTop(110);
+    auto masterMixArea = top.removeFromLeft(120);
+    auto gainArea = top.removeFromLeft(120);
+    masterMixSlider.setBounds(masterMixArea.removeFromTop(80));
+    masterMixLabel.setBounds(masterMixArea.removeFromTop(20));
+    gainSlider.setBounds(gainArea.removeFromTop(80));
+    gainLabel.setBounds(gainArea.removeFromTop(20));
+
     addButton.setBounds(area.removeFromTop(30));
 
     moduleViewport.setBounds(area);
@@ -133,10 +150,15 @@ void ADSREchoAudioProcessorEditor::timerCallback()
 {
     //if (moduleEditors.size() != processor.getNumModules())
     //    rebuildModuleEditors();
-    if (attemptedChange) {
-        rebuildModuleEditors();
-        attemptedChange = false;
-    }
+    //if (attemptedChange) {
+    //    rebuildModuleEditors();
+    //    attemptedChange = false;
+    //}
+}
+
+void ADSREchoAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster*)
+{
+    rebuildModuleEditors();
 }
 
 void ADSREchoAudioProcessorEditor::rebuildModuleEditors()

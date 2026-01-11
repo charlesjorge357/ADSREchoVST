@@ -23,6 +23,7 @@ public:
     std::vector<juce::String> getUsedParameters() const override;
     
     juce::String getID() const override;
+    void setID(juce::String& newID) override;
     juce::String getType() const override;
 
 private:

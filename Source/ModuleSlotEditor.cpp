@@ -18,9 +18,16 @@ ModuleSlotEditor::ModuleSlotEditor(
     slotID(info.slotID),
     processor(p)
 {
+    //Module Title
     title.setText(info.moduleType, juce::dontSendNotification);
     addAndMakeVisible(title);
 
+    //Module Enabled
+    addAndMakeVisible(enableToggle);
+    enableToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+        apvts, slotID + ".enabled", enableToggle);
+
+    //Module Mix Slider
     mixSlider.setSliderStyle(juce::Slider::Rotary);
     mixSlider.setTextBoxStyle(
         juce::Slider::TextBoxBelow, false, 50, 18);
@@ -34,6 +41,15 @@ ModuleSlotEditor::ModuleSlotEditor(
             mixSlider
         );
 
+    //Module Control Sliders
+    auto usedParams = info.usedParameters;
+    for (const auto& suffix : usedParams)
+    {
+        auto id = slotID + "." + suffix;
+        addSliderForParameter(id);
+    }
+
+    //Module Remove Button
     addAndMakeVisible(removeButton);
     removeButton.onClick = [this]
         {
@@ -41,11 +57,39 @@ ModuleSlotEditor::ModuleSlotEditor(
         };
 }
 
+void ModuleSlotEditor::addSliderForParameter(juce::String id)
+{
+    auto slider = std::make_unique<juce::Slider>();
+    
+    slider->setSliderStyle(juce::Slider::Rotary);
+    slider->setTextBoxStyle(
+        juce::Slider::TextBoxBelow, false, 50, 18);
+
+    addAndMakeVisible(*slider);
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sliderAttachment =
+        std::make_unique<
+        juce::AudioProcessorValueTreeState::SliderAttachment>(
+            processor.apvts,
+            id,
+            *slider
+        );
+    sliders.push_back(std::move(slider));
+    sliderAttachments.push_back(std::move(sliderAttachment));
+}
+
 void ModuleSlotEditor::resized()
 {
     auto r = getLocalBounds().reduced(6);
 
-    title.setBounds(r.removeFromTop(20));
+    auto titleArea = r.removeFromTop(20);
+    enableToggle.setBounds(titleArea.removeFromLeft(25));
+    title.setBounds(titleArea);
+
     mixSlider.setBounds(r.removeFromLeft(80));
-    removeButton.setBounds(r.removeFromRight(24));
+    for (auto& slider : sliders)
+    {
+        slider->setBounds(r.removeFromLeft(80));
+    }
+    removeButton.setBounds(r.removeFromRight(30));
 }

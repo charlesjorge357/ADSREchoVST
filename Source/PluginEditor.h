@@ -33,12 +33,13 @@
 */
 
 
-class ADSREchoAudioProcessorEditor  : public juce::AudioProcessorEditor, private juce::Timer
+class ADSREchoAudioProcessorEditor  : public juce::AudioProcessorEditor, private juce::Timer, public juce::ChangeListener
 {
 public:
     ADSREchoAudioProcessorEditor (ADSREchoAudioProcessor&);
     ~ADSREchoAudioProcessorEditor() override;
 
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -53,6 +54,16 @@ private:
 
     juce::TextButton addButton{ "+" };
     juce::OwnedArray<ModuleSlotEditor> moduleEditors;
+
+    //Master Sliders
+    juce::Slider masterMixSlider, gainSlider;
+
+    //Master Attachments
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterMixAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
+
+    //Master Labels
+    juce::Label masterMixLabel, gainLabel;
 
     /*
     // Sliders
