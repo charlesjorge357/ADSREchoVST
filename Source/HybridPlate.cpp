@@ -41,8 +41,8 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
     // -------------------------
     // Early diffusion (plate-style, shorter than hall)
     // -------------------------
-    const float earlyDelaysMs[4] = { 2.5f, 4.0f, 6.0f, 8.5f };
-    const float earlyGain        = 0.72f;   // diffusive but not ringy
+    const float earlyDelaysMs[4] = { 3.1f, 7.7f, 11.3f, 15.9f };
+    const float earlyGain        = 0.82f;   // diffusive but not ringy
 
     for (int i = 0; i < 4; ++i)
     {
@@ -57,11 +57,12 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
     // FDN delay lines
     // -------------------------
     const float fdnDelayMs[fdnCount] = {
-        32.0f,
-        44.0f,
-        57.0f,
-        70.0f
+        31.3f,
+        37.1f,
+        43.7f,
+        55.9f
     };
+
 
     for (int i = 0; i < fdnCount; ++i)
     {
@@ -86,7 +87,7 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
     }
 
     for (int i = 0; i < fdnCount; ++i)
-        extraDampL[i].prepare(sampleRate, parameters.damping);
+        extraDampL[i].prepare(sampleRate, 0.25f); // stable default
 
 
     // high shelf for no ring
@@ -95,9 +96,9 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
         juce::dsp::IIR::Coefficients<float>::Ptr coeff =
             juce::dsp::IIR::Coefficients<float>::makeHighShelf(
                 sampleRate,
-                3000.0f,   // frequency where ringing builds
+                10000.0f,   // frequency where ringing builds
                 0.707f,     // Q
-                0.7f        // gain factor < 1.0 removes ringing
+                0.95f        // gain factor < 1.0 removes ringing
             );
 
         highShelfFilters[i].prepare(spec);
@@ -109,7 +110,7 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
 
     // High pass for no womp
     for (int i = 0; i < fdnCount; ++i)
-        hpFDN[i].prepare(sampleRate, 90.0f);  // try 60–140 Hz
+        hpFDN[i].prepare(sampleRate, 60.0f);  // try 60 Hz
 
 
 
@@ -185,18 +186,32 @@ void HybridPlate::updateInternalParamsFromUserParams()
     float pdMs = juce::jlimit(0.0f, 200.0f, parameters.preDelay);
     preDelaySamples = pdMs * 0.001f * (float) sampleRate;
 
-    // Damping filter cutoff
-    for (int i = 0; i < fdnCount; ++i)
-        dampingFilters[i].setCutoffFrequency(parameters.damping * 2.0f);
-    for (int i = 0; i < fdnCount; ++i)
-        extraDampL[i].setDamping(parameters.damping);
+    // Treat damping as a cutoff frequency in Hz, like DatorroHall
+    float cutoffHz = juce::jlimit(500.0f, 20000.0f, parameters.damping);
 
+    for (int i = 0; i < fdnCount; ++i)
+        dampingFilters[i].setCutoffFrequency(cutoffHz);
+
+    // Derive a 0..1 "darkness" from the cutoff
+    float darkness = 1.0f - (cutoffHz - 500.0f) / (20000.0f - 500.0f);
+    darkness = juce::jlimit(0.0f, 1.0f, darkness);
+
+    // Psycho damping: modest amount, more when darker
+    for (int i = 0; i < fdnCount; ++i)
+    {
+        const float psychoMin = 0.15f; // light psycho-damp when bright
+        const float psychoMax = 0.6f;  // stronger when dark
+        const float psychoDamping = psychoMin + (psychoMax - psychoMin) * darkness;
+
+        extraDampL[i].setDamping(psychoDamping);
+    }
 
     // LFO parameters
     lfoParameters.frequency_Hz = parameters.modRate;
     lfoParameters.depth        = parameters.modDepth;
     lfo.setParameters(lfoParameters);
 }
+
 
 //==============================================================================
 
@@ -234,13 +249,22 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
     const float roomSize = juce::jlimit(0.25f, 1.75f, parameters.roomSize);
     const float modDepth = parameters.modDepth;
 
-    // RT60-mapped feedback gain with safety factor
     const float effectiveLoopTime = estimatedLoopTimeSeconds * roomSize;
-    const float fbRaw             = std::exp(-3.0f * effectiveLoopTime / decaySec);
 
-    constexpr float feedbackSafety = 0.99f;  // global safety margin
+    // --- Plate decay stretch (how "big" the plate feels) ---
+    constexpr float plateDecayStretch = 4.0f;
+
+    // Use stretched decay time so max knob is "bigger" than a tiny tank
+    const float scaledDecaySec = decaySec * plateDecayStretch;
+
+    // Canonical RT60 feedback for pure delay: g = exp(ln(0.001) * T_loop / T60)
+    const float fbRaw = std::exp(std::log(0.001f) * (effectiveLoopTime / scaledDecaySec));
+
+    // Safety + clamp
+    constexpr float feedbackSafety = 0.995f;
     float feedbackGain = fbRaw * feedbackSafety;
-    feedbackGain = juce::jlimit(0.0f, 0.985f, feedbackGain);
+    feedbackGain = juce::jlimit(0.0f, 0.995f, feedbackGain);
+
 
     const float slew = 0.001f; // modulation slew
 
@@ -280,6 +304,11 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
 
         const float monoIn = 0.5f * (eL + eR);
 
+        // after computing monoIn
+        const float inject[fdnCount] = { 0.7f, -0.5f, 0.5f, -0.7f };
+        const float inputGain = 1.1f; // small energy bump into the tank
+
+
         //===========================
         // LFO – per-sample
         //===========================
@@ -294,6 +323,9 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
             std::tanh(lfo90 - 0.5f * lfo0)
         };
 
+        const float userModDepth     = parameters.modDepth;
+        const float internalModDepth = juce::jlimit(0.0f, 0.5f, userModDepth);
+
         //===========================
         // Read FDN outputs with modulated delays
         //===========================
@@ -304,15 +336,22 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
             const float base = juce::jlimit(1.0f, maxDelaySamples[i],
                                             baseDelaySamples[i] * roomSize);
 
-            const float modRatio   = 0.003f; // 0.3% of base -> subtle plate motion
-            const float modSamples = base * modRatio * modDepth * lfoVals[i];
+            const float modRatio   = 0.0015f; // 0.15% of base -> subtle plate motion
+            const float modSamples = base * modRatio * internalModDepth * lfoVals[i];
 
             const float targetDelay = juce::jlimit(1.0f, maxDelaySamples[i],
                                                    base + modSamples);
 
             currentDelaySamples[i] += slew * (targetDelay - currentDelaySamples[i]);
+            
 
-            fdnOut[i] = fdnLines[i].readFractional(0, currentDelaySamples[i]);
+            // ---- READ from delay line ----
+            float rawOut = fdnLines[i].readFractional(0, currentDelaySamples[i]);
+
+            // ---- Apply high shelf OUTSIDE the loop ----
+            float filteredOut = highShelfFilters[i].processSample(rawOut);
+
+            fdnOut[i] = filteredOut;
         }
 
         //===========================
@@ -330,23 +369,20 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
         //===========================
         for (int i = 0; i < fdnCount; ++i)
         {
-            // new input to this FDN line: early-diffused monoIn + feedback
-            float newSample = monoIn + fb[i];
+            float newSample = monoIn * inject[i] * inputGain + fb[i];
 
-            // first-order lowpass damping
             float damped = dampingFilters[i].processSample(0, newSample);
-
-            float hp = hpFDN[i].process(damped);
-
+            float hp     = hpFDN[i].process(damped);
             float psycho = extraDampL[i].process(hp);
 
-            // high-shelf to tame metallic ringing
-            float softened = highShelfFilters[i].processSample(psycho);
+            float softened = psycho; // <-- no high shelf here
+
 
 
             // write into delay line
             fdnLines[i].pushSample(0, softened);
         }
+
 
 
         //===========================
@@ -358,13 +394,18 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
         float outR = 0.35f * (fdnOut[1] + fdnOut[3]) +
                      0.15f * (fdnOut[0] - fdnOut[2]);
 
+        // subtle level lift, ~1 dB
+        const float wetGain = 1.12f;
+        outL *= wetGain;
+        outR *= wetGain;
+
         channelOutput[0] = outL;
         channelOutput[1] = outR;
 
         //===========================
         // Final dry/wet mix
         //===========================
-        left[n] = dryMix * dryL + mix * outL;
+        left[n]  = dryMix * dryL + mix * outL;
         if (right)
             right[n] = dryMix * dryR + mix * outR;
     }
