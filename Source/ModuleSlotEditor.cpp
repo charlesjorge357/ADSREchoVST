@@ -53,7 +53,7 @@ ModuleSlotEditor::ModuleSlotEditor(
     addAndMakeVisible(removeButton);
     removeButton.onClick = [this]
         {
-            //processor.requestRemoveModule(slotIndex);
+            processor.requestRemoveModule(slotIndex);
         };
 }
 

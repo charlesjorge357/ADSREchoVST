@@ -117,6 +117,8 @@ private:
 
     void applyPendingChange();
     void addModule(ModuleType moduleType);
+    void removeModule(int slotIndex);
+    void setSlotDefaults(juce::String slotID);
 
     int numModules = 0;
 

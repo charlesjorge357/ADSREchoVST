@@ -117,7 +117,8 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     // Pre-allocate dry buffer to avoid allocation in processBlock
     masterDryBuffer.setSize(spec.numChannels, samplesPerBlock);
 
-
+    for (auto& slot : slots)
+        slot->prepare(spec);
 
 
 }
@@ -280,7 +281,7 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
 
 int ADSREchoAudioProcessor::getNumSlots() const
 {
-    return numModules;
+    return MAX_SLOTS;
 }
 
 SlotInfo ADSREchoAudioProcessor::getSlotInfo(int index) 
@@ -466,8 +467,9 @@ void ADSREchoAudioProcessor::requestAddModule(ModuleType type)
 
 void ADSREchoAudioProcessor::requestRemoveModule(int slotIndex)
 {
-    pendingChange = { PendingChange::Remove, ModuleType{}, slotIndex };
-    hasPendingChange.store(true);
+    //pendingChange = { PendingChange::Remove, ModuleType{}, slotIndex };
+    //hasPendingChange.store(true);
+    removeModule(slotIndex);
 }
 
 void ADSREchoAudioProcessor::applyPendingChange()
@@ -491,7 +493,7 @@ void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
         {
 
             pendingModule->setID(slot->slotID);
-            slot->setModule(std::move(pendingModule), spec);
+            slot->setModule(std::move(pendingModule));
             
             numModules++;
             juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
@@ -502,6 +504,33 @@ void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
 
 }
 
+void ADSREchoAudioProcessor::removeModule(int slotIndex)
+{
+    auto& toRemove = slots[slotIndex];
+    if (toRemove->get() == nullptr)
+    {
+        DBG("Error: Trying to remove an empty module!");
+        return;
+    }
+    juce::String slotID = toRemove->slotID;
+    toRemove->clearModule();
+    numModules--;
+
+    setSlotDefaults(slotID);
+    juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+}
+
+void ADSREchoAudioProcessor::setSlotDefaults(juce::String slotID)
+{
+    auto* param = apvts.getParameter(slotID + ".mix");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".delay time");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".feedback");
+    param->setValueNotifyingHost(param->getDefaultValue());
+}
 
 
 //==============================================================================

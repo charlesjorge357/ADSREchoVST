@@ -37,28 +37,52 @@ public:
     
     void prepare(const juce::dsp::ProcessSpec& spec)
     {
-        if (module)
-            module->prepare(spec);
+        currentSpec = spec;
+
+        if (auto* m = activeModule.load(std::memory_order_acquire))
+            m->prepare(spec);
     }
 
     void process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
     {
-        if (module && !bypassed)
-            module->process(buffer, midi);
+        if (auto* m = activeModule.load(std::memory_order_acquire))
+            m->process(buffer, midi);
     }
 
-    void setModule(std::unique_ptr<EffectModule> newModule,
-        const juce::dsp::ProcessSpec& spec)
+    void setModule(std::unique_ptr<EffectModule> newModule)
     {
-        module = std::move(newModule);
-        module->prepare(spec);
+        if (newModule)
+            newModule->prepare(currentSpec);
+
+        // Keep old module alive until after swap
+        pendingDeletion = std::move(ownedModule);
+        ownedModule = std::move(newModule);
+
+        // Atomic pointer swap (audio thread safe)
+        activeModule.store(ownedModule.get(), std::memory_order_release);
     }
 
-    EffectModule* get() { return module.get(); }
+    void clearModule()
+    {
+        pendingDeletion = std::move(ownedModule);
+        activeModule.store(nullptr, std::memory_order_release);
+    }
+
+    void destroyPending()
+    {
+        pendingDeletion.reset();
+    }
+
+    EffectModule* get() { return ownedModule.get(); }
 
     juce::String slotID;
     bool bypassed = false;
 
 private:
-    std::unique_ptr<EffectModule> module;
+    juce::dsp::ProcessSpec currentSpec{};
+
+    std::unique_ptr<EffectModule> ownedModule;
+    std::unique_ptr<EffectModule> pendingDeletion;
+
+    std::atomic<EffectModule*> activeModule{ nullptr };
 };
