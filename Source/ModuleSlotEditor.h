@@ -45,6 +45,7 @@ private:
     ADSREchoAudioProcessor& processor;
 
     juce::Label title;
+    juce::ComboBox typeSelector;
     juce::ToggleButton enableToggle{ "Enabled" };
 
     juce::Slider mixSlider;

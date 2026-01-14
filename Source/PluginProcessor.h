@@ -91,6 +91,7 @@ public:
 
     void requestAddModule(ModuleType type);
     void requestRemoveModule(int slotIndex);
+    void changeModuleType(int slotIndex, int newType);
 
 private:
     juce::dsp::ProcessSpec spec;

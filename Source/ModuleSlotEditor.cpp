@@ -22,6 +22,24 @@ ModuleSlotEditor::ModuleSlotEditor(
     title.setText(info.moduleType, juce::dontSendNotification);
     addAndMakeVisible(title);
 
+    //Module Type Selector
+    addAndMakeVisible(typeSelector);
+    typeSelector.addItem("Delay", 1);
+    typeSelector.addItem("Datorro Hall", 2);
+    if (info.moduleType == "Delay")
+    {
+        typeSelector.setSelectedId(1, juce::dontSendNotification);
+    }
+    else if (info.moduleType == "Datorro Hall")
+    {
+        typeSelector.setSelectedId(2, juce::dontSendNotification);
+    }
+
+    typeSelector.onChange = [this] 
+    { 
+        processor.changeModuleType(slotIndex, typeSelector.getSelectedId());
+    };
+
     //Module Enabled
     addAndMakeVisible(enableToggle);
     enableToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
@@ -84,7 +102,8 @@ void ModuleSlotEditor::resized()
 
     auto titleArea = r.removeFromTop(20);
     enableToggle.setBounds(titleArea.removeFromLeft(25));
-    title.setBounds(titleArea);
+    title.setBounds(titleArea.removeFromLeft(80));
+    typeSelector.setBounds(titleArea);
 
     //mixSlider.setBounds(r.removeFromLeft(80));
     for (auto& slider : sliders)

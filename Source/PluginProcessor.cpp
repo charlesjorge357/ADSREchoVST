@@ -557,10 +557,8 @@ void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
             numModules++;
             juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
             return;
-        }
-        
+        }   
     }
-
 }
 
 void ADSREchoAudioProcessor::removeModule(int slotIndex)
@@ -571,13 +569,38 @@ void ADSREchoAudioProcessor::removeModule(int slotIndex)
         DBG("Error: Trying to remove an empty module!");
         return;
     }
-    juce::String slotID = toRemove->slotID;
+
     toRemove->clearModule();
     numModules--;
 
     requestSlotMove(slotIndex, MAX_SLOTS-1);
 
     //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+}
+
+void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
+{
+    auto& toChange = slots[slotIndex];
+    if (toChange->get() == nullptr)
+    {
+        DBG("Error: Trying to change an empty module!");
+        return;
+    }
+
+    std::unique_ptr<EffectModule> newModule;
+    switch (newType)
+    {
+    case 1:
+        toChange->setModule(std::make_unique<DelayModule>("null", apvts));
+        break;
+
+    case 2:
+        toChange->setModule(std::make_unique<DatorroModule>("null", apvts));
+        break;
+    }
+
+    juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+
 }
 
 void ADSREchoAudioProcessor::requestSlotMove(int from, int to)
