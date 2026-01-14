@@ -6,6 +6,9 @@
     <GROUP id="{618D5F69-5971-EB1B-AEB0-4D399985702C}" name="Source">
       <GROUP id="{9D5CDAC7-64FA-EAD2-C694-A4240E21939C}" name="ModularClasses">
         <GROUP id="{5BA6067D-D5D0-1D4A-2C04-A23A964D8A65}" name="EffectModules">
+          <FILE id="pRkvm8" name="DatorroModule.cpp" compile="1" resource="0"
+                file="Source/DatorroModule.cpp"/>
+          <FILE id="cYkN5N" name="DatorroModule.h" compile="0" resource="0" file="Source/DatorroModule.h"/>
           <FILE id="rUkDsM" name="EffectModule.h" compile="0" resource="0" file="Source/EffectModule.h"/>
           <FILE id="a5oZbv" name="DelayModule.cpp" compile="1" resource="0" file="Source/DelayModule.cpp"/>
           <FILE id="Uf1JUr" name="DelayModule.h" compile="0" resource="0" file="Source/DelayModule.h"/>

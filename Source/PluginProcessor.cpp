@@ -174,6 +174,37 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         masterDryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
 
 
+    if (moveRequested.load(std::memory_order_acquire))
+    {
+        const int from = pendingMove.from;
+        const int to = pendingMove.to;
+
+        if (juce::isPositiveAndBelow(from, slots.size()) &&
+            juce::isPositiveAndBelow(to, slots.size()) &&
+            from != to)
+        {
+            auto moved = std::move(slots[from]);
+
+            if (from < to)
+            {
+                // shift left
+                for (int i = from; i < to; ++i)
+                    slots[i] = std::move(slots[i + 1]);
+            }
+            else
+            {
+                // shift right
+                for (int i = from; i > to; --i)
+                    slots[i] = std::move(slots[i - 1]);
+            }
+
+            slots[to] = std::move(moved);
+        }
+
+        juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+        moveRequested.store(false, std::memory_order_release);
+    }
+
     //Process the audio through each module slot effect
     for (auto& slot : slots)
         slot->process(buffer, midiMessages);
@@ -334,6 +365,28 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
             juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 
             0.3f
         ));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".room size", "Room Size",
+            juce::NormalisableRange<float>(0.25f, 1.75f, 0.01f), 1.0f));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".decay time",
+            "Decay Time (s)",
+            juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f),
+            5.0f));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".pre delay", "Pre Delay (ms)",
+            juce::NormalisableRange<float>(0.0f, 200.0f, 0.1f), 0.0f));
+
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".damping", "Damping",
+            juce::NormalisableRange<float>(500.0f, 10000.0f, 1.f, 0.5f), 8000.0f));
+
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".mod rate", "Mod Rate",
+            juce::NormalisableRange<float>(0.05f, 5.0f, 0.001f), 0.30f));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".mod depth", "Mod Depth",
+            juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
     }
 
     /*
@@ -459,6 +512,11 @@ void ADSREchoAudioProcessor::requestAddModule(ModuleType type)
     {
         case ModuleType::Delay:
             pendingModule = std::make_unique<DelayModule>("null", apvts);
+            break;
+
+        case ModuleType::Datorro:
+            pendingModule = std::make_unique<DatorroModule>("null", apvts);
+            break;
     }
     
     pendingChange = { PendingChange::Add, type, -1 };
@@ -492,7 +550,8 @@ void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
         if (slot->get() == nullptr)
         {
 
-            pendingModule->setID(slot->slotID);
+            setSlotDefaults(slot->slotID);
+            //pendingModule->setID(slot->slotID);
             slot->setModule(std::move(pendingModule));
             
             numModules++;
@@ -516,8 +575,16 @@ void ADSREchoAudioProcessor::removeModule(int slotIndex)
     toRemove->clearModule();
     numModules--;
 
-    setSlotDefaults(slotID);
-    juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+    requestSlotMove(slotIndex, MAX_SLOTS-1);
+
+    //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+}
+
+void ADSREchoAudioProcessor::requestSlotMove(int from, int to)
+{
+    pendingMove.from = from;
+    pendingMove.to = to;
+    moveRequested.store(true, std::memory_order_release);
 }
 
 void ADSREchoAudioProcessor::setSlotDefaults(juce::String slotID)

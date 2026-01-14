@@ -28,18 +28,18 @@ ModuleSlotEditor::ModuleSlotEditor(
         apvts, slotID + ".enabled", enableToggle);
 
     //Module Mix Slider
-    mixSlider.setSliderStyle(juce::Slider::Rotary);
-    mixSlider.setTextBoxStyle(
-        juce::Slider::TextBoxBelow, false, 50, 18);
-    addAndMakeVisible(mixSlider);
+    //mixSlider.setSliderStyle(juce::Slider::Rotary);
+    //mixSlider.setTextBoxStyle(
+    //    juce::Slider::TextBoxBelow, false, 50, 18);
+    //addAndMakeVisible(mixSlider);
 
-    mixAttachment =
-        std::make_unique<
-        juce::AudioProcessorValueTreeState::SliderAttachment>(
-            apvts,
-            slotID + ".mix",
-            mixSlider
-        );
+    //mixAttachment =
+    //    std::make_unique<
+    //    juce::AudioProcessorValueTreeState::SliderAttachment>(
+    //        apvts,
+    //        slotID + ".mix",
+    //        mixSlider
+    //    );
 
     //Module Control Sliders
     auto usedParams = info.usedParameters;
@@ -86,7 +86,7 @@ void ModuleSlotEditor::resized()
     enableToggle.setBounds(titleArea.removeFromLeft(25));
     title.setBounds(titleArea);
 
-    mixSlider.setBounds(r.removeFromLeft(80));
+    //mixSlider.setBounds(r.removeFromLeft(80));
     for (auto& slider : sliders)
     {
         slider->setBounds(r.removeFromLeft(80));

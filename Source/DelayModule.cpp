@@ -17,7 +17,7 @@ void DelayModule::prepare(const juce::dsp::ProcessSpec & spec)
     delay.prepare(spec);
 }
 
-void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     delay.setMix( *state.getRawParameterValue(moduleID + ".mix"));
     delay.setDelayTime( *state.getRawParameterValue(moduleID + ".delay time"));

@@ -52,7 +52,11 @@ public:
     void setModule(std::unique_ptr<EffectModule> newModule)
     {
         if (newModule)
+        {
             newModule->prepare(currentSpec);
+            newModule->setID(slotID);
+        }
+
 
         // Keep old module alive until after swap
         pendingDeletion = std::move(ownedModule);

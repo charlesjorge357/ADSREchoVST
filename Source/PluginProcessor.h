@@ -30,6 +30,7 @@
 #include "BasicDelay.h"
 #include "ModuleSlot.h"
 #include "DelayModule.h"
+#include "DatorroModule.h"
 
 //==============================================================================
 /**
@@ -112,6 +113,16 @@ private:
     std::atomic<bool> hasPendingChange{ false };
     PendingChange pendingChange;
     std::unique_ptr<EffectModule> pendingModule;
+
+    struct PendingMove
+    {
+        int from = -1;
+        int to = -1;
+    };
+
+    std::atomic<bool> moveRequested{ false };
+    PendingMove pendingMove;
+    void requestSlotMove(int from, int to);
 
     static constexpr int MAX_SLOTS = 8;
 

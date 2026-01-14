@@ -89,7 +89,7 @@ struct SlotInfo
 
 enum class ModuleType
 {
-    Dattorro,
+    Datorro,
     HybridPlate,
     Delay
 };

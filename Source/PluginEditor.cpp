@@ -87,7 +87,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
         attemptedChange = true;
     };
 
-    setSize(600, 600);
+    setSize(800, 600);
 }
 
 ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
