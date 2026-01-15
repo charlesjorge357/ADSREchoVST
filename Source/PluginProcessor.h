@@ -1,13 +1,9 @@
 /*
   ==============================================================================
-
     This file contains the basic framework code for a JUCE plugin processor.
-
   ==============================================================================
 */
-
 #pragma once
-
 #if __has_include("JuceHeader.h")
   #include "JuceHeader.h"  // for Projucer
 #else // for Cmake
@@ -25,6 +21,7 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 #include "DatorroHall.h"
+#include "MLReverbPresets.h"
 
 //==============================================================================
 /**
@@ -70,11 +67,16 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
+
+    //==============================================================================
+    // ML Preset loading
+    void loadMLPreset(int presetIndex);
 
 private:
     DatorroHall datorroReverb;
+    int currentPresetIndex = 0;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };
