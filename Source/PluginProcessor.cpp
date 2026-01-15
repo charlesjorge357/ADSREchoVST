@@ -9,6 +9,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "DatorroHall.h"
+#include "MLReverbPresets.h"
 
 //==============================================================================
 ADSREchoAudioProcessor::ADSREchoAudioProcessor()
@@ -23,10 +24,23 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
                        )
 #endif
 {
+    // Load default preset on startup
+    loadMLPreset(0);
 }
 
 ADSREchoAudioProcessor::~ADSREchoAudioProcessor()
 {
+}
+
+//==============================================================================
+void ADSREchoAudioProcessor::loadMLPreset(int presetIndex)
+{
+    if (presetIndex >= 0 && presetIndex < 10)
+    {
+        auto presets = getMLReverbPresets();
+        datorroReverb.setMLParameters(presets[presetIndex].mlParams);
+        currentPresetIndex = presetIndex;
+    }
 }
 
 //==============================================================================
@@ -145,6 +159,13 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
+    // Check if ML preset changed
+    int newPresetIndex = static_cast<int>(apvts.getRawParameterValue("MLPreset")->load());
+    if (newPresetIndex != currentPresetIndex)
+    {
+        loadMLPreset(newPresetIndex);
+    }
+
     // Store ORIGINAL dry signal for master mix
     juce::AudioBuffer<float> masterDryBuffer;
     masterDryBuffer.makeCopyOf(buffer);
@@ -225,7 +246,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix", 
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
     
-    // Future: Delay, Convolution, etc. each get their own mix
+    // ML Preset selector
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        "MLPreset",
+        "ML Preset",
+        juce::StringArray {
+            "Tight Room",
+            "Warm Chamber",
+            "Medium Hall",
+            "Bright Plate",
+            "Wide Space",
+            "Dense Diffusion",
+            "Smooth Decay",
+            "Long Tail",
+            "Dark Hall",
+            "Crystal Clear"
+        },
+        0  // default preset
+    ));
     
     return layout;
 }
