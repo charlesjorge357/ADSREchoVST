@@ -7,6 +7,7 @@
 #include "LFO.h"
 #include "ProcessorBase.h"
 #include "Utilities.h"
+#include "MLReverbParameters.h"
 
 class DatorroHall : public ReverbProcessorBase
 {
