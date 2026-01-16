@@ -14,7 +14,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     startTimerHz(30);
-    audioProcessor.addChangeListener(this);
+    //audioProcessor.addChangeListener(this);
     
     addAndMakeVisible(moduleViewport);
     moduleViewport.setViewedComponent(&moduleContainer, false);
@@ -88,10 +88,14 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     };
 
     setSize(800, 600);
+
+    rebuildModuleEditors();
 }
 
 ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
 {
+    //audioProcessor.removeChangeListener(this);
+    stopTimer();
 }
 
 //==============================================================================
@@ -148,18 +152,19 @@ void ADSREchoAudioProcessorEditor::resized()
 
 void ADSREchoAudioProcessorEditor::timerCallback()
 {
-    //if (moduleEditors.size() != processor.getNumModules())
-    //    rebuildModuleEditors();
-    //if (attemptedChange) {
-    //    rebuildModuleEditors();
-    //    attemptedChange = false;
-    //}
+    if (audioProcessor.uiNeedsRebuild.exchange(false, std::memory_order_acquire))
+        triggerAsyncUpdate();
 }
 
-void ADSREchoAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster*)
+void ADSREchoAudioProcessorEditor::handleAsyncUpdate()
 {
     rebuildModuleEditors();
 }
+
+//void ADSREchoAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster*)
+//{
+//    rebuildModuleEditors();
+//}
 
 void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 {
@@ -202,3 +207,5 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 
     //resized();
 }
+
+

@@ -201,7 +201,8 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             slots[to] = std::move(moved);
         }
 
-        juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+        //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+        uiNeedsRebuild.store(true, std::memory_order_release);
         moveRequested.store(false, std::memory_order_release);
     }
 
@@ -559,7 +560,8 @@ void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
             slot->setModule(std::move(pendingModule));
             
             numModules++;
-            juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+            //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+            uiNeedsRebuild.store(true, std::memory_order_release);
             return;
         }   
     }
@@ -607,7 +609,8 @@ void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
     }
 
 
-    juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+    //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
+    uiNeedsRebuild.store(true, std::memory_order_release);
 
 }
 

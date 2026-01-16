@@ -94,6 +94,8 @@ public:
     void requestRemoveModule(int slotIndex);
     void changeModuleType(int slotIndex, int newType);
 
+    std::atomic<bool> uiNeedsRebuild{ false };
+
 private:
     juce::dsp::ProcessSpec spec;
     
@@ -132,6 +134,7 @@ private:
     void addModule(ModuleType moduleType);
     void removeModule(int slotIndex);
     void setSlotDefaults(juce::String slotID);
+
 
     int numModules = 0;
 

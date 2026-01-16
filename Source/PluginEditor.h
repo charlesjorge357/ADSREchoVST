@@ -33,13 +33,13 @@
 */
 
 
-class ADSREchoAudioProcessorEditor  : public juce::AudioProcessorEditor, private juce::Timer, public juce::ChangeListener
+class ADSREchoAudioProcessorEditor  : public juce::AudioProcessorEditor, private juce::Timer, public juce::AsyncUpdater
 {
 public:
     ADSREchoAudioProcessorEditor (ADSREchoAudioProcessor&);
     ~ADSREchoAudioProcessorEditor() override;
 
-    void changeListenerCallback(juce::ChangeBroadcaster*) override;
+    //void changeListenerCallback(juce::ChangeBroadcaster*) override;
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -83,6 +83,7 @@ private:
 
     void rebuildModuleEditors();
     void timerCallback() override;
+    void handleAsyncUpdate() override;
 
     bool attemptedChange = false;
 
