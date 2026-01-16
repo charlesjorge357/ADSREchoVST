@@ -26,6 +26,7 @@ ModuleSlotEditor::ModuleSlotEditor(
     addAndMakeVisible(typeSelector);
     typeSelector.addItem("Delay", 1);
     typeSelector.addItem("Datorro Hall", 2);
+    typeSelector.addItem("Hybrid Plate", 3);
     if (info.moduleType == "Delay")
     {
         typeSelector.setSelectedId(1, juce::dontSendNotification);
@@ -33,6 +34,10 @@ ModuleSlotEditor::ModuleSlotEditor(
     else if (info.moduleType == "Datorro Hall")
     {
         typeSelector.setSelectedId(2, juce::dontSendNotification);
+    }
+    else if (info.moduleType == "Hybrid Plate")
+    {
+        typeSelector.setSelectedId(3, juce::dontSendNotification);
     }
 
     typeSelector.onChange = [this] 

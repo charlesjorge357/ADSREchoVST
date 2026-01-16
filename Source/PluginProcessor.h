@@ -31,6 +31,7 @@
 #include "ModuleSlot.h"
 #include "DelayModule.h"
 #include "DatorroModule.h"
+#include "HybridPlateModule.h"
 
 //==============================================================================
 /**

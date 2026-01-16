@@ -517,6 +517,10 @@ void ADSREchoAudioProcessor::requestAddModule(ModuleType type)
         case ModuleType::Datorro:
             pendingModule = std::make_unique<DatorroModule>("null", apvts);
             break;
+
+        case ModuleType::HybridPlate:
+            pendingModule = std::make_unique<HybridPlateModule>("null", apvts);
+            break;
     }
     
     pendingChange = { PendingChange::Add, type, -1 };
@@ -597,7 +601,11 @@ void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
     case 2:
         toChange->setModule(std::make_unique<DatorroModule>("null", apvts));
         break;
+    case 3:
+        toChange->setModule(std::make_unique<HybridPlateModule>("null", apvts));
+        break;
     }
+
 
     juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
 
