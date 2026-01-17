@@ -300,15 +300,75 @@ juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
 //==============================================================================
 void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    auto state = apvts.copyState();
+
+    state.removeChild(state.getChildWithName("Modules"), nullptr);
+
+    juce::ValueTree moduleState("Modules");
+
+    for (int i = 0; i < MAX_SLOTS; ++i)
+    {
+        if (auto* mod = slots[i]->get())
+        {
+            juce::ValueTree slot("Slot");
+            slot.setProperty("index", i, nullptr);
+            slot.setProperty("type", mod->getType(), nullptr);
+            moduleState.addChild(slot, -1, nullptr);
+        }
+    }
+
+    state.addChild(moduleState, -1, nullptr);
+
+    auto xml = state.createXml();
+    copyXmlToBinary(*xml, destData);
 }
 
 void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    auto xml = getXmlFromBinary(data, sizeInBytes);
+    if (!xml) {
+        DBG("no xml!");
+        return;
+    }
+    auto state = juce::ValueTree::fromXml(*xml);
+
+    // Restore Parameters
+    apvts.replaceState(state);
+
+    // Clear Modules
+    for (auto& slot : slots)
+        slot->clearModule();
+
+    numModules = 0;
+
+    // Restore Topology
+    auto modules = state.getChildWithName("Modules");
+
+    for (auto slotState : modules)
+    {
+        int index = (int)slotState["index"];
+        auto type = slotState["type"];
+
+        if (type == "Delay")
+        {
+            auto module = std::make_unique<DelayModule>("null", apvts);
+            slots[index]->setModule(std::move(module));
+        }
+        else if (type == "Datorro Hall")
+        {
+            auto module = std::make_unique<DatorroModule>("null", apvts);
+            slots[index]->setModule(std::move(module));
+        }
+        else if (type == "Hybrid Plate")
+        {
+            auto module = std::make_unique<HybridPlateModule>("null", apvts);
+            slots[index]->setModule(std::move(module));
+        }
+
+        ++numModules;
+    }
+
+    uiNeedsRebuild.store(true, std::memory_order_release);
 }
 
 int ADSREchoAudioProcessor::getNumSlots() const
@@ -339,49 +399,33 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     layout.add(std::make_unique<juce::AudioParameterFloat>("MasterMix", "Master Mix",
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
 
-
+    // Per Module Controls (id "slot_1.mix")
     for (int i = 0; i < MAX_SLOTS; i++)
     {
         juce::String prefix = "slot_" + juce::String(i);
 
         layout.add(std::make_unique<juce::AudioParameterBool>(prefix + ".enabled", "Enabled", true));
 
-        layout.add(std::make_unique<juce::AudioParameterFloat>(
-            prefix + ".mix",
-            "Mix",
-            juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
-            0.5f
-        ));
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".mix", "Mix",
+            juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
-        layout.add(std::make_unique<juce::AudioParameterFloat>(
-            prefix + ".delay time",
-            "Delay Time",
-            juce::NormalisableRange<float>(1.0f, 2000.0f, 0.1f, 0.4f), 
-            250.0f
-        ));
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delay time", "Delay Time",
+            juce::NormalisableRange<float>(1.0f, 2000.0f, 0.1f, 0.4f), 250.0f));
 
-        layout.add(std::make_unique<juce::AudioParameterFloat>(
-            prefix + ".feedback",
-            "Feedback",
-            juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 
-            0.3f
-        ));
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".feedback", "Feedback",
+            juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 0.3f));
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".room size", "Room Size",
             juce::NormalisableRange<float>(0.25f, 1.75f, 0.01f), 1.0f));
 
-        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".decay time",
-            "Decay Time (s)",
-            juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f),
-            5.0f));
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".decay time", "Decay Time (s)",
+            juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f), 5.0f));
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".pre delay", "Pre Delay (ms)",
             juce::NormalisableRange<float>(0.0f, 200.0f, 0.1f), 0.0f));
 
-
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".damping", "Damping",
             juce::NormalisableRange<float>(500.0f, 10000.0f, 1.f, 0.5f), 8000.0f));
-
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".mod rate", "Mod Rate",
             juce::NormalisableRange<float>(0.05f, 5.0f, 0.001f), 0.30f));
@@ -599,7 +643,6 @@ void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
     case 1:
         toChange->setModule(std::make_unique<DelayModule>("null", apvts));
         break;
-
     case 2:
         toChange->setModule(std::make_unique<DatorroModule>("null", apvts));
         break;
@@ -623,13 +666,34 @@ void ADSREchoAudioProcessor::requestSlotMove(int from, int to)
 
 void ADSREchoAudioProcessor::setSlotDefaults(juce::String slotID)
 {
-    auto* param = apvts.getParameter(slotID + ".mix");
+    auto* param = apvts.getParameter(slotID + ".enabled");
+    param->setValueNotifyingHost(param->getDefaultValue());
+    
+    param = apvts.getParameter(slotID + ".mix");
     param->setValueNotifyingHost(param->getDefaultValue());
 
     param = apvts.getParameter(slotID + ".delay time");
     param->setValueNotifyingHost(param->getDefaultValue());
 
     param = apvts.getParameter(slotID + ".feedback");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".room size");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".decay time");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".pre delay");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".damping");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".mod rate");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".mod depth");
     param->setValueNotifyingHost(param->getDefaultValue());
 }
 

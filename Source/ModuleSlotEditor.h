@@ -50,6 +50,7 @@ private:
 
     juce::Slider mixSlider;
     std::vector<std::unique_ptr<juce::Slider>> sliders;
+    std::vector<std::unique_ptr<juce::Label>> sliderLabels;
     juce::TextButton removeButton{ "-" };
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;

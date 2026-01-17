@@ -82,14 +82,22 @@ ModuleSlotEditor::ModuleSlotEditor(
 
 void ModuleSlotEditor::addSliderForParameter(juce::String id)
 {
+    //Add Slider
     auto slider = std::make_unique<juce::Slider>();
-    
     slider->setSliderStyle(juce::Slider::Rotary);
     slider->setTextBoxStyle(
         juce::Slider::TextBoxBelow, false, 50, 18);
 
     addAndMakeVisible(*slider);
 
+    //Add Slider Label
+    auto sliderLabel = std::make_unique<juce::Label>();
+    sliderLabel->setText(processor.apvts.getParameter(id)->getName(128), juce::dontSendNotification);
+    sliderLabel->setJustificationType(juce::Justification::centred);
+
+    addAndMakeVisible(*sliderLabel);
+
+    //Attach Slider to APVTS
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sliderAttachment =
         std::make_unique<
         juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -97,8 +105,10 @@ void ModuleSlotEditor::addSliderForParameter(juce::String id)
             id,
             *slider
         );
+
     sliders.push_back(std::move(slider));
     sliderAttachments.push_back(std::move(sliderAttachment));
+    sliderLabels.push_back(std::move(sliderLabel));
 }
 
 void ModuleSlotEditor::resized()
@@ -111,9 +121,11 @@ void ModuleSlotEditor::resized()
     typeSelector.setBounds(titleArea);
 
     //mixSlider.setBounds(r.removeFromLeft(80));
-    for (auto& slider : sliders)
+    for (int i = 0; i < sliders.size(); i++)
     {
-        slider->setBounds(r.removeFromLeft(80));
+        auto a = r.removeFromLeft(80);
+        sliderLabels[i]->setBounds(a.removeFromBottom(30));
+        sliders[i]->setBounds(a);
     }
     removeButton.setBounds(r.removeFromRight(30));
 }

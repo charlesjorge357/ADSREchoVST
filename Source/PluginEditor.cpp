@@ -138,7 +138,7 @@ void ADSREchoAudioProcessorEditor::resized()
 
     moduleViewport.setBounds(area);
 
-    constexpr int slotHeight = 120;
+    constexpr int slotHeight = 150;
     int y = 0;
 
     for (auto* editor : moduleEditors)
