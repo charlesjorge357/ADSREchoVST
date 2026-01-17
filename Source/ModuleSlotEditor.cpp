@@ -27,6 +27,7 @@ ModuleSlotEditor::ModuleSlotEditor(
     typeSelector.addItem("Delay", 1);
     typeSelector.addItem("Datorro Hall", 2);
     typeSelector.addItem("Hybrid Plate", 3);
+
     if (info.moduleType == "Delay")
     {
         typeSelector.setSelectedId(1, juce::dontSendNotification);
@@ -50,19 +51,6 @@ ModuleSlotEditor::ModuleSlotEditor(
     enableToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         apvts, slotID + ".enabled", enableToggle);
 
-    //Module Mix Slider
-    //mixSlider.setSliderStyle(juce::Slider::Rotary);
-    //mixSlider.setTextBoxStyle(
-    //    juce::Slider::TextBoxBelow, false, 50, 18);
-    //addAndMakeVisible(mixSlider);
-
-    //mixAttachment =
-    //    std::make_unique<
-    //    juce::AudioProcessorValueTreeState::SliderAttachment>(
-    //        apvts,
-    //        slotID + ".mix",
-    //        mixSlider
-    //    );
 
     //Module Control Sliders
     auto usedParams = info.usedParameters;
@@ -76,7 +64,7 @@ ModuleSlotEditor::ModuleSlotEditor(
     addAndMakeVisible(removeButton);
     removeButton.onClick = [this]
         {
-            processor.requestRemoveModule(slotIndex);
+            processor.removeModule(slotIndex);
         };
 }
 
@@ -120,12 +108,13 @@ void ModuleSlotEditor::resized()
     title.setBounds(titleArea.removeFromLeft(80));
     typeSelector.setBounds(titleArea);
 
-    //mixSlider.setBounds(r.removeFromLeft(80));
+    // For each slider, set bounds for the slider and it's label
     for (int i = 0; i < sliders.size(); i++)
     {
         auto a = r.removeFromLeft(80);
         sliderLabels[i]->setBounds(a.removeFromBottom(30));
         sliders[i]->setBounds(a);
     }
+
     removeButton.setBounds(r.removeFromRight(30));
 }

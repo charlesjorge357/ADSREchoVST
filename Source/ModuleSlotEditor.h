@@ -44,15 +44,17 @@ private:
 
     ADSREchoAudioProcessor& processor;
 
+    // Module Settings
     juce::Label title;
     juce::ComboBox typeSelector;
     juce::ToggleButton enableToggle{ "Enabled" };
 
-    juce::Slider mixSlider;
+    // Module Sliders
     std::vector<std::unique_ptr<juce::Slider>> sliders;
     std::vector<std::unique_ptr<juce::Label>> sliderLabels;
     juce::TextButton removeButton{ "-" };
 
+    // Module Attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableToggleAttachment;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;

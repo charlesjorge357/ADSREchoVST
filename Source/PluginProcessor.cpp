@@ -127,6 +127,10 @@ void ADSREchoAudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
+
+    // Free up the pending deleted modules:
+    for (auto& slot : slots)
+        slot->destroyPending();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -161,9 +165,6 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    if (hasPendingChange.exchange(false))
-        applyPendingChange();
-
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
 
@@ -173,7 +174,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     for (int ch = 0; ch < totalNumInputChannels; ++ch)
         masterDryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
 
-
+    // Move modules around if requested
     if (moveRequested.load(std::memory_order_acquire))
     {
         const int from = pendingMove.from;
@@ -201,7 +202,6 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             slots[to] = std::move(moved);
         }
 
-        //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
         uiNeedsRebuild.store(true, std::memory_order_release);
         moveRequested.store(false, std::memory_order_release);
     }
@@ -209,60 +209,6 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     //Process the audio through each module slot effect
     for (auto& slot : slots)
         slot->process(buffer, midiMessages);
-
-    /*
-    // ===== Read user parameters into reverb =====
-    ReverbProcessorParameters params;
-    params.roomSize = apvts.getRawParameterValue("RoomSize")->load();
-    params.decayTime = apvts.getRawParameterValue("Decay")->load();
-    params.damping = apvts.getRawParameterValue("Damping")->load();
-    params.modRate = apvts.getRawParameterValue("ModRate")->load();
-    params.modDepth = apvts.getRawParameterValue("ModDepth")->load();
-    params.mix = apvts.getRawParameterValue("ReverbMix")->load();
-    params.preDelay = apvts.getRawParameterValue("PreDelay")->load();
-
-
-    int algoChoice = apvts.getRawParameterValue("Algorithm")->load();
-
-
-    // TOGGLE ALGORITHM HERE #1
-    // Set parameters for the active algorithm
-    if (algoChoice == 0)
-        datorroReverb.setParameters(params);
-    else
-        hybridReverb.setParameters(params);
-
-
-
-
-    
-    // ============ PER-EFFECT PROCESSING ============
-    // Each effect handles its own internal dry/wet
-
-    // Update delay parameters
-    basicDelay.setDelayTime(apvts.getRawParameterValue("DelayTime")->load());
-    basicDelay.setFeedback(apvts.getRawParameterValue("DelayFeedback")->load());
-    basicDelay.setMix(apvts.getRawParameterValue("DelayMix")->load());
-
-    // Enable/disable effects in routing
-    bool delayEnabled = apvts.getRawParameterValue("delayEnabled")->load();
-    routingMatrix->setEffectEnabled(RoutingMatrix::EffectSlot::Delay, delayEnabled);
-
-    bool algoEnabled = apvts.getRawParameterValue("algoEnabled")->load();
-    routingMatrix->setEffectEnabled(RoutingMatrix::EffectSlot::AlgorithmicReverb, algoEnabled);
-    routeSignalChain(buffer, midiMessages);
-
-
-
-
-    
-
-    // Future: Effect 2: Delay (has its own dry/wet)
-    // DelayEffect.process(block);
-    
-    // Future: Effect 3: Convolution (has its own dry/wet)
-    // ConvolutionEffect.process(block);
-    */
 
 
     // ============ MASTER DRY/WET MIX ============
@@ -371,23 +317,6 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
     uiNeedsRebuild.store(true, std::memory_order_release);
 }
 
-int ADSREchoAudioProcessor::getNumSlots() const
-{
-    return MAX_SLOTS;
-}
-
-SlotInfo ADSREchoAudioProcessor::getSlotInfo(int index) 
-{
-    auto& slot = slots[index];
-    auto effectModule = slot->get();
-        return { effectModule->getID(), effectModule->getType(), effectModule->getUsedParameters() };
-}
-
-bool ADSREchoAudioProcessor::slotIsEmpty(int index)
-{
-    return !slots[index]->get();
-}
-
 juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
@@ -433,62 +362,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".mod depth", "Mod Depth",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
     }
-
-    /*
-    // Per-effect controls (reverb example)
-    layout.add(std::make_unique<juce::AudioParameterBool>("algoEnabled", "Algorithmic Reverb Enabled", true));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("ReverbMix", "Reverb Mix",
-        juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("RoomSize", "Room Size",
-        juce::NormalisableRange<float>(0.25f, 1.75f, 0.01f), 1.0f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Decay",
-        "Decay Time (s)",
-        juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f),
-        5.0f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("PreDelay", "Pre Delay (ms)",
-        juce::NormalisableRange<float>(0.0f, 200.0f, 0.1f), 0.0f));
-
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Damping", "Damping",
-        juce::NormalisableRange<float>(500.0f, 10000.0f, 1.f, 0.5f), 8000.0f));
-
-    // This cutoff maps to loopDamping TPT low-pass
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("ModRate", "Mod Rate",
-        juce::NormalisableRange<float>(0.05f, 5.0f, 0.001f), 0.30f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("ModDepth", "Mod Depth",
-        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
-
-    layout.add(std::make_unique<juce::AudioParameterChoice>(
-        "Algorithm",            // parameter ID
-        "Reverb Algorithm",     // visible name
-        juce::StringArray{ "Dattorro Hall", "Hybrid Plate" },
-        0                       // default index (0 = Hall)
-    ));
-
-    // Convolution Controls
-    layout.add(std::make_unique<juce::AudioParameterBool>("convEnabled", "Convolution Reverb Enabled", true));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("ConvMix", "Convolution Mix",
-        juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 0.5f));
-
-    // Delay Controls
-    layout.add(std::make_unique<juce::AudioParameterBool>("delayEnabled", "Delay Enabled", true));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayTime", "Delay Time (ms)",
-        juce::NormalisableRange<float>(1.0f, 2000.0f, 0.1f, 0.4f), 250.0f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayFeedback", "Delay Feedback",
-        juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 0.3f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayMix", "Delay Mix",
-        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
-        */
 
     return layout;
 }
@@ -548,69 +421,57 @@ void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer, 
     // For example, blending algorithmic and convolution reverbs
 }
 
-void ADSREchoAudioProcessor::requestAddModule(ModuleType type)
+int ADSREchoAudioProcessor::getNumSlots() const
 {
-    if (numModules == MAX_SLOTS || pendingModule.get() != nullptr) { return; }
-
-    //Preallocates the module from the UI thread, so it can be later added from the audio thread
-    switch (type)
-    {
-        case ModuleType::Delay:
-            pendingModule = std::make_unique<DelayModule>("null", apvts);
-            break;
-
-        case ModuleType::Datorro:
-            pendingModule = std::make_unique<DatorroModule>("null", apvts);
-            break;
-
-        case ModuleType::HybridPlate:
-            pendingModule = std::make_unique<HybridPlateModule>("null", apvts);
-            break;
-    }
-    
-    pendingChange = { PendingChange::Add, type, -1 };
-    hasPendingChange.store(true);
+    return MAX_SLOTS;
 }
 
-void ADSREchoAudioProcessor::requestRemoveModule(int slotIndex)
+// Returns SlotInfo struct that contains the id, type, and used parameters of the module in a slot
+SlotInfo ADSREchoAudioProcessor::getSlotInfo(int index)
 {
-    //pendingChange = { PendingChange::Remove, ModuleType{}, slotIndex };
-    //hasPendingChange.store(true);
-    removeModule(slotIndex);
+    auto& slot = slots[index];
+    auto effectModule = slot->get();
+    return { effectModule->getID(), effectModule->getType(), effectModule->getUsedParameters() };
 }
 
-void ADSREchoAudioProcessor::applyPendingChange()
+bool ADSREchoAudioProcessor::slotIsEmpty(int index)
 {
-    switch (pendingChange.type)
-    {
-    case PendingChange::Add:
-        addModule(pendingChange.moduleType);
-        break;
-
-    case PendingChange::Remove:
-        //removeModule(pendingChange.slotIndex);
-        break;
-    }
+    return !slots[index]->get();
 }
 
+// Add module of moduleType
 void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
 {
+    if (numModules == MAX_SLOTS) { return; }
+
     for (auto& slot : slots) {
         if (slot->get() == nullptr)
         {
-
             setSlotDefaults(slot->slotID);
-            //pendingModule->setID(slot->slotID);
-            slot->setModule(std::move(pendingModule));
             
+            switch (moduleType)
+            {
+                case ModuleType::Delay:
+                    slot->setModule(std::make_unique<DelayModule>("null", apvts));
+                    break;
+
+                case ModuleType::Datorro:
+                    slot->setModule(std::make_unique<DatorroModule>("null", apvts));
+                    break;
+
+                case ModuleType::HybridPlate:
+                    slot->setModule(std::make_unique<HybridPlateModule>("null", apvts));
+                    break;
+            }
+
             numModules++;
-            //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
             uiNeedsRebuild.store(true, std::memory_order_release);
             return;
         }   
     }
 }
 
+// Remove module at slotIndex
 void ADSREchoAudioProcessor::removeModule(int slotIndex)
 {
     auto& toRemove = slots[slotIndex];
@@ -624,10 +485,9 @@ void ADSREchoAudioProcessor::removeModule(int slotIndex)
     numModules--;
 
     requestSlotMove(slotIndex, MAX_SLOTS-1);
-
-    //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
 }
 
+// Change module at slotIndex to type
 void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
 {
     auto& toChange = slots[slotIndex];
@@ -651,12 +511,11 @@ void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
         break;
     }
 
-
-    //juce::MessageManager::callAsync([this]() { sendChangeMessage(); });
     uiNeedsRebuild.store(true, std::memory_order_release);
 
 }
 
+// Request that a slot be moved to another position
 void ADSREchoAudioProcessor::requestSlotMove(int from, int to)
 {
     pendingMove.from = from;
@@ -664,6 +523,7 @@ void ADSREchoAudioProcessor::requestSlotMove(int from, int to)
     moveRequested.store(true, std::memory_order_release);
 }
 
+// Reset all parameter values of slot back to default
 void ADSREchoAudioProcessor::setSlotDefaults(juce::String slotID)
 {
     auto* param = apvts.getParameter(slotID + ".enabled");

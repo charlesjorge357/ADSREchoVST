@@ -65,22 +65,6 @@ private:
     //Master Labels
     juce::Label masterMixLabel, gainLabel;
 
-    /*
-    // Sliders
-    juce::Slider masterMixSlider, gainSlider, algoWetDrySlider, convWetDrySlider;
-
-    // Checkboxes
-    juce::ToggleButton algoToggle{ "Algorithmic Reverb" };
-    juce::ToggleButton convToggle{ "Convolution Reverb" };
-
-    // Attachments
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterMixAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> algoWetDryAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> convWetDryAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> algoToggleAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> convToggleAttachment;*/
-
     void rebuildModuleEditors();
     void timerCallback() override;
     void handleAsyncUpdate() override;

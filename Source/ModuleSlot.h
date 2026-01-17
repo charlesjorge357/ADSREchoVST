@@ -57,7 +57,6 @@ public:
             newModule->setID(slotID);
         }
 
-
         // Keep old module alive until after swap
         pendingDeletion = std::move(ownedModule);
         ownedModule = std::move(newModule);

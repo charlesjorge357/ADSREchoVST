@@ -14,78 +14,40 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     startTimerHz(30);
-    //audioProcessor.addChangeListener(this);
-    
-    addAndMakeVisible(moduleViewport);
-    moduleViewport.setViewedComponent(&moduleContainer, false);
-    moduleViewport.setScrollBarsShown(true, false);
-
     
     // MASTER MIX
     addAndMakeVisible(masterMixSlider);
+    addAndMakeVisible(masterMixLabel);
     masterMixSlider.setSliderStyle(juce::Slider::Rotary);
     masterMixSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     masterMixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         audioProcessor.apvts, "MasterMix", masterMixSlider);
     masterMixLabel.setText("Master Mix", juce::dontSendNotification);
     masterMixLabel.setJustificationType(juce::Justification::horizontallyCentred);
-    addAndMakeVisible(masterMixLabel);
 
     //GAIN
     addAndMakeVisible(gainSlider);
+    addAndMakeVisible(gainLabel);
     gainSlider.setSliderStyle(juce::Slider::Rotary);
     gainSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         audioProcessor.apvts, "Gain", gainSlider);
     gainLabel.setText("Gain", juce::dontSendNotification);
     gainLabel.setJustificationType(juce::Justification::horizontallyCentred);
-    addAndMakeVisible(gainLabel);
 
-    /*
-    // ALGORITHMIC
-    addAndMakeVisible(algoToggle);
-    algoToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-        audioProcessor.apvts, "algoEnabled", algoToggle);
 
-    addAndMakeVisible(algoWetDrySlider);
-    algoWetDrySlider.setSliderStyle(juce::Slider::Rotary);
-    algoWetDrySlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    algoWetDryAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.apvts, "ReverbMix", algoWetDrySlider);
-
-    // CONVOLUTION
-    addAndMakeVisible(convToggle);
-    convToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-        audioProcessor.apvts, "convEnabled", convToggle);
-
-    addAndMakeVisible(convWetDrySlider);
-    convWetDrySlider.setSliderStyle(juce::Slider::Rotary);
-    convWetDrySlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    convWetDryAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.apvts, "ConvMix", convWetDrySlider);
-
-    // Setup visibility listener
-    algoToggle.onClick = [this]
-        {
-            algoWetDrySlider.setVisible(algoToggle.getToggleState());
-        };
-    convToggle.onClick = [this]
-        {
-            convWetDrySlider.setVisible(convToggle.getToggleState());
-        };
-
-    // Initialize visibility based on parameter state
-    algoWetDrySlider.setVisible(audioProcessor.apvts.getRawParameterValue("algoEnabled")->load() > 0.5f);
-    convWetDrySlider.setVisible(audioProcessor.apvts.getRawParameterValue("convEnabled")->load() > 0.5f);
-    */
-
+    // Add slot button
     addAndMakeVisible(addButton);
-
     addButton.onClick = [this]
     {
-        audioProcessor.requestAddModule(ModuleType::Delay);
+        audioProcessor.addModule(ModuleType::Delay);
         attemptedChange = true;
     };
+
+    // Creates module viewport for the module container, giving scrollbar if enough modules are added    
+    addAndMakeVisible(moduleViewport);
+    moduleViewport.setViewedComponent(&moduleContainer, false);
+    moduleViewport.setScrollBarsShown(true, false);
 
     setSize(800, 600);
 
@@ -94,7 +56,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
 
 ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
 {
-    //audioProcessor.removeChangeListener(this);
+    // Stop the timer when the editor is destroyed
     stopTimer();
 }
 
@@ -111,21 +73,9 @@ void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 
 void ADSREchoAudioProcessorEditor::resized()
 {
-    //auto area = getLocalBounds().reduced(10);
-
-    //auto top = area.removeFromTop(80);
-    //masterMixSlider.setBounds(top.removeFromLeft(120));
-    //gainSlider.setBounds(top.removeFromLeft(120));
-
-    //auto bottom = area.removeFromTop(100);
-    //algoToggle.setBounds(bottom.removeFromLeft(120));
-    //algoWetDrySlider.setBounds(bottom.removeFromLeft(120));
-
-    //convToggle.setBounds(bottom.removeFromLeft(120));
-    //convWetDrySlider.setBounds(bottom.removeFromLeft(120));
-
     auto area = getLocalBounds().reduced(10);
 
+    // Arrange the layout of the master controls at the top
     auto top = area.removeFromTop(110);
     auto masterMixArea = top.removeFromLeft(120);
     auto gainArea = top.removeFromLeft(120);
@@ -136,6 +86,7 @@ void ADSREchoAudioProcessorEditor::resized()
 
     addButton.setBounds(area.removeFromTop(30));
 
+    // Sets the layout of each Module Editor, created down sequentially in the module viewport.
     moduleViewport.setBounds(area);
 
     constexpr int slotHeight = 150;
@@ -150,6 +101,7 @@ void ADSREchoAudioProcessorEditor::resized()
     moduleContainer.setSize(moduleViewport.getWidth(), y);
 }
 
+// On a constant timer, checks if the ui needs to be rebuild, then calls for a rebuild asynchronously
 void ADSREchoAudioProcessorEditor::timerCallback()
 {
     if (audioProcessor.uiNeedsRebuild.exchange(false, std::memory_order_acquire))
@@ -161,11 +113,7 @@ void ADSREchoAudioProcessorEditor::handleAsyncUpdate()
     rebuildModuleEditors();
 }
 
-//void ADSREchoAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster*)
-//{
-//    rebuildModuleEditors();
-//}
-
+// Rebuilds the module editor list, based on the current module slot list
 void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 {
     moduleEditors.clear();
@@ -188,24 +136,6 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
     }
 
     resized();
-
-
-    //for (int i = 0; i < testNumModules; ++i)
-    //{
-    //    SlotInfo info = { "testSlotID", "testSlottype" };
-
-    //    auto* editor = new ModuleSlotEditor(
-    //        i,
-    //        info,
-    //        audioProcessor,
-    //        audioProcessor.apvts
-    //    );
-
-    //    moduleEditors.add(editor);
-    //    moduleContainer.addAndMakeVisible(editor);
-    //}
-
-    //resized();
 }
 
 

@@ -90,8 +90,8 @@ public:
     SlotInfo getSlotInfo(int index);
     bool slotIsEmpty(int index);
 
-    void requestAddModule(ModuleType type);
-    void requestRemoveModule(int slotIndex);
+    void addModule(ModuleType moduleType);
+    void removeModule(int slotIndex);
     void changeModuleType(int slotIndex, int newType);
 
     std::atomic<bool> uiNeedsRebuild{ false };
@@ -107,17 +107,6 @@ private:
     // Pre-allocated buffer for dry signal (avoids allocation in processBlock)
     juce::AudioBuffer<float> masterDryBuffer;
 
-    struct PendingChange
-    {
-        enum Type { Add, Remove } type;
-        ModuleType moduleType;
-        int slotIndex = -1;
-    };
-
-    std::atomic<bool> hasPendingChange{ false };
-    PendingChange pendingChange;
-    std::unique_ptr<EffectModule> pendingModule;
-
     struct PendingMove
     {
         int from = -1;
@@ -130,11 +119,7 @@ private:
 
     static constexpr int MAX_SLOTS = 8;
 
-    void applyPendingChange();
-    void addModule(ModuleType moduleType);
-    void removeModule(int slotIndex);
     void setSlotDefaults(juce::String slotID);
-
 
     int numModules = 0;
 
