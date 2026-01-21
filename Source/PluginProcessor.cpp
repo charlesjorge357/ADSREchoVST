@@ -25,6 +25,7 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
 #endif
 {
     routingMatrix = std::make_unique<RoutingMatrix>();
+    irBank = std::make_shared<IRBank>();
 
     for (int i = 0; i < MAX_SLOTS; i++) {
         juce::String prefix = "slot_" + juce::String(i);
@@ -114,13 +115,16 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     hybridReverb.prepare(spec);
     basicDelay.prepare(spec);
 
+    convolutionReverb.prepare(spec);
+    convolutionReverb.setIRBank(irBank);
+    
+    
+
     // Pre-allocate dry buffer to avoid allocation in processBlock
     masterDryBuffer.setSize(spec.numChannels, samplesPerBlock);
 
     for (auto& slot : slots)
         slot->prepare(spec);
-
-
 }
 
 void ADSREchoAudioProcessor::releaseResources()
@@ -310,6 +314,12 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
             auto module = std::make_unique<HybridPlateModule>("null", apvts);
             slots[index]->setModule(std::move(module));
         }
+        else if (type == "Convolution")
+        {
+            auto module = std::make_unique<ConvolutionModule>("null", apvts);
+            module->setIRBank(irBank);
+            slots[index]->setModule(std::move(module));
+        }
 
         ++numModules;
     }
@@ -361,6 +371,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".mod depth", "Mod Depth",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv ir index", "Conv IR Index",
+            juce::NormalisableRange<float>(0.0f, 15.0f, 1.0f), 0.0f));  // adjust max index as needed
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv ir gain", "Conv IR Gain (dB)",
+            juce::NormalisableRange<float>(-18.0f, 18.0f, 0.1f), 0.0f));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv low cut", "Conv Low Cut (Hz)",
+            juce::NormalisableRange<float>(20.0f, 1000.0f, 1.0f, 0.3f), 80.0f));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv high cut", "Conv High Cut (Hz)",
+            juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.3f), 12000.0f));
     }
 
     return layout;
@@ -462,6 +484,12 @@ void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
                 case ModuleType::HybridPlate:
                     slot->setModule(std::make_unique<HybridPlateModule>("null", apvts));
                     break;
+
+                case ModuleType::Convolution:
+                    auto module = std::make_unique<ConvolutionModule>("null", apvts);
+                    module->setIRBank(irBank);
+                    slot->setModule(std::move(module));
+                    break;
             }
 
             numModules++;
@@ -509,6 +537,11 @@ void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
     case 3:
         toChange->setModule(std::make_unique<HybridPlateModule>("null", apvts));
         break;
+    case 4:
+        auto module = std::make_unique<ConvolutionModule>("null", apvts);
+        module->setIRBank(irBank);  // ADD THIS!
+        toChange->setModule(std::move(module));
+        break;
     }
 
     uiNeedsRebuild.store(true, std::memory_order_release);
@@ -554,6 +587,18 @@ void ADSREchoAudioProcessor::setSlotDefaults(juce::String slotID)
     param->setValueNotifyingHost(param->getDefaultValue());
 
     param = apvts.getParameter(slotID + ".mod depth");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".conv ir index");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".conv ir gain");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".conv low cut");
+    param->setValueNotifyingHost(param->getDefaultValue());
+
+    param = apvts.getParameter(slotID + ".conv high cut");
     param->setValueNotifyingHost(param->getDefaultValue());
 }
 

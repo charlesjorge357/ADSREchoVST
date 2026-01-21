@@ -91,7 +91,8 @@ enum class ModuleType
 {
     Datorro,
     HybridPlate,
-    Delay
+    Delay,
+    Convolution
 };
 
 //template <typename SampleType>

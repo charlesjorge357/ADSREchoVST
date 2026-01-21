@@ -28,10 +28,13 @@
 #include "HybridPlate.h"
 #include "RoutingMatrix.h"
 #include "BasicDelay.h"
+#include "Convolution.h"
 #include "ModuleSlot.h"
 #include "DelayModule.h"
 #include "DatorroModule.h"
+#include "IRBank.h"
 #include "HybridPlateModule.h"
+#include "ConvolutionModule.h"
 
 //==============================================================================
 /**
@@ -96,13 +99,19 @@ public:
 
     std::atomic<bool> uiNeedsRebuild{ false };
 
+    // IR Bank accessor for UI
+    std::shared_ptr<IRBank> getIRBank() const { return irBank; }
+
 private:
     juce::dsp::ProcessSpec spec;
     
     DatorroHall datorroReverb;
     HybridPlate hybridReverb;
     BasicDelay basicDelay;
+    Convolution convolutionReverb;
     std::unique_ptr<RoutingMatrix> routingMatrix;
+
+    std::shared_ptr<IRBank> irBank;
 
     // Pre-allocated buffer for dry signal (avoids allocation in processBlock)
     juce::AudioBuffer<float> masterDryBuffer;

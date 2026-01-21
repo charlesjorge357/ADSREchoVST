@@ -58,7 +58,7 @@ target_sources(ADSREcho
     PRIVATE
         Source/PluginEditor.cpp
         Source/PluginProcessor.cpp
- "Source/DatorroHall.h")
+ "Source/DatorroHall.h" "Source/IRBank.h")
 
 # Compile definitions
 target_compile_definitions(ADSREcho

@@ -27,6 +27,7 @@ ModuleSlotEditor::ModuleSlotEditor(
     typeSelector.addItem("Delay", 1);
     typeSelector.addItem("Datorro Hall", 2);
     typeSelector.addItem("Hybrid Plate", 3);
+    typeSelector.addItem("Convolution", 4);
 
     if (info.moduleType == "Delay")
     {
@@ -39,6 +40,11 @@ ModuleSlotEditor::ModuleSlotEditor(
     else if (info.moduleType == "Hybrid Plate")
     {
         typeSelector.setSelectedId(3, juce::dontSendNotification);
+    }
+    else if (info.moduleType == "Convolution")
+    {
+        // Convolution module not in selector for now
+        typeSelector.setSelectedId(4, juce::dontSendNotification);
     }
 
     typeSelector.onChange = [this] 
