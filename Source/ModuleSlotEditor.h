@@ -1,17 +1,14 @@
 /*
   ==============================================================================
-
-    ModuleSlotEditor.h
-    UI Component Class for Effect Module Slots
-
+    ModuleSlotEditor.h - WITH IR COMBOBOX
   ==============================================================================
 */
 
 #pragma once
 
 #if __has_include("JuceHeader.h")
-  #include "JuceHeader.h"  // for Projucer
-#else // for Cmake
+  #include "JuceHeader.h"
+#else
   #include <juce_audio_basics/juce_audio_basics.h>
   #include <juce_audio_formats/juce_audio_formats.h>
   #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
@@ -52,6 +49,11 @@ private:
     // Module Sliders
     std::vector<std::unique_ptr<juce::Slider>> sliders;
     std::vector<std::unique_ptr<juce::Label>> sliderLabels;
+    
+    // IR Selectors (ComboBoxes)
+    std::vector<std::unique_ptr<juce::ComboBox>> irSelectors;
+    std::vector<std::unique_ptr<juce::Label>> irSelectorLabels;
+    
     juce::TextButton removeButton{ "-" };
 
     // Module Attachments
@@ -60,4 +62,5 @@ private:
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;
 
     void addSliderForParameter(juce::String id);
+    void addIRSelectorForParameter(juce::String id);
 };

@@ -53,7 +53,8 @@ public:
     {
         if (newModule)
         {
-            newModule->prepare(currentSpec);
+            if (currentSpec.sampleRate > 0)
+                newModule->prepare(currentSpec);
             newModule->setID(slotID);
         }
 

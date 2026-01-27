@@ -1,9 +1,6 @@
 /*
   ==============================================================================
-
-    ModuleSlotEditor.cpp
-    UI Component Class for Effect Module Slots
-
+    ModuleSlotEditor.cpp - WITH IR COMBOBOX
   ==============================================================================
 */
 
@@ -43,7 +40,6 @@ ModuleSlotEditor::ModuleSlotEditor(
     }
     else if (info.moduleType == "Convolution")
     {
-        // Convolution module not in selector for now
         typeSelector.setSelectedId(4, juce::dontSendNotification);
     }
 
@@ -57,13 +53,21 @@ ModuleSlotEditor::ModuleSlotEditor(
     enableToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         apvts, slotID + ".enabled", enableToggle);
 
-
-    //Module Control Sliders
+    //Module Control Sliders (and ComboBoxes for special params)
     auto usedParams = info.usedParameters;
     for (const auto& suffix : usedParams)
     {
         auto id = slotID + "." + suffix;
-        addSliderForParameter(id);
+        
+        // Special handling for IR index - use ComboBox instead of slider
+        if (suffix == "conv ir index")
+        {
+            addIRSelectorForParameter(id);
+        }
+        else
+        {
+            addSliderForParameter(id);
+        }
     }
 
     //Module Remove Button
@@ -105,6 +109,55 @@ void ModuleSlotEditor::addSliderForParameter(juce::String id)
     sliderLabels.push_back(std::move(sliderLabel));
 }
 
+void ModuleSlotEditor::addIRSelectorForParameter(juce::String id)
+{
+    // Add ComboBox for IR selection
+    auto irSelector = std::make_unique<juce::ComboBox>();
+    
+    // Populate with IR names from IRBank
+    auto irBank = processor.getIRBank();
+    if (irBank)
+    {
+        for (int i = 0; i < irBank->getNumIRs(); ++i)
+        {
+            irSelector->addItem(irBank->getIRName(i), i + 1);  // ID starts at 1
+        }
+    }
+    
+    // Get current parameter value and set selection
+    auto* param = processor.apvts.getRawParameterValue(id);
+    if (param)
+    {
+        int currentIndex = (int)param->load();
+        irSelector->setSelectedId(currentIndex + 1, juce::dontSendNotification);
+    }
+    
+    // Update parameter when selection changes (same pattern as typeSelector)
+    irSelector->onChange = [this, id, irSelectorPtr = irSelector.get()]
+    {
+        int selectedIndex = irSelectorPtr->getSelectedId() - 1;  // Convert back to 0-based
+        auto* param = processor.apvts.getParameter(id);
+        if (param)
+        {
+            param->beginChangeGesture();
+            param->setValueNotifyingHost(param->convertTo0to1((float)selectedIndex));
+            param->endChangeGesture();
+        }
+    };
+    
+    addAndMakeVisible(*irSelector);
+    
+    // Add Label
+    auto label = std::make_unique<juce::Label>();
+    label->setText("IR", juce::dontSendNotification);
+    label->setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(*label);
+    
+    // Store in vectors
+    irSelectors.push_back(std::move(irSelector));
+    irSelectorLabels.push_back(std::move(label));
+}
+
 void ModuleSlotEditor::resized()
 {
     auto r = getLocalBounds().reduced(6);
@@ -114,12 +167,20 @@ void ModuleSlotEditor::resized()
     title.setBounds(titleArea.removeFromLeft(80));
     typeSelector.setBounds(titleArea);
 
-    // For each slider, set bounds for the slider and it's label
+    // Layout sliders
     for (int i = 0; i < sliders.size(); i++)
     {
         auto a = r.removeFromLeft(80);
         sliderLabels[i]->setBounds(a.removeFromBottom(30));
         sliders[i]->setBounds(a);
+    }
+    
+    // Layout IR selectors
+    for (int i = 0; i < irSelectors.size(); i++)
+    {
+        auto a = r.removeFromLeft(100);  // Wider for ComboBox
+        irSelectorLabels[i]->setBounds(a.removeFromBottom(30));
+        irSelectors[i]->setBounds(a.removeFromTop(25));
     }
 
     removeButton.setBounds(r.removeFromRight(30));

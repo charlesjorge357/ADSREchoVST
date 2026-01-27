@@ -9,13 +9,13 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
     currentSampleRate = spec.sampleRate;
     prepared = true;
 
+    // Reset all state first
+    reset();
+
     // Convolver
-    convolver.reset();
     convolver.prepare(spec);
 
     // Pre-delay
-    preDelayL.reset();
-    preDelayR.reset();
     preDelayL.prepare(spec);
     preDelayR.prepare(spec);
 
@@ -27,11 +27,6 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
     updatePreDelay();
 
     // Filters
-    lowCutL.reset();
-    lowCutR.reset();
-    highCutL.reset();
-    highCutR.reset();
-
     juce::dsp::ProcessSpec filterSpec = spec;
     lowCutL.prepare(filterSpec);
     lowCutR.prepare(filterSpec);
@@ -40,11 +35,11 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
 
     updateFilters();
 
-    // Allocate dry buffer
+    // Allocate dry buffer with exact size
     dryBuffer.setSize((int)spec.numChannels,
                       (int)spec.maximumBlockSize,
                       false,  // keep existing content: false
-                      false,  // clear extra space: false
+                      true,   // clear extra space: true (changed)
                       true);  // avoid realloc if possible
 }
 
@@ -75,10 +70,10 @@ void Convolution::updateFilters()
 
     const float sr = (float) currentSampleRate;
 
-    const float lowHz  = juce::jlimit(10.0f,  sr * 0.45f, parameters.lowCutHz);
+    // Ensure low cut is below high cut with proper limits
+    const float lowHz  = juce::jlimit(10.0f, sr * 0.45f, parameters.lowCutHz);
     const float highHz = juce::jlimit(lowHz + 10.0f, sr * 0.49f, parameters.highCutHz);
 
-    // FIXED: Use coefficients() method instead of accessing state directly
     auto lowCoeffs  = juce::dsp::IIR::Coefficients<float>::makeHighPass(sr, lowHz, 0.707f);
     auto highCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(sr, highHz, 0.707f);
 
@@ -95,7 +90,7 @@ ConvolutionParameters& Convolution::getParameters()
 
 void Convolution::setParameters(const ConvolutionParameters& newParams)
 {
-    // Simple copy; could add smoothing if needed
+    // Check what changed
     bool preDelayChanged =
         (newParams.preDelay != parameters.preDelay);
 
@@ -103,7 +98,6 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
         (newParams.lowCutHz  != parameters.lowCutHz) ||
         (newParams.highCutHz != parameters.highCutHz);
 
-    // Check if IR index changed
     bool irChanged = ((int)newParams.irIndex != (int)parameters.irIndex);
 
     parameters = newParams;
@@ -129,18 +123,23 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
     const int numSamples  = buffer.getNumSamples();
     const int numChannels = buffer.getNumChannels();
 
-    // Capture dry
-    if (dryBuffer.getNumChannels() < numChannels ||
-        dryBuffer.getNumSamples() < numSamples)
+    // Ensure dry buffer has exact size needed
+    if (dryBuffer.getNumChannels() != numChannels ||
+        dryBuffer.getNumSamples() != numSamples)
     {
-        dryBuffer.setSize(numChannels, numSamples, false, false, true);
+        dryBuffer.setSize(numChannels, numSamples, false, true, true);
     }
 
+    // Capture dry signal
     for (int ch = 0; ch < numChannels; ++ch)
         dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
 
     // Work on wet path in-place in buffer
-    // 1) Pre-delay - FIXED: Use popSample() instead of readFractional()
+    
+    // 1) Pre-delay - FIXED: Set delay once before sample loop
+    preDelayL.setDelay(preDelaySamples);
+    preDelayR.setDelay(preDelaySamples);
+    
     for (int ch = 0; ch < numChannels; ++ch)
     {
         auto* wetData = buffer.getWritePointer(ch);
@@ -152,18 +151,16 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
             if (ch == 0)
             {
                 preDelayL.pushSample(0, inSample);
-                preDelayL.setDelay(preDelaySamples);
                 wetData[n] = preDelayL.popSample(0);
             }
             else if (ch == 1)
             {
                 preDelayR.pushSample(0, inSample);
-                preDelayR.setDelay(preDelaySamples);
                 wetData[n] = preDelayR.popSample(0);
             }
             else
             {
-                // For channels beyond stereo, just pass-through or extend logic
+                // For channels beyond stereo, pass-through
                 wetData[n] = inSample;
             }
         }
@@ -174,12 +171,13 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
     {
         juce::dsp::AudioBlock<float> block(buffer);
 
-        // Per-channel processing
+        // Process channel 0
         auto ch0 = block.getSingleChannelBlock(0);
         juce::dsp::ProcessContextReplacing<float> ctx0(ch0);
         lowCutL.process(ctx0);
         highCutL.process(ctx0);
 
+        // Process channel 1 if stereo
         if (numChannels >= 2)
         {
             auto ch1 = block.getSingleChannelBlock(1);
@@ -213,7 +211,7 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
     for (int ch = 0; ch < numChannels; ++ch)
     {
         auto* wetData  = buffer.getWritePointer(ch);
-        auto* dryData  = dryBuffer.getReadPointer(ch);
+        const auto* dryData  = dryBuffer.getReadPointer(ch);
 
         for (int n = 0; n < numSamples; ++n)
             wetData[n] = dryMix * dryData[n] + wetMix * wetData[n];
@@ -223,14 +221,25 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
 // IR loading helpers
 void Convolution::loadIR(const juce::File& file)
 {
-    // Basic helper; you can wrap this with your ML IR generator
-    juce::dsp::Convolution::Stereo stereoMode =
-        juce::dsp::Convolution::Stereo::yes;
+    if (!file.existsAsFile())
+    {
+        DBG("Convolution::loadIR - ERROR: File does not exist: " + file.getFullPathName());
+        return;
+    }
 
-    convolver.loadImpulseResponse(file,
-                                  juce::dsp::Convolution::Stereo::yes,
-                                  juce::dsp::Convolution::Trim::yes,
-                                  0); // use full IR length
+    try
+    {
+        convolver.loadImpulseResponse(file,
+                                      juce::dsp::Convolution::Stereo::yes,
+                                      juce::dsp::Convolution::Trim::yes,
+                                      0); // use full IR length
+        
+        DBG("Convolution::loadIR - Successfully loaded: " + file.getFullPathName());
+    }
+    catch (const std::exception& e)
+    {
+        DBG("Convolution::loadIR - Exception loading IR: " + juce::String(e.what()));
+    }
 }
 
 void Convolution::loadIRFromMemory(const void* data,
@@ -240,11 +249,26 @@ void Convolution::loadIRFromMemory(const void* data,
 {
     juce::ignoreUnused(sampleRate, numChannels);
 
-    convolver.loadImpulseResponse(data,
-                                  dataSize,
-                                  juce::dsp::Convolution::Stereo::yes,
-                                  juce::dsp::Convolution::Trim::yes,
-                                  0);
+    if (data == nullptr || dataSize == 0)
+    {
+        DBG("Convolution::loadIRFromMemory - ERROR: Invalid data or size");
+        return;
+    }
+
+    try
+    {
+        convolver.loadImpulseResponse(data,
+                                      dataSize,
+                                      juce::dsp::Convolution::Stereo::yes,
+                                      juce::dsp::Convolution::Trim::yes,
+                                      0);
+        
+        DBG("Convolution::loadIRFromMemory - Successfully loaded IR from memory");
+    }
+    catch (const std::exception& e)
+    {
+        DBG("Convolution::loadIRFromMemory - Exception: " + juce::String(e.what()));
+    }
 }
 
 // IR Bank Management
@@ -261,38 +285,55 @@ void Convolution::setIRBank(std::shared_ptr<IRBank> bank)
 
 void Convolution::loadIRAtIndex(int index)
 {
-    // Only care that we have a bank; it's safe to load IRs before prepare()
     if (!irBank)
+    {
+        DBG("Convolution::loadIRAtIndex - ERROR: No IR bank set");
         return;
-    
+    }
+
+    if (!juce::isPositiveAndBelow(index, irBank->getNumIRs()))
+    {
+        DBG("Convolution::loadIRAtIndex - ERROR: Index out of range: " + juce::String(index));
+        return;
+    }
+
     if (index == currentIRIndex)
         return; // Already loaded
-    
-    if (!juce::isPositiveAndBelow(index, irBank->getNumIRs()))
+
+    // Explicit bypass IR at index 0
+    if (index == 0)
+    {
+        std::vector<float> impulse(1, 1.0f);
+
+        try
+        {
+            convolver.loadImpulseResponse(
+                impulse.data(),
+                impulse.size(),
+                juce::dsp::Convolution::Stereo::no,
+                juce::dsp::Convolution::Trim::no,
+                1);
+
+            DBG("Convolution::loadIRAtIndex - Loaded BYPASS IR (unity impulse)");
+            currentIRIndex = 0;
+        }
+        catch (const std::exception& e)
+        {
+            DBG("Convolution::loadIRAtIndex - Exception loading bypass IR: " + juce::String(e.what()));
+        }
         return;
-    
+    }
+
+    // Real IRs for index > 0
     auto irFile = irBank->getIRFile(index);
-    
-    // Index 0 is bypass (no file)
+
     if (!irFile.existsAsFile())
     {
-        // Load unity impulse for bypass
-        std::vector<float> impulse(1, 1.0f);
-        convolver.loadImpulseResponse(
-            impulse.data(),
-            impulse.size(),
-            juce::dsp::Convolution::Stereo::no,
-            juce::dsp::Convolution::Trim::no,
-            1);
-        
-        DBG("Loaded bypass IR");
+        DBG("Convolution::loadIRAtIndex - ERROR: IR file does not exist for index "
+            + juce::String(index) + " path: " + irFile.getFullPathName());
+        return;
     }
-    else
-    {
-        // Load actual IR from file
-        loadIR(irFile);
-        DBG("Loaded IR: " + irBank->getIRName(index));
-    }
-    
+
+    loadIR(irFile);
     currentIRIndex = index;
 }

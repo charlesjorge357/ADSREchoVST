@@ -46,6 +46,7 @@ std::vector<juce::String> ConvolutionModule::getUsedParameters() const
 {
     // Same style as DatorroModule: param *names* only, no prefix
     return {
+        "enabled",
         "mix",
         "pre delay",
         "conv ir index",

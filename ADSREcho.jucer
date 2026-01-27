@@ -4,6 +4,75 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
     <GROUP id="{618D5F69-5971-EB1B-AEB0-4D399985702C}" name="Source">
+      <GROUP id="{821B96C5-8187-C1F8-D67F-4DB9BF75EBF4}" name="IRs">
+        <FILE id="JuH3NG" name="Block Inside.wav" compile="0" resource="1"
+              file="Source/IRs/Block Inside.wav"/>
+        <FILE id="PnLUpJ" name="Bottle Hall.wav" compile="0" resource="1" file="Source/IRs/Bottle Hall.wav"/>
+        <FILE id="kHGKZ6" name="Cement Blocks 1.wav" compile="0" resource="1"
+              file="Source/IRs/Cement Blocks 1.wav"/>
+        <FILE id="vArloL" name="Cement Blocks 2.wav" compile="0" resource="1"
+              file="Source/IRs/Cement Blocks 2.wav"/>
+        <FILE id="YcW9Vl" name="Chateau de Logne, Outside.wav" compile="0"
+              resource="1" file="Source/IRs/Chateau de Logne, Outside.wav"/>
+        <FILE id="dxgnw2" name="Conic Long Echo Hall.wav" compile="0" resource="1"
+              file="Source/IRs/Conic Long Echo Hall.wav"/>
+        <FILE id="MQ0BoD" name="Deep Space.wav" compile="0" resource="1" file="Source/IRs/Deep Space.wav"/>
+        <FILE id="V9qE6d" name="Derlon Sanctuary.wav" compile="0" resource="1"
+              file="Source/IRs/Derlon Sanctuary.wav"/>
+        <FILE id="HSjZMt" name="Direct Cabinet N1.wav" compile="0" resource="1"
+              file="Source/IRs/Direct Cabinet N1.wav"/>
+        <FILE id="xAabjo" name="Direct Cabinet N2.wav" compile="0" resource="1"
+              file="Source/IRs/Direct Cabinet N2.wav"/>
+        <FILE id="OtYv10" name="Direct Cabinet N3.wav" compile="0" resource="1"
+              file="Source/IRs/Direct Cabinet N3.wav"/>
+        <FILE id="B37QeL" name="Direct Cabinet N4.wav" compile="0" resource="1"
+              file="Source/IRs/Direct Cabinet N4.wav"/>
+        <FILE id="NmJgLN" name="Five Columns Long.wav" compile="0" resource="1"
+              file="Source/IRs/Five Columns Long.wav"/>
+        <FILE id="e66RKL" name="Five Columns.wav" compile="0" resource="1"
+              file="Source/IRs/Five Columns.wav"/>
+        <FILE id="nsOtsO" name="French 18th Century Salon.wav" compile="0"
+              resource="1" file="Source/IRs/French 18th Century Salon.wav"/>
+        <FILE id="c11nSq" name="Going Home.wav" compile="0" resource="1" file="Source/IRs/Going Home.wav"/>
+        <FILE id="SZDunp" name="Greek 7 Echo Hall.wav" compile="0" resource="1"
+              file="Source/IRs/Greek 7 Echo Hall.wav"/>
+        <FILE id="h4ksFJ" name="Highly Damped Large Room.wav" compile="0" resource="1"
+              file="Source/IRs/Highly Damped Large Room.wav"/>
+        <FILE id="EFDVT7" name="In The Silo Revised.wav" compile="0" resource="1"
+              file="Source/IRs/In The Silo Revised.wav"/>
+        <FILE id="IvleS5" name="In The Silo.wav" compile="0" resource="1" file="Source/IRs/In The Silo.wav"/>
+        <FILE id="pTjxOR" name="Large Bottle Hall.wav" compile="0" resource="1"
+              file="Source/IRs/Large Bottle Hall.wav"/>
+        <FILE id="oT87w9" name="Large Long Echo Hall.wav" compile="0" resource="1"
+              file="Source/IRs/Large Long Echo Hall.wav"/>
+        <FILE id="c4aoXG" name="Large Wide Echo Hall.wav" compile="0" resource="1"
+              file="Source/IRs/Large Wide Echo Hall.wav"/>
+        <FILE id="LFdJ17" name="Masonic Lodge.wav" compile="0" resource="1"
+              file="Source/IRs/Masonic Lodge.wav"/>
+        <FILE id="rOVmI3" name="Musikvereinsaal.wav" compile="0" resource="1"
+              file="Source/IRs/Musikvereinsaal.wav"/>
+        <FILE id="TWnvMp" name="Narrow Bumpy Space.wav" compile="0" resource="1"
+              file="Source/IRs/Narrow Bumpy Space.wav"/>
+        <FILE id="UxaybM" name="Nice Drum Room.wav" compile="0" resource="1"
+              file="Source/IRs/Nice Drum Room.wav"/>
+        <FILE id="qsJDIR" name="On a Star.wav" compile="0" resource="1" file="Source/IRs/On a Star.wav"/>
+        <FILE id="J4vHJx" name="Parking Garage.wav" compile="0" resource="1"
+              file="Source/IRs/Parking Garage.wav"/>
+        <FILE id="WZIxLV" name="Rays.wav" compile="0" resource="1" file="Source/IRs/Rays.wav"/>
+        <FILE id="yuh09n" name="Right Glass Triangle.wav" compile="0" resource="1"
+              file="Source/IRs/Right Glass Triangle.wav"/>
+        <FILE id="gw5jFH" name="Ruby Room.wav" compile="0" resource="1" file="Source/IRs/Ruby Room.wav"/>
+        <FILE id="ctri4N" name="Scala Milan Opera Hall.wav" compile="0" resource="1"
+              file="Source/IRs/Scala Milan Opera Hall.wav"/>
+        <FILE id="pPTUT0" name="Small Drum Room.wav" compile="0" resource="1"
+              file="Source/IRs/Small Drum Room.wav"/>
+        <FILE id="yp79ox" name="Small Prehistoric Cave.wav" compile="0" resource="1"
+              file="Source/IRs/Small Prehistoric Cave.wav"/>
+        <FILE id="scEywg" name="St Nicolaes Church.wav" compile="0" resource="1"
+              file="Source/IRs/St Nicolaes Church.wav"/>
+        <FILE id="fVLfVv" name="Trig Room.wav" compile="0" resource="1" file="Source/IRs/Trig Room.wav"/>
+        <FILE id="y1Ymy7" name="Vocal Duo.wav" compile="0" resource="1" file="Source/IRs/Vocal Duo.wav"/>
+      </GROUP>
       <GROUP id="{9D5CDAC7-64FA-EAD2-C694-A4240E21939C}" name="ModularClasses">
         <GROUP id="{5BA6067D-D5D0-1D4A-2C04-A23A964D8A65}" name="EffectModules">
           <FILE id="zwN6jJ" name="ConvolutionModule.cpp" compile="1" resource="0"
@@ -78,7 +147,8 @@
     <VS2022 targetFolder="Builds/VisualStudio2022">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="ADSREcho" enablePluginBinaryCopyStep="0"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="ADSREcho" enablePluginBinaryCopyStep="1"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="ADSREcho" enablePluginBinaryCopyStep="1"
+                       characterSet="Unicode"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path="JUCE\modules"/>
