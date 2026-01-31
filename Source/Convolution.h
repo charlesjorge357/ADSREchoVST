@@ -11,7 +11,7 @@ struct ConvolutionParameters
     float mix        = 0.5f;    // 0 = fully dry, 1 = fully wet
     float preDelay   = 0.0f;    // pre delay before IR, in ms
 
-    float irIndex    = 0.0f;    // which IR to use (0, 1, 2, ...)
+    int irIndex      = 0;       // which IR to use (0, 1, 2, ...) - CHANGED TO INT!
     float irGainDb   = 0.0f;    // gain applied to IR output
 
     float lowCutHz   = 80.0f;   // high pass cutoff
@@ -70,9 +70,17 @@ private:
     // JUCE convolution engine (handles stereo buffers if IR is stereo)
     juce::dsp::Convolution convolver;
 
-    // Simple stereo pre-delay using dsp::DelayLine
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> preDelayL { 48000 };
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> preDelayR { 48000 };
+    static constexpr int kMaxPreDelaySeconds = 2;
+    static constexpr int kMaxSampleRate      = 192000;
+    static constexpr int kMaxDelaySamples    = kMaxPreDelaySeconds * kMaxSampleRate;
+
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> preDelayL { kMaxDelaySamples };
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> preDelayR { kMaxDelaySamples };
+
+    // DC blocking filters - CRITICAL for convolution!
+    // These remove DC offset that accumulates during convolution
+    juce::dsp::IIR::Filter<float> dcBlockerL;
+    juce::dsp::IIR::Filter<float> dcBlockerR;
 
     // Simple HP / LP filters per channel for tone shaping
     juce::dsp::IIR::Filter<float> lowCutL;

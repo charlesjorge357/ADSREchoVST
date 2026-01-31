@@ -26,6 +26,19 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
 
     updatePreDelay();
 
+    // DC Blockers - CRITICAL for convolution!
+    dcBlockerL.prepare(spec);
+    dcBlockerR.prepare(spec);
+    
+    // Set DC blocker to 5 Hz high-pass (blocks DC, preserves bass)
+    auto dcCoeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass(
+        spec.sampleRate, 
+        5.0f,     // 5 Hz cutoff
+        0.707f    // Butterworth Q
+    );
+    dcBlockerL.coefficients = dcCoeffs;
+    dcBlockerR.coefficients = dcCoeffs;
+
     // Filters
     juce::dsp::ProcessSpec filterSpec = spec;
     lowCutL.prepare(filterSpec);
@@ -39,7 +52,7 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
     dryBuffer.setSize((int)spec.numChannels,
                       (int)spec.maximumBlockSize,
                       false,  // keep existing content: false
-                      true,   // clear extra space: true (changed)
+                      true,   // clear extra space: true
                       true);  // avoid realloc if possible
 }
 
@@ -48,6 +61,8 @@ void Convolution::reset()
     convolver.reset();
     preDelayL.reset();
     preDelayR.reset();
+    dcBlockerL.reset();
+    dcBlockerR.reset();
     lowCutL.reset();
     lowCutR.reset();
     highCutL.reset();
@@ -74,13 +89,21 @@ void Convolution::updateFilters()
     const float lowHz  = juce::jlimit(10.0f, sr * 0.45f, parameters.lowCutHz);
     const float highHz = juce::jlimit(lowHz + 10.0f, sr * 0.49f, parameters.highCutHz);
 
-    auto lowCoeffs  = juce::dsp::IIR::Coefficients<float>::makeHighPass(sr, lowHz, 0.707f);
-    auto highCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(sr, highHz, 0.707f);
+    // Use Q=1.0 for better resonance control (steeper slope)
+    // This is steeper than Q=0.5 but less ringy than Q=0.707
+    auto lowCoeffs  = juce::dsp::IIR::Coefficients<float>::makeHighPass(sr, lowHz, 1.0f);
+    auto highCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(sr, highHz, 1.0f);
 
-    *lowCutL.coefficients  = *lowCoeffs;
-    *lowCutR.coefficients  = *lowCoeffs;
-    *highCutL.coefficients = *highCoeffs;
-    *highCutR.coefficients = *highCoeffs;
+    lowCutL.coefficients  = lowCoeffs;
+    lowCutR.coefficients  = lowCoeffs;
+    highCutL.coefficients = highCoeffs;
+    highCutR.coefficients = highCoeffs;
+
+    // Snap to zero to prevent zipper noise
+    lowCutL.snapToZero();
+    lowCutR.snapToZero();
+    highCutL.snapToZero();
+    highCutR.snapToZero();
 }
 
 ConvolutionParameters& Convolution::getParameters()
@@ -90,6 +113,9 @@ ConvolutionParameters& Convolution::getParameters()
 
 void Convolution::setParameters(const ConvolutionParameters& newParams)
 {
+    // Store old IR index BEFORE updating parameters
+    int oldIRIndex = parameters.irIndex;  // No cast needed now!
+    
     // Check what changed
     bool preDelayChanged =
         (newParams.preDelay != parameters.preDelay);
@@ -98,8 +124,9 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
         (newParams.lowCutHz  != parameters.lowCutHz) ||
         (newParams.highCutHz != parameters.highCutHz);
 
-    bool irChanged = ((int)newParams.irIndex != (int)parameters.irIndex);
+    bool irChanged = (newParams.irIndex != oldIRIndex);  // Clean int comparison!
 
+    // Update parameters ONCE
     parameters = newParams;
 
     if (preDelayChanged)
@@ -109,7 +136,7 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
         updateFilters();
     
     if (irChanged)
-        loadIRAtIndex((int)parameters.irIndex);
+        loadIRAtIndex(newParams.irIndex);  // Direct int, no cast!
 }
 
 void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
@@ -136,37 +163,59 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
 
     // Work on wet path in-place in buffer
     
-    // 1) Pre-delay - FIXED: Set delay once before sample loop
-    preDelayL.setDelay(preDelaySamples);
-    preDelayR.setDelay(preDelaySamples);
-    
-    for (int ch = 0; ch < numChannels; ++ch)
+    // 0) DC BLOCKING - CRITICAL! Must be BEFORE convolution
+    // This removes DC offset that would accumulate during convolution
     {
-        auto* wetData = buffer.getWritePointer(ch);
-
-        for (int n = 0; n < numSamples; ++n)
+        juce::dsp::AudioBlock<float> block(buffer);
+        
+        if (numChannels >= 1)
         {
-            const float inSample = wetData[n];
-
-            if (ch == 0)
-            {
-                preDelayL.pushSample(0, inSample);
-                wetData[n] = preDelayL.popSample(0);
-            }
-            else if (ch == 1)
-            {
-                preDelayR.pushSample(0, inSample);
-                wetData[n] = preDelayR.popSample(0);
-            }
-            else
-            {
-                // For channels beyond stereo, pass-through
-                wetData[n] = inSample;
-            }
+            auto ch0 = block.getSingleChannelBlock(0);
+            juce::dsp::ProcessContextReplacing<float> ctx0(ch0);
+            dcBlockerL.process(ctx0);
+        }
+        
+        if (numChannels >= 2)
+        {
+            auto ch1 = block.getSingleChannelBlock(1);
+            juce::dsp::ProcessContextReplacing<float> ctx1(ch1);
+            dcBlockerR.process(ctx1);
+        }
+    }
+    
+    // 1) Pre-delay - Use block processing with DSP delay
+    if (preDelaySamples > 0.1f) // Only process if meaningful delay
+    {
+        preDelayL.setDelay(preDelaySamples);
+        preDelayR.setDelay(preDelaySamples);
+        
+        juce::dsp::AudioBlock<float> block(buffer);
+        
+        // Process left channel
+        if (numChannels >= 1)
+        {
+            auto ch0 = block.getSingleChannelBlock(0);
+            juce::dsp::ProcessContextReplacing<float> ctx0(ch0);
+            preDelayL.process(ctx0);
+        }
+        
+        // Process right channel
+        if (numChannels >= 2)
+        {
+            auto ch1 = block.getSingleChannelBlock(1);
+            juce::dsp::ProcessContextReplacing<float> ctx1(ch1);
+            preDelayR.process(ctx1);
         }
     }
 
-    // 2) Tone shaping filters on wet path
+    // 2) Convolution on wet path
+    {
+        juce::dsp::AudioBlock<float> block(buffer);
+        juce::dsp::ProcessContextReplacing<float> context(block);
+        convolver.process(context);
+    }
+
+    // 3) Tone shaping filters on wet path
     if (numChannels >= 1)
     {
         juce::dsp::AudioBlock<float> block(buffer);
@@ -187,13 +236,6 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // 3) Convolution on wet path
-    {
-        juce::dsp::AudioBlock<float> block(buffer);
-        juce::dsp::ProcessContextReplacing<float> context(block);
-        convolver.process(context);
-    }
-
     // 4) Apply IR gain to wet
     const float irGain = juce::Decibels::decibelsToGain(parameters.irGainDb);
 
@@ -201,7 +243,19 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
     {
         auto* wetData = buffer.getWritePointer(ch);
         for (int n = 0; n < numSamples; ++n)
+        {
             wetData[n] *= irGain;
+            
+            // Smooth soft saturation to prevent harsh clipping
+            // Apply to all samples for smooth operation
+            float abs_val = std::abs(wetData[n]);
+            if (abs_val > 0.001f)  // Avoid division by zero
+            {
+                float sign = (wetData[n] > 0) ? 1.0f : -1.0f;
+                // Gentle tanh compression with headroom
+                wetData[n] = sign * std::tanh(abs_val) * 0.95f;
+            }
+        }
     }
 
     // 5) Dry/wet mix
@@ -231,7 +285,7 @@ void Convolution::loadIR(const juce::File& file)
     {
         convolver.loadImpulseResponse(file,
                                       juce::dsp::Convolution::Stereo::yes,
-                                      juce::dsp::Convolution::Trim::yes,
+                                      juce::dsp::Convolution::Trim::no,
                                       0); // use full IR length
         
         DBG("Convolution::loadIR - Successfully loaded: " + file.getFullPathName());
@@ -260,7 +314,7 @@ void Convolution::loadIRFromMemory(const void* data,
         convolver.loadImpulseResponse(data,
                                       dataSize,
                                       juce::dsp::Convolution::Stereo::yes,
-                                      juce::dsp::Convolution::Trim::yes,
+                                      juce::dsp::Convolution::Trim::no,
                                       0);
         
         DBG("Convolution::loadIRFromMemory - Successfully loaded IR from memory");
@@ -303,6 +357,9 @@ void Convolution::loadIRAtIndex(int index)
     // Explicit bypass IR at index 0
     if (index == 0)
     {
+        // Reset ALL state before loading bypass
+        reset();
+        
         std::vector<float> impulse(1, 1.0f);
 
         try
@@ -334,6 +391,10 @@ void Convolution::loadIRAtIndex(int index)
         return;
     }
 
+    // CRITICAL: Reset ALL state before loading new IR to prevent blips
+    // This clears: convolver buffers, delay lines, filter states, and DC blockers
+    reset();
+    
     loadIR(irFile);
     currentIRIndex = index;
 }

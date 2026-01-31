@@ -373,7 +373,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv ir index", "Conv IR Index",
-            juce::NormalisableRange<float>(0.0f, 15.0f, 1.0f), 0.0f));  // adjust max index as needed
+            juce::NormalisableRange<float>(0.0f, 150.0f, 1.0f), 0.0f));  // adjust max index as needed
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv ir gain", "Conv IR Gain (dB)",
             juce::NormalisableRange<float>(-18.0f, 18.0f, 0.1f), 0.0f));
