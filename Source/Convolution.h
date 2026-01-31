@@ -11,7 +11,7 @@ struct ConvolutionParameters
     float mix        = 0.5f;    // 0 = fully dry, 1 = fully wet
     float preDelay   = 0.0f;    // pre delay before IR, in ms
 
-    int irIndex      = 0;       // which IR to use (0, 1, 2, ...) - CHANGED TO INT!
+    int irIndex      = 0;       // which IR to use (0, 1, 2, ...)
     float irGainDb   = 0.0f;    // gain applied to IR output
 
     float lowCutHz   = 80.0f;   // high pass cutoff
@@ -63,6 +63,7 @@ private:
     bool prepared = false;
     double currentSampleRate = 44100.0;
     float preDelaySamples = 0.0f;
+    bool isPreDelayActive = false;  // Cache to avoid checking every block
     int currentIRIndex = -1;
     
     std::shared_ptr<IRBank> irBank;
@@ -77,17 +78,15 @@ private:
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> preDelayL { kMaxDelaySamples };
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> preDelayR { kMaxDelaySamples };
 
-    // DC blocking filters - CRITICAL for convolution!
-    // These remove DC offset that accumulates during convolution
-    juce::dsp::IIR::Filter<float> dcBlockerL;
-    juce::dsp::IIR::Filter<float> dcBlockerR;
-
     // Simple HP / LP filters per channel for tone shaping
     juce::dsp::IIR::Filter<float> lowCutL;
     juce::dsp::IIR::Filter<float> lowCutR;
     juce::dsp::IIR::Filter<float> highCutL;
     juce::dsp::IIR::Filter<float> highCutR;
     
-    // Dry buffer for dry/wet mixing
-    juce::AudioBuffer<float> dryBuffer;
+    // SIMD-optimized dry/wet mixer
+    juce::dsp::DryWetMixer<float> dryWetMixer;
+    
+    // Parameter smoothing for IR gain
+    juce::SmoothedValue<float> smoothedIRGain;
 };

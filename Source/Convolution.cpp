@@ -26,19 +26,6 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
 
     updatePreDelay();
 
-    // DC Blockers - CRITICAL for convolution!
-    dcBlockerL.prepare(spec);
-    dcBlockerR.prepare(spec);
-    
-    // Set DC blocker to 5 Hz high-pass (blocks DC, preserves bass)
-    auto dcCoeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass(
-        spec.sampleRate, 
-        5.0f,     // 5 Hz cutoff
-        0.707f    // Butterworth Q
-    );
-    dcBlockerL.coefficients = dcCoeffs;
-    dcBlockerR.coefficients = dcCoeffs;
-
     // Filters
     juce::dsp::ProcessSpec filterSpec = spec;
     lowCutL.prepare(filterSpec);
@@ -48,12 +35,11 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
 
     updateFilters();
 
-    // Allocate dry buffer with exact size
-    dryBuffer.setSize((int)spec.numChannels,
-                      (int)spec.maximumBlockSize,
-                      false,  // keep existing content: false
-                      true,   // clear extra space: true
-                      true);  // avoid realloc if possible
+    // Dry/Wet mixer - SIMD optimized
+    dryWetMixer.prepare(spec);
+    
+    // Parameter smoothing
+    smoothedIRGain.reset(spec.sampleRate, 0.05); // 50ms ramp time
 }
 
 void Convolution::reset()
@@ -61,12 +47,11 @@ void Convolution::reset()
     convolver.reset();
     preDelayL.reset();
     preDelayR.reset();
-    dcBlockerL.reset();
-    dcBlockerR.reset();
     lowCutL.reset();
     lowCutR.reset();
     highCutL.reset();
     highCutR.reset();
+    dryWetMixer.reset();
 }
 
 void Convolution::updatePreDelay()
@@ -74,8 +59,17 @@ void Convolution::updatePreDelay()
     if (!prepared)
         return;
 
-    preDelaySamples = parameters.preDelay * 0.001f * (float) currentSampleRate;
-    preDelaySamples = juce::jlimit(0.0f, (float) preDelayL.getMaximumDelayInSamples(), preDelaySamples);
+    float newDelay = parameters.preDelay * 0.001f * (float) currentSampleRate;
+    newDelay = juce::jlimit(0.0f, (float) preDelayL.getMaximumDelayInSamples(), newDelay);
+    
+    // Only update if delay actually changed (avoid redundant updates)
+    if (std::abs(newDelay - preDelaySamples) > 0.01f)
+    {
+        preDelaySamples = newDelay;
+        preDelayL.setDelay(preDelaySamples);
+        preDelayR.setDelay(preDelaySamples);
+        isPreDelayActive = (preDelaySamples > 0.1f);
+    }
 }
 
 void Convolution::updateFilters()
@@ -90,7 +84,6 @@ void Convolution::updateFilters()
     const float highHz = juce::jlimit(lowHz + 10.0f, sr * 0.49f, parameters.highCutHz);
 
     // Use Q=1.0 for better resonance control (steeper slope)
-    // This is steeper than Q=0.5 but less ringy than Q=0.707
     auto lowCoeffs  = juce::dsp::IIR::Coefficients<float>::makeHighPass(sr, lowHz, 1.0f);
     auto highCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(sr, highHz, 1.0f);
 
@@ -113,20 +106,18 @@ ConvolutionParameters& Convolution::getParameters()
 
 void Convolution::setParameters(const ConvolutionParameters& newParams)
 {
-    // Store old IR index BEFORE updating parameters
-    int oldIRIndex = parameters.irIndex;  // No cast needed now!
+    // Store old values for comparison
+    int oldIRIndex = parameters.irIndex;
     
-    // Check what changed
-    bool preDelayChanged =
-        (newParams.preDelay != parameters.preDelay);
+    // Check what changed with thresholds to avoid floating-point noise triggering updates
+    bool preDelayChanged = std::abs(newParams.preDelay - parameters.preDelay) > 0.1f;
+    
+    bool filtersChanged = std::abs(newParams.lowCutHz - parameters.lowCutHz) > 1.0f ||
+                          std::abs(newParams.highCutHz - parameters.highCutHz) > 1.0f;
+    
+    bool irChanged = (newParams.irIndex != oldIRIndex);
 
-    bool filtersChanged =
-        (newParams.lowCutHz  != parameters.lowCutHz) ||
-        (newParams.highCutHz != parameters.highCutHz);
-
-    bool irChanged = (newParams.irIndex != oldIRIndex);  // Clean int comparison!
-
-    // Update parameters ONCE
+    // Update parameters
     parameters = newParams;
 
     if (preDelayChanged)
@@ -136,7 +127,7 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
         updateFilters();
     
     if (irChanged)
-        loadIRAtIndex(newParams.irIndex);  // Direct int, no cast!
+        loadIRAtIndex(newParams.irIndex);
 }
 
 void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
@@ -150,45 +141,13 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
     const int numSamples  = buffer.getNumSamples();
     const int numChannels = buffer.getNumChannels();
 
-    // Ensure dry buffer has exact size needed
-    if (dryBuffer.getNumChannels() != numChannels ||
-        dryBuffer.getNumSamples() != numSamples)
-    {
-        dryBuffer.setSize(numChannels, numSamples, false, true, true);
-    }
+    // Set dry/wet mix and push dry samples to mixer
+    dryWetMixer.setWetMixProportion(parameters.mix);
+    dryWetMixer.pushDrySamples(juce::dsp::AudioBlock<float>(buffer));
 
-    // Capture dry signal
-    for (int ch = 0; ch < numChannels; ++ch)
-        dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
-
-    // Work on wet path in-place in buffer
-    
-    // 0) DC BLOCKING - CRITICAL! Must be BEFORE convolution
-    // This removes DC offset that would accumulate during convolution
+    // 1) Pre-delay - only process if active
+    if (isPreDelayActive)
     {
-        juce::dsp::AudioBlock<float> block(buffer);
-        
-        if (numChannels >= 1)
-        {
-            auto ch0 = block.getSingleChannelBlock(0);
-            juce::dsp::ProcessContextReplacing<float> ctx0(ch0);
-            dcBlockerL.process(ctx0);
-        }
-        
-        if (numChannels >= 2)
-        {
-            auto ch1 = block.getSingleChannelBlock(1);
-            juce::dsp::ProcessContextReplacing<float> ctx1(ch1);
-            dcBlockerR.process(ctx1);
-        }
-    }
-    
-    // 1) Pre-delay - Use block processing with DSP delay
-    if (preDelaySamples > 0.1f) // Only process if meaningful delay
-    {
-        preDelayL.setDelay(preDelaySamples);
-        preDelayR.setDelay(preDelaySamples);
-        
         juce::dsp::AudioBlock<float> block(buffer);
         
         // Process left channel
@@ -236,40 +195,32 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // 4) Apply IR gain to wet
-    const float irGain = juce::Decibels::decibelsToGain(parameters.irGainDb);
-
-    for (int ch = 0; ch < numChannels; ++ch)
+    // 4) Apply IR gain to wet - SIMD optimized with smoothing
+    smoothedIRGain.setTargetValue(juce::Decibels::decibelsToGain(parameters.irGainDb));
+    
+    if (smoothedIRGain.isSmoothing())
     {
-        auto* wetData = buffer.getWritePointer(ch);
-        for (int n = 0; n < numSamples; ++n)
+        // Apply smoothed gain per-sample when ramping
+        for (int ch = 0; ch < numChannels; ++ch)
         {
-            wetData[n] *= irGain;
-            
-            // Smooth soft saturation to prevent harsh clipping
-            // Apply to all samples for smooth operation
-            float abs_val = std::abs(wetData[n]);
-            if (abs_val > 0.001f)  // Avoid division by zero
-            {
-                float sign = (wetData[n] > 0) ? 1.0f : -1.0f;
-                // Gentle tanh compression with headroom
-                wetData[n] = sign * std::tanh(abs_val) * 0.95f;
-            }
+            auto* wetData = buffer.getWritePointer(ch);
+            for (int n = 0; n < numSamples; ++n)
+                wetData[n] *= smoothedIRGain.getNextValue();
+        }
+    }
+    else
+    {
+        // Use SIMD when not smoothing
+        const float irGain = smoothedIRGain.getCurrentValue();
+        for (int ch = 0; ch < numChannels; ++ch)
+        {
+            juce::FloatVectorOperations::multiply(
+                buffer.getWritePointer(ch), irGain, numSamples);
         }
     }
 
-    // 5) Dry/wet mix
-    const float wetMix  = juce::jlimit(0.0f, 1.0f, parameters.mix);
-    const float dryMix  = 1.0f - wetMix;
-
-    for (int ch = 0; ch < numChannels; ++ch)
-    {
-        auto* wetData  = buffer.getWritePointer(ch);
-        const auto* dryData  = dryBuffer.getReadPointer(ch);
-
-        for (int n = 0; n < numSamples; ++n)
-            wetData[n] = dryMix * dryData[n] + wetMix * wetData[n];
-    }
+    // 5) Dry/wet mix - automatically handled by DryWetMixer (SIMD optimized)
+    dryWetMixer.mixWetSamples(juce::dsp::AudioBlock<float>(buffer));
 }
 
 // IR loading helpers
@@ -392,7 +343,7 @@ void Convolution::loadIRAtIndex(int index)
     }
 
     // CRITICAL: Reset ALL state before loading new IR to prevent blips
-    // This clears: convolver buffers, delay lines, filter states, and DC blockers
+    // This clears: convolver buffers, delay lines, filter states
     reset();
     
     loadIR(irFile);
