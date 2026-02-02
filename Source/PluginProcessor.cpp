@@ -185,9 +185,50 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     // Each effect handles its own internal dry/wet
 
     // Update delay parameters
-    basicDelay.setDelayTime(apvts.getRawParameterValue("DelayTime")->load());
+    bool syncEnabled = apvts.getRawParameterValue("DelaySyncEnabled")->load() > 0.5f;
+    if (syncEnabled)
+    {
+        float bpm = apvts.getRawParameterValue("DelayBPM")->load();
+
+        // Use host BPM when available, fall back to manual parameter
+        if (auto* playHead = getPlayHead())
+        {
+            if (auto posInfo = playHead->getPosition())
+            {
+                if (auto hostBpm = posInfo->getBpm())
+                    bpm = static_cast<float>(*hostBpm);
+            }
+        }
+
+        int noteDivision = static_cast<int>(apvts.getRawParameterValue("DelayNoteDivision")->load());
+
+        // Quarter note duration in ms, then scale by note division multiplier
+        static const float noteMultipliers[] = {
+            4.0f, 2.0f, 1.0f, 0.5f, 0.25f, 0.125f,           // straight: 1/1 to 1/32
+            3.0f, 1.5f, 0.75f, 0.375f,                         // dotted: 1/2d to 1/16d
+            4.0f / 3.0f, 2.0f / 3.0f, 1.0f / 3.0f, 1.0f / 6.0f // triplet: 1/2t to 1/16t
+        };
+
+        float quarterNoteMs = 60000.0f / bpm;
+        float multiplier = (noteDivision >= 0 && noteDivision < 14)
+                               ? noteMultipliers[noteDivision] : 1.0f;
+        float syncedTime = juce::jlimit(1.0f, 2000.0f, quarterNoteMs * multiplier);
+
+        basicDelay.setDelayTime(syncedTime);
+    }
+    else
+    {
+        basicDelay.setDelayTime(apvts.getRawParameterValue("DelayTime")->load());
+    }
+
     basicDelay.setFeedback(apvts.getRawParameterValue("DelayFeedback")->load());
     basicDelay.setMix(apvts.getRawParameterValue("DelayMix")->load());
+
+    int modeChoice = static_cast<int>(apvts.getRawParameterValue("DelayMode")->load());
+    basicDelay.setMode(static_cast<BasicDelay::DelayMode>(modeChoice));
+    basicDelay.setPan(apvts.getRawParameterValue("DelayPan")->load());
+    basicDelay.setLowpassFreq(apvts.getRawParameterValue("DelayLowpass")->load());
+    basicDelay.setHighpassFreq(apvts.getRawParameterValue("DelayHighpass")->load());
 
     // Enable/disable effects in routing
     bool delayEnabled = apvts.getRawParameterValue("delayEnabled")->load();
@@ -317,6 +358,32 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("DelayMix", "Delay Mix",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+
+    // Delay BPM Sync
+    layout.add(std::make_unique<juce::AudioParameterBool>("DelaySyncEnabled", "Delay BPM Sync", false));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayBPM", "Delay BPM",
+        juce::NormalisableRange<float>(20.0f, 300.0f, 0.1f), 120.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterChoice>("DelayNoteDivision", "Delay Note Division",
+        juce::StringArray{ "1/1", "1/2", "1/4", "1/8", "1/16", "1/32",
+                           "1/2 Dotted", "1/4 Dotted", "1/8 Dotted", "1/16 Dotted",
+                           "1/2 Triplet", "1/4 Triplet", "1/8 Triplet", "1/16 Triplet" }, 2));
+
+    // Delay Mode
+    layout.add(std::make_unique<juce::AudioParameterChoice>("DelayMode", "Delay Mode",
+        juce::StringArray{ "Normal", "Ping Pong", "Inverted" }, 0));
+
+    // Delay Pan
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayPan", "Delay Pan",
+        juce::NormalisableRange<float>(-1.0f, 1.0f, 0.01f), 0.0f));
+
+    // Delay Filters
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayLowpass", "Delay Lowpass",
+        juce::NormalisableRange<float>(200.0f, 20000.0f, 1.0f, 0.3f), 20000.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayHighpass", "Delay Highpass",
+        juce::NormalisableRange<float>(20.0f, 5000.0f, 1.0f, 0.3f), 20.0f));
 
     return layout;
 }
