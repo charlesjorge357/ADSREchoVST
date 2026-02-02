@@ -362,7 +362,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     // Delay BPM Sync
     layout.add(std::make_unique<juce::AudioParameterBool>("DelaySyncEnabled", "Delay BPM Sync", false));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayBPM", "Delay BPM",
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayBPM", "BPM Override",
         juce::NormalisableRange<float>(20.0f, 300.0f, 0.1f), 120.0f));
 
     layout.add(std::make_unique<juce::AudioParameterChoice>("DelayNoteDivision", "Delay Note Division",
