@@ -333,7 +333,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
     // Master controls
     layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain",
-        juce::NormalisableRange<float>(-6.f, 6.f, .01f, 1.f), 0.f));
+        juce::NormalisableRange<float>(-12.f, 12.f, .01f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("MasterMix", "Master Mix",
         juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
