@@ -26,8 +26,11 @@ public:
     void setID(juce::String& newID) override;
     juce::String getType() const override;
 
+    void setPlayHead(juce::AudioPlayHead *playhead) override;
+
 private:
     juce::String moduleID;
     juce::AudioProcessorValueTreeState& state;
+    juce::AudioPlayHead *playHead;
     BasicDelay delay;
 };

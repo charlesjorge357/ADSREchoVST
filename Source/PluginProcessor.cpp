@@ -211,8 +211,11 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     }
 
     //Process the audio through each module slot effect
-    for (auto& slot : slots)
-        slot->process(buffer, midiMessages);
+    for (auto& slot : slots) 
+    {
+        slot->process(buffer, midiMessages, getPlayHead());
+    }
+
 
 
     // ============ MASTER DRY/WET MIX ============
@@ -232,7 +235,6 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     // Apply master output gain
     float gainValue = juce::Decibels::decibelsToGain(apvts.getRawParameterValue("Gain")->load());
     buffer.applyGain(gainValue);
-    
 }
 
 //==============================================================================
@@ -384,6 +386,32 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv high cut", "Conv High Cut (Hz)",
             juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.3f), 12000.0f));
     }
+
+    // Delay BPM Sync
+    layout.add(std::make_unique<juce::AudioParameterBool>("DelaySyncEnabled", "Delay BPM Sync", false));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayBPM", "BPM Override",
+        juce::NormalisableRange<float>(20.0f, 300.0f, 0.1f), 120.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterChoice>("DelayNoteDivision", "Delay Note Division",
+        juce::StringArray{ "1/1", "1/2", "1/4", "1/8", "1/16", "1/32",
+                           "1/2 Dotted", "1/4 Dotted", "1/8 Dotted", "1/16 Dotted",
+                           "1/2 Triplet", "1/4 Triplet", "1/8 Triplet", "1/16 Triplet" }, 2));
+
+    // Delay Mode
+    layout.add(std::make_unique<juce::AudioParameterChoice>("DelayMode", "Delay Mode",
+        juce::StringArray{ "Normal", "Ping Pong", "Inverted" }, 0));
+
+    // Delay Pan
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayPan", "Delay Pan",
+        juce::NormalisableRange<float>(-1.0f, 1.0f, 0.01f), 0.0f));
+
+    // Delay Filters
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayLowpass", "Delay Lowpass",
+        juce::NormalisableRange<float>(200.0f, 20000.0f, 1.0f, 0.3f), 20000.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayHighpass", "Delay Highpass",
+        juce::NormalisableRange<float>(20.0f, 5000.0f, 1.0f, 0.3f), 20.0f));
 
     return layout;
 }
@@ -559,47 +587,18 @@ void ADSREchoAudioProcessor::requestSlotMove(int from, int to)
 // Reset all parameter values of slot back to default
 void ADSREchoAudioProcessor::setSlotDefaults(juce::String slotID)
 {
-    auto* param = apvts.getParameter(slotID + ".enabled");
-    param->setValueNotifyingHost(param->getDefaultValue());
-    
-    param = apvts.getParameter(slotID + ".mix");
-    param->setValueNotifyingHost(param->getDefaultValue());
+    const auto prefix = slotID + ".";
 
-    param = apvts.getParameter(slotID + ".delay time");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".feedback");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".room size");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".decay time");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".pre delay");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".damping");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".mod rate");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".mod depth");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".conv ir index");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".conv ir gain");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".conv low cut");
-    param->setValueNotifyingHost(param->getDefaultValue());
-
-    param = apvts.getParameter(slotID + ".conv high cut");
-    param->setValueNotifyingHost(param->getDefaultValue());
+    for (auto* param : getParameters())
+    {
+        if (auto* p = dynamic_cast<juce::RangedAudioParameter*>(param))
+        {
+            if (p->getParameterID().startsWith(prefix))
+            {
+                p->setValueNotifyingHost(p->getDefaultValue());
+            }
+        }
+    }
 }
 
 

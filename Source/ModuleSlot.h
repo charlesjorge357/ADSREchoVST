@@ -43,10 +43,14 @@ public:
             m->prepare(spec);
     }
 
-    void process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+    void process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi, juce::AudioPlayHead* playHead)
     {
         if (auto* m = activeModule.load(std::memory_order_acquire))
+        {
+            m->setPlayHead(playHead);
             m->process(buffer, midi);
+        }
+
     }
 
     void setModule(std::unique_ptr<EffectModule> newModule)
