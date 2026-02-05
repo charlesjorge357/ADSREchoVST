@@ -90,6 +90,7 @@ public:
     std::vector<std::unique_ptr<ModuleSlot>> slots;
 
     int getNumSlots() const;
+    int getNumChannels() const;
     SlotInfo getSlotInfo(int index);
     bool slotIsEmpty(int index);
 
@@ -127,6 +128,7 @@ private:
     void requestSlotMove(int from, int to);
 
     static constexpr int MAX_SLOTS = 8;
+    static constexpr int CHANNELS = 2;
 
     void setSlotDefaults(juce::String slotID);
 

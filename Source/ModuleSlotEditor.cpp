@@ -58,17 +58,27 @@ ModuleSlotEditor::ModuleSlotEditor(
     for (const auto& suffix : usedParams)
     {
         auto id = slotID + "." + suffix;
+        auto* param = processor.apvts.getParameter(id);
         
         // Special handling for IR index - use ComboBox instead of slider
         if (suffix == "conv ir index")
         {
             addIRSelectorForParameter(id);
         }
+        else if (dynamic_cast<juce::AudioParameterBool*>(param))
+        {
+            addToggleForParameter(id);
+        }
+        else if (dynamic_cast<juce::AudioParameterChoice*>(param))
+        {
+            addChoiceForParameter(id);
+        }
         else
         {
             addSliderForParameter(id);
         }
     }
+
 
     //Module Remove Button
     addAndMakeVisible(removeButton);
@@ -107,6 +117,56 @@ void ModuleSlotEditor::addSliderForParameter(juce::String id)
     sliders.push_back(std::move(slider));
     sliderAttachments.push_back(std::move(sliderAttachment));
     sliderLabels.push_back(std::move(sliderLabel));
+}
+
+void ModuleSlotEditor::addToggleForParameter(const juce::String id)
+{
+    auto toggle = std::make_unique<juce::ToggleButton>();
+
+    addAndMakeVisible(*toggle);
+
+    auto label = std::make_unique<juce::Label>();
+    label->setText(processor.apvts.getParameter(id)->getName(128),
+        juce::dontSendNotification);
+    label->setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(*label);
+
+    auto attachment =
+        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            processor.apvts, id, *toggle);
+
+    toggles.push_back(std::move(toggle));
+    toggleAttachments.push_back(std::move(attachment));
+    toggleLabels.push_back(std::move(label));
+}
+
+void ModuleSlotEditor::addChoiceForParameter(const juce::String id)
+{
+    auto combo = std::make_unique<juce::ComboBox>();
+
+    auto* choiceParam =
+        dynamic_cast<juce::AudioParameterChoice*>(
+            processor.apvts.getParameter(id));
+
+    jassert(choiceParam != nullptr);
+
+    for (int i = 0; i < choiceParam->choices.size(); ++i)
+        combo->addItem(choiceParam->choices[i], i + 1);
+
+    addAndMakeVisible(*combo);
+
+    auto label = std::make_unique<juce::Label>();
+    label->setText(choiceParam->getName(128), juce::dontSendNotification);
+    label->setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(*label);
+
+    auto attachment =
+        std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+            processor.apvts, id, *combo);
+
+    comboBoxes.push_back(std::move(combo));
+    comboBoxAttachments.push_back(std::move(attachment));
+    comboBoxLabels.push_back(std::move(label));
 }
 
 void ModuleSlotEditor::addIRSelectorForParameter(juce::String id)
@@ -167,21 +227,40 @@ void ModuleSlotEditor::resized()
     title.setBounds(titleArea.removeFromLeft(80));
     typeSelector.setBounds(titleArea);
 
-    // Layout sliders
-    for (int i = 0; i < sliders.size(); i++)
-    {
-        auto a = r.removeFromLeft(80);
-        sliderLabels[i]->setBounds(a.removeFromBottom(30));
-        sliders[i]->setBounds(a);
-    }
-    
+    r.removeFromTop(5);
+    r.removeFromRight(5);
+
+    removeButton.setBounds(r.removeFromRight(30));
+
     // Layout IR selectors
     for (int i = 0; i < irSelectors.size(); i++)
     {
-        auto a = r.removeFromLeft(100);  // Wider for ComboBox
+        auto a = r.removeFromLeft(70);  // Wider for ComboBox
         irSelectorLabels[i]->setBounds(a.removeFromBottom(30));
         irSelectors[i]->setBounds(a.removeFromTop(25));
     }
 
-    removeButton.setBounds(r.removeFromRight(30));
+    // Layout Other Components
+    for (int i = 0; i < sliders.size(); i++)
+    {
+        auto a = r.removeFromLeft(70);
+        sliderLabels[i]->setBounds(a.removeFromBottom(30));
+        sliders[i]->setBounds(a);
+    }
+    
+    for (int i = 0; i < comboBoxes.size(); i++)
+    {
+        auto a = r.removeFromLeft(70);
+        comboBoxLabels[i]->setBounds(a.removeFromBottom(30));
+        comboBoxes[i]->setBounds(a.removeFromTop(25));
+    }
+
+    for (int i = 0; i < toggles.size(); i++)
+    {
+        auto a = r.removeFromLeft(70);
+        toggleLabels[i]->setBounds(a.removeFromBottom(30));
+        toggles[i]->setBounds(a.removeFromTop(25));
+    }
+
+
 }

@@ -31,6 +31,6 @@ public:
 private:
     juce::String moduleID;
     juce::AudioProcessorValueTreeState& state;
-    juce::AudioPlayHead *playHead;
+    juce::AudioPlayHead *playHead = nullptr;
     BasicDelay delay;
 };

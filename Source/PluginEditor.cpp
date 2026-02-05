@@ -89,7 +89,7 @@ void ADSREchoAudioProcessorEditor::resized()
     // Sets the layout of each Module Editor, created down sequentially in the module viewport.
     moduleViewport.setBounds(area);
 
-    constexpr int slotHeight = 150;
+    constexpr int slotHeight = 160;
     int y = 0;
 
     for (auto* editor : moduleEditors)

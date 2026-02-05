@@ -111,6 +111,7 @@
       <FILE id="a5FOZB" name="CustomDelays.h" compile="0" resource="0" file="Source/CustomDelays.h"/>
       <FILE id="kPcDDr" name="DatorroHall.cpp" compile="1" resource="0" file="Source/DatorroHall.cpp"/>
       <FILE id="KEljIF" name="DatorroHall.h" compile="0" resource="0" file="Source/DatorroHall.h"/>
+      <FILE id="hs8J12" name="IRBank.h" compile="0" resource="0" file="Source/IRBank.h"/>
       <FILE id="iXkWEW" name="LFO.cpp" compile="1" resource="0" file="Source/LFO.cpp"/>
       <FILE id="eIHqHW" name="LFO.h" compile="0" resource="0" file="Source/LFO.h"/>
       <FILE id="IjrF4B" name="ProcessorBase.h" compile="0" resource="0" file="Source/ProcessorBase.h"/>
@@ -147,7 +148,7 @@
     <VS2022 targetFolder="Builds/VisualStudio2022">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="ADSREcho" enablePluginBinaryCopyStep="0"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="ADSREcho" enablePluginBinaryCopyStep="1"
+        <CONFIGURATION isDebug="0" name="Release" targetName="ADSREcho" enablePluginBinaryCopyStep="0"
                        characterSet="Unicode"/>
       </CONFIGURATIONS>
       <MODULEPATHS>

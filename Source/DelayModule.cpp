@@ -8,7 +8,7 @@
 */
 
 #include "DelayModule.h"
-DelayModule::DelayModule(const juce::String& id, juce::AudioProcessorValueTreeState & apvts)
+DelayModule::DelayModule(const juce::String& id, juce::AudioProcessorValueTreeState& apvts)
     : moduleID(id), state(apvts) {
 }
 
@@ -20,14 +20,13 @@ void DelayModule::prepare(const juce::dsp::ProcessSpec & spec)
 void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     delay.setMix( *state.getRawParameterValue(moduleID + ".mix"));
-    delay.setDelayTime( *state.getRawParameterValue(moduleID + ".delay time"));
     delay.setFeedback( *state.getRawParameterValue(moduleID + ".feedback"));
 
     // Update delay parameters
-    bool syncEnabled = state.getRawParameterValue("DelaySyncEnabled")->load() > 0.5f;
+    bool syncEnabled = state.getRawParameterValue(moduleID + ".delay sync enabled")->load() > 0.5f;
     if (syncEnabled)
     {
-        float bpm = state.getRawParameterValue("DelayBPM")->load();
+        float bpm = state.getRawParameterValue(moduleID + ".delay bpm")->load();
 
         // Use host BPM when available, fall back to manual parameter
         if (playHead)
@@ -39,7 +38,7 @@ void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& mi
             }
         }
 
-        int noteDivision = static_cast<int>(state.getRawParameterValue("DelayNoteDivision")->load());
+        int noteDivision = static_cast<int>(state.getRawParameterValue(moduleID + ".delay note division")->load());
 
         // Quarter note duration in ms, then scale by note division multiplier
         static const float noteMultipliers[] = {
@@ -57,21 +56,14 @@ void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& mi
     }
     else
     {
-        delay.setDelayTime(state.getRawParameterValue("DelayTime")->load());
+        delay.setDelayTime(state.getRawParameterValue(moduleID + ".delay time")->load());
     }
 
-    delay.setFeedback(state.getRawParameterValue("DelayFeedback")->load());
-    delay.setMix(state.getRawParameterValue("DelayMix")->load());
-
-    int modeChoice = static_cast<int>(state.getRawParameterValue("DelayMode")->load());
+    int modeChoice = static_cast<int>(state.getRawParameterValue(moduleID + ".delay mode")->load());
     delay.setMode(static_cast<BasicDelay::DelayMode>(modeChoice));
-    delay.setPan(state.getRawParameterValue("DelayPan")->load());
-    delay.setLowpassFreq(state.getRawParameterValue("DelayLowpass")->load());
-    delay.setHighpassFreq(state.getRawParameterValue("DelayHighpass")->load());
-
-    // Enable/disable effects in routing
-    //bool delayEnabled = state.getRawParameterValue("delayEnabled")->load();
-    //routingMatrix->setEffectEnabled(RoutingMatrix::EffectSlot::Delay, delayEnabled);
+    delay.setPan(state.getRawParameterValue(moduleID + ".delay pan")->load());
+    delay.setLowpassFreq(state.getRawParameterValue(moduleID + ".delay lowpass")->load());
+    delay.setHighpassFreq(state.getRawParameterValue(moduleID + ".delay highpass")->load());
 
     if (*state.getRawParameterValue(moduleID + ".enabled") == true) { delay.processBlock(buffer); }
 
@@ -83,6 +75,13 @@ std::vector<juce::String> DelayModule::getUsedParameters() const
        "mix",
        "delay time",
        "feedback",
+       "delay sync enabled",
+       "delay bpm",
+       "delay note division",
+       "delay mode",
+       "delay pan",
+       "delay lowpass",
+       "delay highpass"
     };
 }
 

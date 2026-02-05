@@ -385,33 +385,34 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv high cut", "Conv High Cut (Hz)",
             juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.3f), 12000.0f));
+
+        // Delay BPM Sync
+        layout.add(std::make_unique<juce::AudioParameterBool>(prefix + ".delay sync enabled", "Delay BPM Sync", false));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delay bpm", "BPM Override",
+            juce::NormalisableRange<float>(20.0f, 300.0f, 0.1f), 120.0f));
+
+        layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".delay note division", "Delay Note Division",
+            juce::StringArray{ "1/1", "1/2", "1/4", "1/8", "1/16", "1/32",
+                               "1/2 Dotted", "1/4 Dotted", "1/8 Dotted", "1/16 Dotted",
+                               "1/2 Triplet", "1/4 Triplet", "1/8 Triplet", "1/16 Triplet" }, 2));
+
+        // Delay Mode
+        layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".delay mode", "Delay Mode",
+            juce::StringArray{ "Normal", "Ping Pong", "Inverted" }, 0));
+
+        // Delay Pan
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delay pan", "Delay Pan",
+            juce::NormalisableRange<float>(-1.0f, 1.0f, 0.01f), 0.0f));
+
+        // Delay Filters
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delay lowpass", "Delay Lowpass",
+            juce::NormalisableRange<float>(200.0f, 20000.0f, 1.0f, 0.3f), 20000.0f));
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delay highpass", "Delay Highpass",
+            juce::NormalisableRange<float>(20.0f, 5000.0f, 1.0f, 0.3f), 20.0f));
     }
 
-    // Delay BPM Sync
-    layout.add(std::make_unique<juce::AudioParameterBool>("DelaySyncEnabled", "Delay BPM Sync", false));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayBPM", "BPM Override",
-        juce::NormalisableRange<float>(20.0f, 300.0f, 0.1f), 120.0f));
-
-    layout.add(std::make_unique<juce::AudioParameterChoice>("DelayNoteDivision", "Delay Note Division",
-        juce::StringArray{ "1/1", "1/2", "1/4", "1/8", "1/16", "1/32",
-                           "1/2 Dotted", "1/4 Dotted", "1/8 Dotted", "1/16 Dotted",
-                           "1/2 Triplet", "1/4 Triplet", "1/8 Triplet", "1/16 Triplet" }, 2));
-
-    // Delay Mode
-    layout.add(std::make_unique<juce::AudioParameterChoice>("DelayMode", "Delay Mode",
-        juce::StringArray{ "Normal", "Ping Pong", "Inverted" }, 0));
-
-    // Delay Pan
-    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayPan", "Delay Pan",
-        juce::NormalisableRange<float>(-1.0f, 1.0f, 0.01f), 0.0f));
-
-    // Delay Filters
-    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayLowpass", "Delay Lowpass",
-        juce::NormalisableRange<float>(200.0f, 20000.0f, 1.0f, 0.3f), 20000.0f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("DelayHighpass", "Delay Highpass",
-        juce::NormalisableRange<float>(20.0f, 5000.0f, 1.0f, 0.3f), 20.0f));
 
     return layout;
 }
@@ -474,6 +475,11 @@ void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer, 
 int ADSREchoAudioProcessor::getNumSlots() const
 {
     return MAX_SLOTS;
+}
+
+int ADSREchoAudioProcessor::getNumChannels() const
+{
+    return CHANNELS;
 }
 
 // Returns SlotInfo struct that contains the id, type, and used parameters of the module in a slot

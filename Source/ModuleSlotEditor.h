@@ -46,9 +46,20 @@ private:
     juce::ComboBox typeSelector;
     juce::ToggleButton enableToggle{ "Enabled" };
 
+    juce::Viewport controlsViewport;
+    juce::Component controlsContainer;
+
     // Module Sliders
     std::vector<std::unique_ptr<juce::Slider>> sliders;
     std::vector<std::unique_ptr<juce::Label>> sliderLabels;
+
+    // Module Combo Boxes
+    std::vector<std::unique_ptr<juce::ComboBox>> comboBoxes;
+    std::vector<std::unique_ptr<juce::Label>> comboBoxLabels;
+
+    // Module Toggles
+    std::vector<std::unique_ptr<juce::Button>> toggles;
+    std::vector<std::unique_ptr<juce::Label>>toggleLabels;
     
     // IR Selectors (ComboBoxes)
     std::vector<std::unique_ptr<juce::ComboBox>> irSelectors;
@@ -60,7 +71,11 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableToggleAttachment;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;
+    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>> comboBoxAttachments;
+    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>> toggleAttachments;
 
     void addSliderForParameter(juce::String id);
+    void addToggleForParameter(juce::String id);
+    void addChoiceForParameter(juce::String id);
     void addIRSelectorForParameter(juce::String id);
 };

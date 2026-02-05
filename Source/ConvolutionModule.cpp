@@ -46,7 +46,6 @@ std::vector<juce::String> ConvolutionModule::getUsedParameters() const
 {
     // Same style as DatorroModule: param *names* only, no prefix
     return {
-        "enabled",
         "mix",
         "pre delay",
         "conv ir index",
@@ -68,7 +67,7 @@ juce::String ConvolutionModule::getID() const
 
 juce::String ConvolutionModule::getType() const
 {
-    return "Convolution Reverb";
+    return "Convolution";
 }
 
 void ConvolutionModule::setIRBank(std::shared_ptr<IRBank> bank)
