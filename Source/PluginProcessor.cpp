@@ -9,7 +9,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "DatorroHall.h"
-#include "RoutingMatrix.h"
 
 //==============================================================================
 ADSREchoAudioProcessor::ADSREchoAudioProcessor()
@@ -24,7 +23,6 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
                        )
 #endif
 {
-    routingMatrix = std::make_unique<RoutingMatrix>();
     irBank = std::make_shared<IRBank>();
 
     for (int i = 0; i < MAX_SLOTS; i++) {
@@ -306,14 +304,9 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
             auto module = std::make_unique<DelayModule>("null", apvts);
             slots[index]->setModule(std::move(module));
         }
-        else if (type == "Datorro Hall")
+        else if (type == "Reverb")
         {
-            auto module = std::make_unique<DatorroModule>("null", apvts);
-            slots[index]->setModule(std::move(module));
-        }
-        else if (type == "Hybrid Plate")
-        {
-            auto module = std::make_unique<HybridPlateModule>("null", apvts);
+            auto module = std::make_unique<ReverbModule>("null", apvts);
             slots[index]->setModule(std::move(module));
         }
         else if (type == "Convolution")
@@ -386,6 +379,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
         layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".conv high cut", "Conv High Cut (Hz)",
             juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.3f), 12000.0f));
 
+        layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".reverb type", "Type",
+            juce::StringArray{ "Datorro Hall", "Hybrid Plate"}, 0));
+
         // Delay BPM Sync
         layout.add(std::make_unique<juce::AudioParameterBool>(prefix + ".delay sync enabled", "Delay BPM Sync", false));
 
@@ -415,61 +411,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
 
     return layout;
-}
-
-void ADSREchoAudioProcessor::routeSignalChain(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
-{
-    // Route signal through effect chain based on routing matrix
-    // This allows flexible effect ordering configured by the user
-
-    auto processingOrder = routingMatrix->getProcessingOrder();
-
-    for (auto effectSlot : processingOrder)
-    {
-        if (!routingMatrix->isEffectEnabled(effectSlot))
-            continue;
-
-        switch (effectSlot)
-        {
-        case RoutingMatrix::EffectSlot::EQ:
-            // eqProcessor->process(buffer);
-            break;
-
-        case RoutingMatrix::EffectSlot::Compressor:
-            // compressorProcessor->process(buffer);
-            break;
-
-        case RoutingMatrix::EffectSlot::Delay:
-            basicDelay.processBlock(buffer);
-            break;
-
-        case RoutingMatrix::EffectSlot::AlgorithmicReverb:
-        {
-            juce::dsp::AudioBlock<float> block(buffer);
-
-            int algoChoice = apvts.getRawParameterValue("Algorithm")->load();
-
-            if (algoChoice == 0)
-            {
-                // Dattorro Hall
-                datorroReverb.processBlock(buffer, midiMessages);
-            }
-            else
-            {
-                // Hybrid Plate
-                hybridReverb.processBlock(buffer, midiMessages);
-            }
-        }
-        break;
-
-        case RoutingMatrix::EffectSlot::ConvolutionReverb:
-            // convolutionProcessor->process(buffer);
-            break;
-        }
-    }
-
-    // Handle parallel processing if routing matrix specifies it
-    // For example, blending algorithmic and convolution reverbs
 }
 
 int ADSREchoAudioProcessor::getNumSlots() const
@@ -511,12 +452,8 @@ void ADSREchoAudioProcessor::addModule(ModuleType moduleType)
                     slot->setModule(std::make_unique<DelayModule>("null", apvts));
                     break;
 
-                case ModuleType::Datorro:
-                    slot->setModule(std::make_unique<DatorroModule>("null", apvts));
-                    break;
-
-                case ModuleType::HybridPlate:
-                    slot->setModule(std::make_unique<HybridPlateModule>("null", apvts));
+                case ModuleType::Reverb:
+                    slot->setModule(std::make_unique<ReverbModule>("null", apvts));
                     break;
 
                 case ModuleType::Convolution:
@@ -550,7 +487,7 @@ void ADSREchoAudioProcessor::removeModule(int slotIndex)
 }
 
 // Change module at slotIndex to type
-void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
+void ADSREchoAudioProcessor::changeModuleType(int slotIndex, ModuleType moduleType)
 {
     auto& toChange = slots[slotIndex];
     if (toChange->get() == nullptr)
@@ -560,22 +497,21 @@ void ADSREchoAudioProcessor::changeModuleType(int slotIndex, int newType)
     }
 
     std::unique_ptr<EffectModule> newModule;
-    switch (newType)
+    switch (moduleType)
     {
-    case 1:
-        toChange->setModule(std::make_unique<DelayModule>("null", apvts));
-        break;
-    case 2:
-        toChange->setModule(std::make_unique<DatorroModule>("null", apvts));
-        break;
-    case 3:
-        toChange->setModule(std::make_unique<HybridPlateModule>("null", apvts));
-        break;
-    case 4:
-        auto module = std::make_unique<ConvolutionModule>("null", apvts);
-        module->setIRBank(irBank);  // ADD THIS!
-        toChange->setModule(std::move(module));
-        break;
+        case ModuleType::Delay:
+            toChange->setModule(std::make_unique<DelayModule>("null", apvts));
+            break;
+
+        case ModuleType::Reverb:
+            toChange->setModule(std::make_unique<ReverbModule>("null", apvts));
+            break;
+
+        case ModuleType::Convolution:
+            auto module = std::make_unique<ConvolutionModule>("null", apvts);
+            module->setIRBank(irBank);  // ADD THIS!
+            toChange->setModule(std::move(module));
+            break;
     }
 
     uiNeedsRebuild.store(true, std::memory_order_release);

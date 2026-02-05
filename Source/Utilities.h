@@ -87,12 +87,11 @@ struct SlotInfo
     std::vector<juce::String> usedParameters;
 };
 
-enum class ModuleType
+enum class ModuleType : int
 {
-    Datorro,
-    HybridPlate,
-    Delay,
-    Convolution
+    Delay = 1,
+    Reverb = 2,
+    Convolution = 3
 };
 
 //template <typename SampleType>

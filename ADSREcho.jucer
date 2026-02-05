@@ -79,13 +79,9 @@
                 file="Source/ConvolutionModule.cpp"/>
           <FILE id="g0R28y" name="ConvolutionModule.h" compile="0" resource="0"
                 file="Source/ConvolutionModule.h"/>
-          <FILE id="sG7vPv" name="HybridPlateModule.cpp" compile="1" resource="0"
-                file="Source/HybridPlateModule.cpp"/>
-          <FILE id="AiDyVp" name="HybridPlateModule.h" compile="0" resource="0"
-                file="Source/HybridPlateModule.h"/>
-          <FILE id="pRkvm8" name="DatorroModule.cpp" compile="1" resource="0"
-                file="Source/DatorroModule.cpp"/>
-          <FILE id="cYkN5N" name="DatorroModule.h" compile="0" resource="0" file="Source/DatorroModule.h"/>
+          <FILE id="pRkvm8" name="ReverbModule.cpp" compile="1" resource="0"
+                file="Source/ReverbModule.cpp"/>
+          <FILE id="cYkN5N" name="ReverbModule.h" compile="0" resource="0" file="Source/ReverbModule.h"/>
           <FILE id="rUkDsM" name="EffectModule.h" compile="0" resource="0" file="Source/EffectModule.h"/>
           <FILE id="a5oZbv" name="DelayModule.cpp" compile="1" resource="0" file="Source/DelayModule.cpp"/>
           <FILE id="Uf1JUr" name="DelayModule.h" compile="0" resource="0" file="Source/DelayModule.h"/>
@@ -101,9 +97,6 @@
       <FILE id="wk3eO3" name="PsychoDamping.cpp" compile="1" resource="0"
             file="Source/PsychoDamping.cpp"/>
       <FILE id="s5E8n8" name="PsychoDamping.h" compile="0" resource="0" file="Source/PsychoDamping.h"/>
-      <FILE id="lnYvBR" name="RoutingMatrix.cpp" compile="1" resource="0"
-            file="Source/RoutingMatrix.cpp"/>
-      <FILE id="P3t9X6" name="RoutingMatrix.h" compile="0" resource="0" file="Source/RoutingMatrix.h"/>
       <FILE id="rph9pM" name="CustomDelays.cpp" compile="1" resource="0"
             file="Source/CustomDelays.cpp"/>
       <FILE id="h8CNSq" name="HybridPlate.cpp" compile="1" resource="0" file="Source/HybridPlate.cpp"/>

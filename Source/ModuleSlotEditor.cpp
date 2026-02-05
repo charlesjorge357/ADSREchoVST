@@ -22,30 +22,25 @@ ModuleSlotEditor::ModuleSlotEditor(
     //Module Type Selector
     addAndMakeVisible(typeSelector);
     typeSelector.addItem("Delay", 1);
-    typeSelector.addItem("Datorro Hall", 2);
-    typeSelector.addItem("Hybrid Plate", 3);
-    typeSelector.addItem("Convolution", 4);
+    typeSelector.addItem("Reverb", 2);
+    typeSelector.addItem("Convolution", 3);
 
     if (info.moduleType == "Delay")
     {
         typeSelector.setSelectedId(1, juce::dontSendNotification);
     }
-    else if (info.moduleType == "Datorro Hall")
+    else if (info.moduleType == "Reverb")
     {
         typeSelector.setSelectedId(2, juce::dontSendNotification);
     }
-    else if (info.moduleType == "Hybrid Plate")
-    {
-        typeSelector.setSelectedId(3, juce::dontSendNotification);
-    }
     else if (info.moduleType == "Convolution")
     {
-        typeSelector.setSelectedId(4, juce::dontSendNotification);
+        typeSelector.setSelectedId(3, juce::dontSendNotification);
     }
 
     typeSelector.onChange = [this] 
     { 
-        processor.changeModuleType(slotIndex, typeSelector.getSelectedId());
+        processor.changeModuleType(slotIndex, static_cast<ModuleType>(typeSelector.getSelectedId()));
     };
 
     //Module Enabled

@@ -1,8 +1,8 @@
 /*
   ==============================================================================
 
-    DattoroModule.h
-    Effect module for dattoro hall
+    ReverbModule.h
+    Effect module for reverb
 
   ==============================================================================
 */
@@ -10,11 +10,12 @@
 #pragma once
 #include "EffectModule.h"
 #include "DatorroHall.h"
+#include "HybridPlate.h"
 
-class DatorroModule : public EffectModule
+class ReverbModule : public EffectModule
 {
 public:
-    DatorroModule(const juce::String& id, juce::AudioProcessorValueTreeState& apvts);
+    ReverbModule(const juce::String& id, juce::AudioProcessorValueTreeState& apvts);
 
     void prepare(const juce::dsp::ProcessSpec& spec) override;
 
@@ -30,4 +31,5 @@ private:
     juce::String moduleID;
     juce::AudioProcessorValueTreeState& state;
     DatorroHall datorroReverb;
+    HybridPlate hybridPlateReverb;
 };

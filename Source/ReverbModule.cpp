@@ -1,23 +1,24 @@
 /*
   ==============================================================================
 
-    DattoroModule.cpp
-    Effect module for hybrid plate
+    ReverbModule.cpp
+    Effect module for reverb
 
   ==============================================================================
 */
 
-#include "HybridPlateModule.h"
-HybridPlateModule::HybridPlateModule(const juce::String& id, juce::AudioProcessorValueTreeState& apvts)
+#include "ReverbModule.h"
+ReverbModule::ReverbModule(const juce::String& id, juce::AudioProcessorValueTreeState& apvts)
     : moduleID(id), state(apvts) {
 }
 
-void HybridPlateModule::prepare(const juce::dsp::ProcessSpec& spec)
+void ReverbModule::prepare(const juce::dsp::ProcessSpec& spec)
 {
+    datorroReverb.prepare(spec);
     hybridPlateReverb.prepare(spec);
 }
 
-void HybridPlateModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+void ReverbModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     ReverbProcessorParameters params;
     params.mix = state.getRawParameterValue(moduleID + ".mix")->load();
@@ -27,18 +28,30 @@ void HybridPlateModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     params.modRate = state.getRawParameterValue(moduleID + ".mod rate")->load();
     params.modDepth = state.getRawParameterValue(moduleID + ".mod depth")->load();
     params.preDelay = state.getRawParameterValue(moduleID + ".pre delay")->load();
+    
 
-
+    datorroReverb.setParameters(params);
     hybridPlateReverb.setParameters(params);
 
-    if (*state.getRawParameterValue(moduleID + ".enabled") == true) { hybridPlateReverb.processBlock(buffer, midi); }
+    if (*state.getRawParameterValue(moduleID + ".enabled") == true) 
+    { 
+        if (static_cast<int>(state.getRawParameterValue(moduleID + ".reverb type")->load()) == 0)
+        {
+            datorroReverb.processBlock(buffer, midi);
+        }
+        else 
+        {
+            hybridPlateReverb.processBlock(buffer, midi);
+        }
+    }
 
 }
 
-std::vector<juce::String> HybridPlateModule::getUsedParameters() const
+std::vector<juce::String> ReverbModule::getUsedParameters() const
 {
     return {
        "mix",
+       "reverb type",
        "room size",
        "decay time",
        "damping",
@@ -48,7 +61,7 @@ std::vector<juce::String> HybridPlateModule::getUsedParameters() const
     };
 }
 
-void HybridPlateModule::setID(juce::String& newID) { moduleID = newID; }
+void ReverbModule::setID(juce::String& newID) { moduleID = newID; }
 
-juce::String HybridPlateModule::getID() const { return moduleID; }
-juce::String HybridPlateModule::getType() const { return "Hybrid Plate"; }
+juce::String ReverbModule::getID() const { return moduleID; }
+juce::String ReverbModule::getType() const { return "Reverb"; }

@@ -26,14 +26,12 @@
 #endif
 #include "DatorroHall.h"
 #include "HybridPlate.h"
-#include "RoutingMatrix.h"
 #include "BasicDelay.h"
 #include "Convolution.h"
 #include "ModuleSlot.h"
 #include "DelayModule.h"
-#include "DatorroModule.h"
+#include "ReverbModule.h"
 #include "IRBank.h"
-#include "HybridPlateModule.h"
 #include "ConvolutionModule.h"
 
 //==============================================================================
@@ -96,7 +94,7 @@ public:
 
     void addModule(ModuleType moduleType);
     void removeModule(int slotIndex);
-    void changeModuleType(int slotIndex, int newType);
+    void changeModuleType(int slotIndex, ModuleType moduleType);
 
     std::atomic<bool> uiNeedsRebuild{ false };
 
@@ -110,7 +108,6 @@ private:
     HybridPlate hybridReverb;
     BasicDelay basicDelay;
     Convolution convolutionReverb;
-    std::unique_ptr<RoutingMatrix> routingMatrix;
 
     std::shared_ptr<IRBank> irBank;
 
