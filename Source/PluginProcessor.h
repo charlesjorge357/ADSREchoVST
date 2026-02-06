@@ -24,10 +24,6 @@
   #include <juce_gui_basics/juce_gui_basics.h>
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
-#include "DatorroHall.h"
-#include "HybridPlate.h"
-#include "BasicDelay.h"
-#include "Convolution.h"
 #include "ModuleSlot.h"
 #include "DelayModule.h"
 #include "ReverbModule.h"
@@ -83,18 +79,18 @@ public:
 
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
-    void routeSignalChain(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages);
-
-    std::vector<std::unique_ptr<ModuleSlot>> slots;
+    //std::vector<std::unique_ptr<ModuleSlot>> slots;
+    std::vector<std::vector<std::unique_ptr<ModuleSlot>>> slots;
 
     int getNumSlots() const;
     int getNumChannels() const;
-    SlotInfo getSlotInfo(int index);
-    bool slotIsEmpty(int index);
+    SlotInfo getSlotInfo(int chainIndex, int slotIndex);
+    bool slotIsEmpty(int chainIndex, int slotIndex);
 
-    void addModule(ModuleType moduleType);
-    void removeModule(int slotIndex);
-    void changeModuleType(int slotIndex, ModuleType moduleType);
+    void addModule(int chainIndex, ModuleType moduleType);
+    void removeModule(int chainIndex, int slotIndex);
+    void changeModuleType(int chainIndex, int slotIndex, ModuleType moduleType);
+    void requestSlotMove(int chainIndex, int from, int to);
 
     std::atomic<bool> uiNeedsRebuild{ false };
 
@@ -103,33 +99,30 @@ public:
 
 private:
     juce::dsp::ProcessSpec spec;
-    
-    DatorroHall datorroReverb;
-    HybridPlate hybridReverb;
-    BasicDelay basicDelay;
-    Convolution convolutionReverb;
 
     std::shared_ptr<IRBank> irBank;
 
     // Pre-allocated buffer for dry signal (avoids allocation in processBlock)
     juce::AudioBuffer<float> masterDryBuffer;
+    juce::AudioBuffer<float> chainTempBuffer;
 
     struct PendingMove
     {
+        int chainIndex = -1;
         int from = -1;
         int to = -1;
     };
 
     std::atomic<bool> moveRequested{ false };
     PendingMove pendingMove;
-    void requestSlotMove(int from, int to);
+    void executeSlotMove();
 
     static constexpr int MAX_SLOTS = 8;
-    static constexpr int CHANNELS = 2;
+    static constexpr int NUM_CHAINS = 2;
 
     void setSlotDefaults(juce::String slotID);
 
-    int numModules = 0;
+    std::vector<int> numModules = std::vector<int>(NUM_CHAINS, 0);
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)

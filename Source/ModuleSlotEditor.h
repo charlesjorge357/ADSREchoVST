@@ -28,7 +28,7 @@
 class ModuleSlotEditor : public juce::Component
 {
 public:
-    ModuleSlotEditor(int index,
+    ModuleSlotEditor(int cIndex, int sIndex,
         const SlotInfo& info,
         ADSREchoAudioProcessor& processor,
         juce::AudioProcessorValueTreeState& apvts);
@@ -36,6 +36,7 @@ public:
     void resized() override;
 
 private:
+    int chainIndex;
     int slotIndex;
     juce::String slotID;
 

@@ -15,32 +15,69 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
 {
     startTimerHz(30);
     
-    // MASTER MIX
-    addAndMakeVisible(masterMixSlider);
-    addAndMakeVisible(masterMixLabel);
-    masterMixSlider.setSliderStyle(juce::Slider::Rotary);
-    masterMixSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    masterMixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.apvts, "MasterMix", masterMixSlider);
-    masterMixLabel.setText("Master Mix", juce::dontSendNotification);
-    masterMixLabel.setJustificationType(juce::Justification::horizontallyCentred);
+    currentlyDisplayedChain = 0;
 
-    //GAIN
-    addAndMakeVisible(gainSlider);
-    addAndMakeVisible(gainLabel);
-    gainSlider.setSliderStyle(juce::Slider::Rotary);
-    gainSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.apvts, "Gain", gainSlider);
-    gainLabel.setText("Gain", juce::dontSendNotification);
-    gainLabel.setJustificationType(juce::Justification::horizontallyCentred);
+    // MASTER MIX (Chain 0)
+    addAndMakeVisible(masterMixSlider0);
+    addAndMakeVisible(masterMixLabel0);
+    masterMixSlider0.setSliderStyle(juce::Slider::Rotary);
+    masterMixSlider0.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+    masterMixAttachment0 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "chain_0.masterMix", masterMixSlider0);
+    masterMixLabel0.setText("Master Mix (Chain 1)", juce::dontSendNotification);
+    masterMixLabel0.setJustificationType(juce::Justification::horizontallyCentred);
 
+    // GAIN (Chain 0)
+    addAndMakeVisible(gainSlider0);
+    addAndMakeVisible(gainLabel0);
+    gainSlider0.setSliderStyle(juce::Slider::Rotary);
+    gainSlider0.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+    gainAttachment0 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "chain_0.gain", gainSlider0);
+    gainLabel0.setText("Gain (Chain 1)", juce::dontSendNotification);
+    gainLabel0.setJustificationType(juce::Justification::horizontallyCentred);
+
+    addAndMakeVisible(masterMixSlider1);
+    addAndMakeVisible(masterMixLabel1);
+    masterMixSlider1.setSliderStyle(juce::Slider::Rotary);
+    masterMixSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+    masterMixAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "chain_1.masterMix", masterMixSlider1);
+    masterMixLabel1.setText("Master Mix (Chain 2)", juce::dontSendNotification);
+    masterMixLabel1.setJustificationType(juce::Justification::horizontallyCentred);
+
+    // GAIN (Chain 0)
+    addAndMakeVisible(gainSlider1);
+    addAndMakeVisible(gainLabel1);
+    gainSlider1.setSliderStyle(juce::Slider::Rotary);
+    gainSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+    gainAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "chain_1.gain", gainSlider1);
+    gainLabel1.setText("Gain (Chain 2)", juce::dontSendNotification);
+    gainLabel1.setJustificationType(juce::Justification::horizontallyCentred);
+
+    // Chain Selector and Toggle
+    addAndMakeVisible(chainSelector);
+    chainSelector.addItem("Chain 1", 1);
+    chainSelector.addItem("Chain 2", 2);
+
+    chainSelector.setSelectedId(1, juce::dontSendNotification);
+
+    chainSelector.onChange = [this]
+        {
+            currentlyDisplayedChain = chainSelector.getSelectedId() - 1;
+            rebuildModuleEditors();
+        };
+
+    addAndMakeVisible(parallelEnableToggle);
+    parallelEnableToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+        audioProcessor.apvts, "parallelEnabled", parallelEnableToggle);
 
     // Add slot button
     addAndMakeVisible(addButton);
     addButton.onClick = [this]
     {
-        audioProcessor.addModule(ModuleType::Delay);
+        audioProcessor.addModule(currentlyDisplayedChain, ModuleType::Delay);
         attemptedChange = true;
     };
 
@@ -77,12 +114,23 @@ void ADSREchoAudioProcessorEditor::resized()
 
     // Arrange the layout of the master controls at the top
     auto top = area.removeFromTop(110);
-    auto masterMixArea = top.removeFromLeft(120);
-    auto gainArea = top.removeFromLeft(120);
-    masterMixSlider.setBounds(masterMixArea.removeFromTop(80));
-    masterMixLabel.setBounds(masterMixArea.removeFromTop(20));
-    gainSlider.setBounds(gainArea.removeFromTop(80));
-    gainLabel.setBounds(gainArea.removeFromTop(20));
+    auto masterMixArea0 = top.removeFromLeft(120);
+    auto gainArea0 = top.removeFromLeft(120);
+    masterMixSlider0.setBounds(masterMixArea0.removeFromTop(80));
+    masterMixLabel0.setBounds(masterMixArea0.removeFromTop(20));
+    gainSlider0.setBounds(gainArea0.removeFromTop(80));
+    gainLabel0.setBounds(gainArea0.removeFromTop(20));
+
+    auto masterMixArea1 = top.removeFromLeft(120);
+    auto gainArea1 = top.removeFromLeft(120);
+    masterMixSlider1.setBounds(masterMixArea1.removeFromTop(80));
+    masterMixLabel1.setBounds(masterMixArea1.removeFromTop(20));
+    gainSlider1.setBounds(gainArea1.removeFromTop(80));
+    gainLabel1.setBounds(gainArea1.removeFromTop(20));
+
+    chainSelector.setBounds(top.removeFromLeft(90));
+
+    parallelEnableToggle.setBounds(top.removeFromLeft(25));
 
     addButton.setBounds(area.removeFromTop(30));
 
@@ -120,11 +168,12 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 
     for (int i = 0; i < audioProcessor.getNumSlots(); i++)
     {
-        if (audioProcessor.slotIsEmpty(i)) { continue; }
+        if (audioProcessor.slotIsEmpty(currentlyDisplayedChain, i)) { continue; }
         
-        auto info = audioProcessor.getSlotInfo(i);
+        auto info = audioProcessor.getSlotInfo(currentlyDisplayedChain, i);
 
         auto* editor = new ModuleSlotEditor(
+            currentlyDisplayedChain,
             i,
             info,
             audioProcessor,

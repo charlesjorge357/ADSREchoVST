@@ -22,12 +22,12 @@ void ReverbModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& m
 {
     ReverbProcessorParameters params;
     params.mix = state.getRawParameterValue(moduleID + ".mix")->load();
-    params.roomSize = state.getRawParameterValue(moduleID + ".room size")->load();
-    params.decayTime = state.getRawParameterValue(moduleID + ".decay time")->load();
+    params.roomSize = state.getRawParameterValue(moduleID + ".roomSize")->load();
+    params.decayTime = state.getRawParameterValue(moduleID + ".decayTime")->load();
     params.damping = state.getRawParameterValue(moduleID + ".damping")->load();
-    params.modRate = state.getRawParameterValue(moduleID + ".mod rate")->load();
-    params.modDepth = state.getRawParameterValue(moduleID + ".mod depth")->load();
-    params.preDelay = state.getRawParameterValue(moduleID + ".pre delay")->load();
+    params.modRate = state.getRawParameterValue(moduleID + ".modRate")->load();
+    params.modDepth = state.getRawParameterValue(moduleID + ".modDepth")->load();
+    params.preDelay = state.getRawParameterValue(moduleID + ".preDelay")->load();
     
 
     datorroReverb.setParameters(params);
@@ -35,7 +35,7 @@ void ReverbModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& m
 
     if (*state.getRawParameterValue(moduleID + ".enabled") == true) 
     { 
-        if (static_cast<int>(state.getRawParameterValue(moduleID + ".reverb type")->load()) == 0)
+        if (static_cast<int>(state.getRawParameterValue(moduleID + ".reverbType")->load()) == 0)
         {
             datorroReverb.processBlock(buffer, midi);
         }
@@ -51,13 +51,13 @@ std::vector<juce::String> ReverbModule::getUsedParameters() const
 {
     return {
        "mix",
-       "reverb type",
-       "room size",
-       "decay time",
+       "reverbType",
+       "roomSize",
+       "decayTime",
        "damping",
-       "mod rate",
-       "mod depth",
-       "pre delay"
+       "modRate",
+       "modDepth",
+       "preDelay"
     };
 }
 

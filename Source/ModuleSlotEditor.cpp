@@ -7,11 +7,11 @@
 #include "ModuleSlotEditor.h"
 
 ModuleSlotEditor::ModuleSlotEditor(
-    int index,
+    int cIndex, int sIndex,
     const SlotInfo& info,
     ADSREchoAudioProcessor& p,
     juce::AudioProcessorValueTreeState& apvts)
-    : slotIndex(index),
+    : chainIndex(cIndex), slotIndex(sIndex),
     slotID(info.slotID),
     processor(p)
 {
@@ -40,7 +40,7 @@ ModuleSlotEditor::ModuleSlotEditor(
 
     typeSelector.onChange = [this] 
     { 
-        processor.changeModuleType(slotIndex, static_cast<ModuleType>(typeSelector.getSelectedId()));
+        processor.changeModuleType(chainIndex, slotIndex, static_cast<ModuleType>(typeSelector.getSelectedId()));
     };
 
     //Module Enabled
@@ -56,7 +56,7 @@ ModuleSlotEditor::ModuleSlotEditor(
         auto* param = processor.apvts.getParameter(id);
         
         // Special handling for IR index - use ComboBox instead of slider
-        if (suffix == "conv ir index")
+        if (suffix == "convIrIndex")
         {
             addIRSelectorForParameter(id);
         }
@@ -79,7 +79,7 @@ ModuleSlotEditor::ModuleSlotEditor(
     addAndMakeVisible(removeButton);
     removeButton.onClick = [this]
         {
-            processor.removeModule(slotIndex);
+            processor.removeModule(chainIndex, slotIndex);
         };
 }
 

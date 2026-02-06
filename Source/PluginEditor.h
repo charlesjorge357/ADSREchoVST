@@ -56,20 +56,29 @@ private:
     juce::OwnedArray<ModuleSlotEditor> moduleEditors;
 
     //Master Sliders
-    juce::Slider masterMixSlider, gainSlider;
+    juce::Slider masterMixSlider0, gainSlider0, masterMixSlider1, gainSlider1;
 
     //Master Attachments
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterMixAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterMixAttachment0;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterMixAttachment1;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment0;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment1;
+
+    juce::ComboBox chainSelector;
 
     //Master Labels
-    juce::Label masterMixLabel, gainLabel;
+    juce::Label masterMixLabel0, gainLabel0, masterMixLabel1, gainLabel1;
+
+    juce::ToggleButton parallelEnableToggle{ "Enabled" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> parallelEnableToggleAttachment;
 
     void rebuildModuleEditors();
     void timerCallback() override;
     void handleAsyncUpdate() override;
 
     bool attemptedChange = false;
+
+    int currentlyDisplayedChain;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessorEditor)
 };

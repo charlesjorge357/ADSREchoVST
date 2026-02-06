@@ -27,13 +27,13 @@ void ConvolutionModule::process(juce::AudioBuffer<float>& buffer,
     ConvolutionParameters params;
 
     params.mix       = state.getRawParameterValue(moduleID + ".mix")->load();
-    params.preDelay  = state.getRawParameterValue(moduleID + ".pre delay")->load();
+    params.preDelay  = state.getRawParameterValue(moduleID + ".preDelay")->load();
 
     // Convolution-specific controls
-    params.irIndex   = state.getRawParameterValue(moduleID + ".conv ir index")->load();
-    params.irGainDb  = state.getRawParameterValue(moduleID + ".conv ir gain")->load();
-    params.lowCutHz  = state.getRawParameterValue(moduleID + ".conv low cut")->load();
-    params.highCutHz = state.getRawParameterValue(moduleID + ".conv high cut")->load();
+    params.irIndex   = state.getRawParameterValue(moduleID + ".convIrIndex")->load();
+    params.irGainDb  = state.getRawParameterValue(moduleID + ".convIrGain")->load();
+    params.lowCutHz  = state.getRawParameterValue(moduleID + ".convLowCut")->load();
+    params.highCutHz = state.getRawParameterValue(moduleID + ".convHighCut")->load();
 
     convolutionReverb.setParameters(params);
 
@@ -47,11 +47,11 @@ std::vector<juce::String> ConvolutionModule::getUsedParameters() const
     // Same style as DatorroModule: param *names* only, no prefix
     return {
         "mix",
-        "pre delay",
-        "conv ir index",
-        "conv ir gain",
-        "conv low cut",
-        "conv high cut"
+        "preDelay",
+        "convIrIndex",
+        "convIrGain",
+        "convLowCut",
+        "convHighCut"
     };
 }
 
