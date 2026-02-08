@@ -170,6 +170,22 @@ bool ADSREchoAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
 
 void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    if (chainTempBuffer.getNumSamples() < buffer.getNumSamples())
+    {
+        chainTempBuffer.setSize(
+            chainTempBuffer.getNumChannels(),
+            buffer.getNumSamples(),
+            false, false, true);
+    }
+
+    if (masterDryBuffer.getNumSamples() < buffer.getNumSamples())
+    {
+        masterDryBuffer.setSize(
+            masterDryBuffer.getNumChannels(),
+            buffer.getNumSamples(),
+            false, false, true);
+    }
+    
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
