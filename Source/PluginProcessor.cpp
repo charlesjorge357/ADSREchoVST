@@ -170,21 +170,15 @@ bool ADSREchoAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
 
 void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-    if (chainTempBuffer.getNumSamples() < buffer.getNumSamples())
-    {
-        chainTempBuffer.setSize(
-            chainTempBuffer.getNumChannels(),
-            buffer.getNumSamples(),
-            false, false, true);
-    }
+    chainTempBuffer.setSize(
+        chainTempBuffer.getNumChannels(),
+        buffer.getNumSamples(),
+        false, false, true);
 
-    if (masterDryBuffer.getNumSamples() < buffer.getNumSamples())
-    {
-        masterDryBuffer.setSize(
-            masterDryBuffer.getNumChannels(),
-            buffer.getNumSamples(),
-            false, false, true);
-    }
+    masterDryBuffer.setSize(
+        masterDryBuffer.getNumChannels(),
+        buffer.getNumSamples(),
+        false, false, true);
     
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
@@ -209,22 +203,22 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
     }
 
-    //buffer.clear();
+    buffer.clear();
     // Process the audio through each module slot effect
     bool parallelEnabled = apvts.getRawParameterValue("parallelEnabled")->load();
 
     for (int chainIndex = 0; chainIndex < NUM_CHAINS - !parallelEnabled; chainIndex++)
     {
 
-        //chainTempBuffer.clear();
+        chainTempBuffer.clear();
 
-        //for (int ch = 0; ch < totalNumInputChannels; ++ch)
-        //    chainTempBuffer.copyFrom(ch, 0, masterDryBuffer, ch, 0, numSamples);
+        for (int ch = 0; ch < totalNumInputChannels; ++ch)
+            chainTempBuffer.copyFrom(ch, 0, masterDryBuffer, ch, 0, numSamples);
 
 
         for (auto& slot : slots[chainIndex])
         {
-            slot->process(buffer, midiMessages, getPlayHead());
+            slot->process(chainTempBuffer, midiMessages, getPlayHead());
         }
 
         // ===== Chain mix =====
@@ -233,7 +227,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
         for (int ch = 0; ch < totalNumInputChannels; ++ch)
         {
-            auto* wetData = buffer.getWritePointer(ch);
+            auto* wetData = chainTempBuffer.getWritePointer(ch);
             auto* dryData = masterDryBuffer.getReadPointer(ch);
 
             for (int i = 0; i < numSamples; ++i)
@@ -242,23 +236,19 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
         // ===== Chain gain =====
         float gainValue = apvts.getRawParameterValue("chain_" + juce::String(chainIndex) + ".gain")->load();
-        buffer.applyGain(juce::Decibels::decibelsToGain(gainValue));
+        chainTempBuffer.applyGain(juce::Decibels::decibelsToGain(gainValue));
 
-        if (NUM_CHAINS == 2 && chainIndex == 0)
+        for (int ch = 0; ch < totalNumInputChannels; ++ch)
         {
-            for (int ch = 0; ch < totalNumInputChannels; ++ch)
-            {
-                chainTempBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
-                buffer.copyFrom(ch, 0, masterDryBuffer, ch, 0, numSamples);
-            }
+            buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples, 1.0f);
         }
 
     }
 
-    for (int ch = 0; ch < totalNumInputChannels; ++ch)
-    {
-        buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples);
-    }
+    //for (int ch = 0; ch < totalNumInputChannels; ++ch)
+    //{
+    //    buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples);
+    //}
     
     //for (auto& slot : slots) 
     //{
