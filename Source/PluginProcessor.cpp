@@ -215,6 +215,8 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
             buffer.clear(i, 0, buffer.getNumSamples());
 
+        chainTempBuffer.clear();
+
         for (int ch = 0; ch < totalNumInputChannels; ++ch)
             chainTempBuffer.copyFrom(ch, 0, masterDryBuffer, ch, 0, numSamples);
 
@@ -243,7 +245,17 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
         for (int ch = 0; ch < totalNumInputChannels; ++ch)
         {
-            buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples, 1.0f);
+            for (int chainIndex = 0; chainIndex < NUM_CHAINS; ++chainIndex)
+            {
+                if (chainIndex == 0)
+                {
+                    buffer.makeCopyOf(chainTempBuffer);
+                }
+                else
+                {
+                    buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples);
+                }
+            }
         }
 
     }
