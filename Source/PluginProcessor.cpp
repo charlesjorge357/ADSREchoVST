@@ -244,7 +244,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         float gainValue = apvts.getRawParameterValue("chain_" + juce::String(chainIndex) + ".gain")->load();
         buffer.applyGain(juce::Decibels::decibelsToGain(gainValue));
 
-        if (NUM_CHAINS == 2)
+        if (NUM_CHAINS == 2 && chainIndex == 0)
         {
             for (int ch = 0; ch < totalNumInputChannels; ++ch)
             {

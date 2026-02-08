@@ -141,7 +141,7 @@
     <VS2022 targetFolder="Builds/VisualStudio2022">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="ADSREcho" enablePluginBinaryCopyStep="0"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="ADSREcho" enablePluginBinaryCopyStep="0"
+        <CONFIGURATION isDebug="0" name="Release" targetName="ADSREcho" enablePluginBinaryCopyStep="1"
                        characterSet="Unicode"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
