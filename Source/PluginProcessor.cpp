@@ -117,6 +117,10 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     masterDryBuffer.setSize(spec.numChannels, samplesPerBlock);
     chainTempBuffer.setSize(spec.numChannels, samplesPerBlock);
 
+    // CRITICAL: Clear buffers to prevent garbage data
+    masterDryBuffer.clear();
+    chainTempBuffer.clear();
+
     for (auto& chain : slots)
     {
         for (auto& slot : chain)
@@ -223,7 +227,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
         for (int ch = 0; ch < totalNumInputChannels; ++ch)
         {
-            buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples, 1.0f/NUM_CHAINS);
+            buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples, 1.0f);
         }
 
     }
@@ -307,9 +311,6 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
     }
     auto state = juce::ValueTree::fromXml(*xml);
 
-    // Restore Parameters
-    apvts.replaceState(state);
-
     // Clear Modules
     for (auto& chain : slots)
         for(auto& slot : chain)
@@ -349,6 +350,9 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
             numModules[chainIndex]++;
         }
     }
+
+    // Restore Parameters
+    apvts.replaceState(state);
 
     uiNeedsRebuild.store(true, std::memory_order_release);
 }
