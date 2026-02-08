@@ -215,18 +215,16 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
     for (int chainIndex = 0; chainIndex < NUM_CHAINS - !parallelEnabled; chainIndex++)
     {
-        for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-            buffer.clear(i, 0, buffer.getNumSamples());
 
-        chainTempBuffer.clear();
+        //chainTempBuffer.clear();
 
-        for (int ch = 0; ch < totalNumInputChannels; ++ch)
-            chainTempBuffer.copyFrom(ch, 0, masterDryBuffer, ch, 0, numSamples);
+        //for (int ch = 0; ch < totalNumInputChannels; ++ch)
+        //    chainTempBuffer.copyFrom(ch, 0, masterDryBuffer, ch, 0, numSamples);
 
 
         for (auto& slot : slots[chainIndex])
         {
-            slot->process(chainTempBuffer, midiMessages, getPlayHead());
+            slot->process(buffer, midiMessages, getPlayHead());
         }
 
         // ===== Chain mix =====
@@ -235,7 +233,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
         for (int ch = 0; ch < totalNumInputChannels; ++ch)
         {
-            auto* wetData = chainTempBuffer.getWritePointer(ch);
+            auto* wetData = buffer.getWritePointer(ch);
             auto* dryData = masterDryBuffer.getReadPointer(ch);
 
             for (int i = 0; i < numSamples; ++i)
@@ -244,13 +242,22 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
         // ===== Chain gain =====
         float gainValue = apvts.getRawParameterValue("chain_" + juce::String(chainIndex) + ".gain")->load();
-        chainTempBuffer.applyGain(juce::Decibels::decibelsToGain(gainValue));
+        buffer.applyGain(juce::Decibels::decibelsToGain(gainValue));
 
-        for (int ch = 0; ch < totalNumInputChannels; ++ch)
+        if (NUM_CHAINS == 2)
         {
-            buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples);
+            for (int ch = 0; ch < totalNumInputChannels; ++ch)
+            {
+                chainTempBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
+                buffer.copyFrom(ch, 0, masterDryBuffer, ch, 0, numSamples);
+            }
         }
 
+    }
+
+    for (int ch = 0; ch < totalNumInputChannels; ++ch)
+    {
+        buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples);
     }
     
     //for (auto& slot : slots) 
