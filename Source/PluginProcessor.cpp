@@ -209,7 +209,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
     }
 
-    buffer.clear();
+    //buffer.clear();
     // Process the audio through each module slot effect
     bool parallelEnabled = apvts.getRawParameterValue("parallelEnabled")->load();
 
