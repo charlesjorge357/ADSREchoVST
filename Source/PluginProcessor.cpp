@@ -324,7 +324,7 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
     {
         int chainIndex = (int)chainState["index"];
 
-        for (auto slotState : modules)
+        for (auto slotState : chainState)
         {
             int slotIndex = (int)slotState["index"];
             auto type = slotState["type"];
@@ -357,12 +357,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
+    // Master Controls
+    layout.add(std::make_unique<juce::AudioParameterBool>("parallelEnabled", "Parallel Enabled", false));
+
     // Master controls
     for (int j = 0; j < NUM_CHAINS; j++)
     {
-        // Master Controls
-        layout.add(std::make_unique<juce::AudioParameterBool>("parallelEnabled", "Parallel Enabled", false));
-
         // Per Chain Controls (id "chain_1.gain")
         juce::String chainPrefix = "chain_" + juce::String(j);
         layout.add(std::make_unique<juce::AudioParameterFloat>(chainPrefix + ".gain", "Gain",
