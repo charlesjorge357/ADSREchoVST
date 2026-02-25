@@ -104,6 +104,7 @@
       <FILE id="a5FOZB" name="CustomDelays.h" compile="0" resource="0" file="Source/CustomDelays.h"/>
       <FILE id="kPcDDr" name="DatorroHall.cpp" compile="1" resource="0" file="Source/DatorroHall.cpp"/>
       <FILE id="KEljIF" name="DatorroHall.h" compile="0" resource="0" file="Source/DatorroHall.h"/>
+      <FILE id="P80Zvy" name="EQModule.h" compile="0" resource="0" file="Source/EQModule.h"/>
       <FILE id="hs8J12" name="IRBank.h" compile="0" resource="0" file="Source/IRBank.h"/>
       <FILE id="iXkWEW" name="LFO.cpp" compile="1" resource="0" file="Source/LFO.cpp"/>
       <FILE id="eIHqHW" name="LFO.h" compile="0" resource="0" file="Source/LFO.h"/>
@@ -117,8 +118,19 @@
             file="Source/PluginProcessor.h"/>
       <FILE id="GHd94g" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
+      <FILE id="DXNRwl" name="BasicEQ.cpp" compile="1" resource="0" file="Source/BasicEQ.cpp"/>
+      <FILE id="qoO0w9" name="BasicEQ.h" compile="0" resource="0" file="Source/BasicEQ.h"/>
+      <FILE id="QYJmz3" name="EQModule.cpp" compile="1" resource="0" file="Source/EQModule.cpp"/>
       <FILE id="NVYLLL" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
+    <FILE id="svJoLe" name="BasicCompressor.cpp" compile="1" resource="0"
+          file="Source/BasicCompressor.cpp"/>
+    <FILE id="JfOV2E" name="BasicCompressor.h" compile="0" resource="0"
+          file="Source/BasicCompressor.h"/>
+    <FILE id="Ctbnri" name="CompressorModule.cpp" compile="1" resource="0"
+          file="Source/CompressorModule.cpp"/>
+    <FILE id="oVQXlq" name="CompressorModule.h" compile="0" resource="0"
+          file="Source/CompressorModule.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>

@@ -29,6 +29,8 @@
 #include "ReverbModule.h"
 #include "IRBank.h"
 #include "ConvolutionModule.h"
+#include "EQModule.h"
+#include "CompressorModule.h"
 
 //==============================================================================
 /**

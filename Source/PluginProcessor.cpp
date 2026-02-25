@@ -364,6 +364,16 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
                 module->setIRBank(irBank);
                 slots[chainIndex][slotIndex]->setModule(std::move(module));
             }
+            else if (type == "EQ")
+            {
+                auto module = std::make_unique<EQModule>("null", apvts);
+                slots[chainIndex][slotIndex]->setModule(std::move(module));
+            }
+            else if (type == "Compressor")
+            {
+                auto module = std::make_unique<CompressorModule>("null", apvts);
+                slots[chainIndex][slotIndex]->setModule(std::move(module));
+            }
 
             numModules[chainIndex]++;
         }
@@ -467,6 +477,53 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
             layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayHighpass", "Delay Highpass",
                 juce::NormalisableRange<float>(20.0f, 5000.0f, 1.0f, 0.3f), 20.0f));
+
+            // 3-Band EQ
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowFreq", "Low Freq",
+                juce::NormalisableRange<float>(20.0f, 500.0f, 1.0f, 0.4f), 200.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowGain", "Low Gain",
+                juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowQ", "Low Q",
+                juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f), 0.707f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidFreq", "Mid Freq",
+                juce::NormalisableRange<float>(200.0f, 8000.0f, 1.0f, 0.4f), 1000.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidGain", "Mid Gain",
+                juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidQ", "Mid Q",
+                juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f), 0.707f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighFreq", "High Freq",
+                juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.4f), 8000.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighGain", "High Gain",
+                juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighQ", "High Q",
+                juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f), 0.707f));
+
+            // Compressor
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compThreshold", "Threshold",
+                juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f, 0.5f), -18.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compRatio", "Ratio",
+                juce::NormalisableRange<float>(1.0f, 20.0f, 0.1f, 0.5f), 4.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compAttack", "Attack",
+                juce::NormalisableRange<float>(1.0f, 200.0f, 0.1f, 0.5f), 10.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compRelease", "Release",
+                juce::NormalisableRange<float>(10.0f, 2000.0f, 1.0f, 0.4f), 100.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compInput", "Comp Input",
+                juce::NormalisableRange<float>(-18.0f, 18.0f, 0.1f), 0.0f));
+
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compOutput", "Comp Output",
+                juce::NormalisableRange<float>(-18.0f, 18.0f, 0.1f), 0.0f));
         }
     }
 
@@ -517,9 +574,19 @@ void ADSREchoAudioProcessor::addModule(int chainIndex, ModuleType moduleType)
                     break;
 
                 case ModuleType::Convolution:
+                {
                     auto module = std::make_unique<ConvolutionModule>("null", apvts);
                     module->setIRBank(irBank);
                     slot->setModule(std::move(module));
+                    break;
+                }
+
+                case ModuleType::EQ:
+                    slot->setModule(std::make_unique<EQModule>("null", apvts));
+                    break;
+
+                case ModuleType::Compressor:
+                    slot->setModule(std::make_unique<CompressorModule>("null", apvts));
                     break;
             }
 
@@ -568,10 +635,20 @@ void ADSREchoAudioProcessor::changeModuleType(int chainIndex, int slotIndex, Mod
             break;
 
         case ModuleType::Convolution:
+        {
             auto module = std::make_unique<ConvolutionModule>("null", apvts);
             module->setIRBank(irBank);  // ADD THIS!
             toChange->setModule(std::move(module));
             break;
+        }
+
+        case ModuleType::EQ:
+            toChange->setModule(std::make_unique<EQModule>("null", apvts));
+             break;
+
+        case ModuleType::Compressor:
+            toChange->setModule(std::make_unique<CompressorModule>("null", apvts));
+             break;
     }
 
     uiNeedsRebuild.store(true, std::memory_order_release);

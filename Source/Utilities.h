@@ -91,7 +91,9 @@ enum class ModuleType : int
 {
     Delay = 1,
     Reverb = 2,
-    Convolution = 3
+    Convolution = 3,
+    EQ = 4,
+    Compressor = 5
 };
 
 //template <typename SampleType>

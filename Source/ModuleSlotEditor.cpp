@@ -24,6 +24,8 @@ ModuleSlotEditor::ModuleSlotEditor(
     typeSelector.addItem("Delay", 1);
     typeSelector.addItem("Reverb", 2);
     typeSelector.addItem("Convolution", 3);
+    typeSelector.addItem("EQ", 4);
+    typeSelector.addItem("Compressor", 5);
 
     if (info.moduleType == "Delay")
     {
@@ -36,6 +38,14 @@ ModuleSlotEditor::ModuleSlotEditor(
     else if (info.moduleType == "Convolution")
     {
         typeSelector.setSelectedId(3, juce::dontSendNotification);
+    }
+    else if (info.moduleType == "EQ")
+    {
+        typeSelector.setSelectedId(4, juce::dontSendNotification);
+    }
+    else if (info.moduleType == "Compressor")
+    {
+        typeSelector.setSelectedId(5, juce::dontSendNotification);
     }
 
     typeSelector.onChange = [this] 
