@@ -15,7 +15,7 @@ Uninstallable=yes
 UninstallDisplayName=ADSR-Echo VST3 Plugin
 
 [Files]
-Source: "..\..\build\ADSREcho_artefacts\Release\VST3\ADSREcho.vst3\*"; DestDir: "{app}\ADSREcho.vst3"; Flags: recursesubdirs createallsubdirs
+Source: "..\..\Builds\VisualStudio2022\x64\Release\VST3\ADSREcho.vst3\*"; DestDir: "{app}\ADSREcho.vst3"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{commonprograms}\ADSR-Echo\Uninstall ADSR-Echo"; Filename: "{uninstallexe}"

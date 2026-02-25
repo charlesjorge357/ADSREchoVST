@@ -98,7 +98,7 @@ private:
             // Try to find Source/IRs by going up from plugin
             auto searchDir = pluginPath.getParentDirectory();
             
-            for (int i = 0; i < 6; ++i)
+            for (int i = 0; i < 10; ++i)
             {
                 auto testFolder = searchDir.getChildFile("Source").getChildFile("IRs");
                 DBG("  Trying: " + testFolder.getFullPathName());
