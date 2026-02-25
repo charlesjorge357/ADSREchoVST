@@ -74,3 +74,23 @@ void ConvolutionModule::setIRBank(std::shared_ptr<IRBank> bank)
 {
     convolutionReverb.setIRBank(bank);
 }
+
+void ConvolutionModule::loadCustomIR(const juce::File& file)
+{
+    convolutionReverb.loadCustomIR(file);
+}
+
+void ConvolutionModule::clearCustomIR()
+{
+    convolutionReverb.clearCustomIR();
+}
+
+bool ConvolutionModule::hasCustomIR() const
+{
+    return convolutionReverb.hasCustomIR();
+}
+
+juce::String ConvolutionModule::getCustomIRPath() const
+{
+    return convolutionReverb.getCustomIRPath();
+}

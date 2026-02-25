@@ -307,6 +307,14 @@ void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
                 juce::ValueTree slot("Slot");
                 slot.setProperty("index", i, nullptr);
                 slot.setProperty("type", mod->getType(), nullptr);
+
+                // Save custom IR path for Convolution modules
+                if (auto* convMod = dynamic_cast<ConvolutionModule*>(mod))
+                {
+                    if (convMod->hasCustomIR())
+                        slot.setProperty("customIRPath", convMod->getCustomIRPath(), nullptr);
+                }
+
                 chain.addChild(slot, -1, nullptr);
             }
         }
@@ -362,6 +370,16 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
             {
                 auto module = std::make_unique<ConvolutionModule>("null", apvts);
                 module->setIRBank(irBank);
+
+                // Restore custom IR if one was saved
+                auto customIRPath = slotState.getProperty("customIRPath", "").toString();
+                if (customIRPath.isNotEmpty())
+                {
+                    juce::File irFile(customIRPath);
+                    if (irFile.existsAsFile())
+                        module->loadCustomIR(irFile);
+                }
+
                 slots[chainIndex][slotIndex]->setModule(std::move(module));
             }
             else if (type == "EQ")

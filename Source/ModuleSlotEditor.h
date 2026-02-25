@@ -24,6 +24,7 @@
 #endif
 
 #include "PluginProcessor.h"
+#include "ConvolutionModule.h"
 
 class ModuleSlotEditor : public juce::Component
 {
@@ -61,11 +62,16 @@ private:
     // Module Toggles
     std::vector<std::unique_ptr<juce::Button>> toggles;
     std::vector<std::unique_ptr<juce::Label>>toggleLabels;
-    
+
     // IR Selectors (ComboBoxes)
     std::vector<std::unique_ptr<juce::ComboBox>> irSelectors;
     std::vector<std::unique_ptr<juce::Label>> irSelectorLabels;
-    
+
+    // Custom IR Browse button
+    juce::TextButton browseIRButton{ "Browse" };
+    std::unique_ptr<juce::FileChooser> fileChooser;
+    bool hasIRSelector = false;
+
     juce::TextButton removeButton{ "-" };
 
     // Module Attachments

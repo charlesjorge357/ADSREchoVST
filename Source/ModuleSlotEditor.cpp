@@ -178,7 +178,7 @@ void ModuleSlotEditor::addIRSelectorForParameter(juce::String id)
 {
     // Add ComboBox for IR selection
     auto irSelector = std::make_unique<juce::ComboBox>();
-    
+
     // Populate with IR names from IRBank
     auto irBank = processor.getIRBank();
     if (irBank)
@@ -188,7 +188,7 @@ void ModuleSlotEditor::addIRSelectorForParameter(juce::String id)
             irSelector->addItem(irBank->getIRName(i), i + 1);  // ID starts at 1
         }
     }
-    
+
     // Get current parameter value and set selection
     auto* param = processor.apvts.getRawParameterValue(id);
     if (param)
@@ -196,31 +196,93 @@ void ModuleSlotEditor::addIRSelectorForParameter(juce::String id)
         int currentIndex = (int)param->load();
         irSelector->setSelectedId(currentIndex + 1, juce::dontSendNotification);
     }
-    
+
+    // Check if this slot has a custom IR loaded and show its name
+    if (chainIndex < (int)processor.slots.size() &&
+        slotIndex < (int)processor.slots[chainIndex].size())
+    {
+        auto* mod = processor.slots[chainIndex][slotIndex]->get();
+        if (auto* convMod = dynamic_cast<ConvolutionModule*>(mod))
+        {
+            if (convMod->hasCustomIR())
+            {
+                juce::File f(convMod->getCustomIRPath());
+                irSelector->setText(f.getFileNameWithoutExtension(),
+                                    juce::dontSendNotification);
+            }
+        }
+    }
+
     // Update parameter when selection changes (same pattern as typeSelector)
     irSelector->onChange = [this, id, irSelectorPtr = irSelector.get()]
     {
         int selectedIndex = irSelectorPtr->getSelectedId() - 1;  // Convert back to 0-based
-        auto* param = processor.apvts.getParameter(id);
-        if (param)
+        auto* paramPtr = processor.apvts.getParameter(id);
+        if (paramPtr)
         {
-            param->beginChangeGesture();
-            param->setValueNotifyingHost(param->convertTo0to1((float)selectedIndex));
-            param->endChangeGesture();
+            paramPtr->beginChangeGesture();
+            paramPtr->setValueNotifyingHost(paramPtr->convertTo0to1((float)selectedIndex));
+            paramPtr->endChangeGesture();
+        }
+
+        // Selecting a bank IR clears any custom IR
+        if (chainIndex < (int)processor.slots.size() &&
+            slotIndex < (int)processor.slots[chainIndex].size())
+        {
+            auto* mod = processor.slots[chainIndex][slotIndex]->get();
+            if (auto* convMod = dynamic_cast<ConvolutionModule*>(mod))
+                convMod->clearCustomIR();
         }
     };
-    
+
     addAndMakeVisible(*irSelector);
-    
+
     // Add Label
     auto label = std::make_unique<juce::Label>();
     label->setText("IR", juce::dontSendNotification);
     label->setJustificationType(juce::Justification::centred);
     addAndMakeVisible(*label);
-    
+
     // Store in vectors
     irSelectors.push_back(std::move(irSelector));
     irSelectorLabels.push_back(std::move(label));
+
+    // Add Browse button for loading custom IR files
+    hasIRSelector = true;
+    addAndMakeVisible(browseIRButton);
+    browseIRButton.onClick = [this]
+    {
+        fileChooser = std::make_unique<juce::FileChooser>(
+            "Load Impulse Response", juce::File{}, "*.wav;*.aif;*.aiff;*.flac");
+
+        auto flags = juce::FileBrowserComponent::openMode
+                   | juce::FileBrowserComponent::canSelectFiles;
+
+        fileChooser->launchAsync(flags, [this](const juce::FileChooser& fc)
+        {
+            auto file = fc.getResult();
+            if (!file.existsAsFile())
+                return;
+
+            if (chainIndex < (int)processor.slots.size() &&
+                slotIndex < (int)processor.slots[chainIndex].size())
+            {
+                auto* mod = processor.slots[chainIndex][slotIndex]->get();
+                if (auto* convMod = dynamic_cast<ConvolutionModule*>(mod))
+                {
+                    convMod->loadCustomIR(file);
+
+                    // Update the IR ComboBox to show the custom file name
+                    if (!irSelectors.empty())
+                    {
+                        irSelectors[0]->setSelectedId(0, juce::dontSendNotification);
+                        irSelectors[0]->setText(file.getFileNameWithoutExtension(),
+                                                juce::dontSendNotification);
+                    }
+                }
+            }
+        });
+    };
 }
 
 void ModuleSlotEditor::resized()
@@ -240,9 +302,16 @@ void ModuleSlotEditor::resized()
     // Layout IR selectors
     for (int i = 0; i < irSelectors.size(); i++)
     {
-        auto a = r.removeFromLeft(70);  // Wider for ComboBox
+        auto a = r.removeFromLeft(90);  // Wider for ComboBox
         irSelectorLabels[i]->setBounds(a.removeFromBottom(30));
         irSelectors[i]->setBounds(a.removeFromTop(25));
+    }
+
+    // Layout Browse button next to IR selector
+    if (hasIRSelector)
+    {
+        auto browseArea = r.removeFromLeft(55);
+        browseIRButton.setBounds(browseArea.removeFromTop(25));
     }
 
     // Layout Other Components

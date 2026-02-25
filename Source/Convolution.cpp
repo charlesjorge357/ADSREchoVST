@@ -108,13 +108,13 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
 {
     // Store old values for comparison
     int oldIRIndex = parameters.irIndex;
-    
+
     // Check what changed with thresholds to avoid floating-point noise triggering updates
     bool preDelayChanged = std::abs(newParams.preDelay - parameters.preDelay) > 0.1f;
-    
+
     bool filtersChanged = std::abs(newParams.lowCutHz - parameters.lowCutHz) > 1.0f ||
                           std::abs(newParams.highCutHz - parameters.highCutHz) > 1.0f;
-    
+
     bool irChanged = (newParams.irIndex != oldIRIndex);
 
     // Update parameters
@@ -125,8 +125,9 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
 
     if (filtersChanged)
         updateFilters();
-    
-    if (irChanged)
+
+    // Only load from bank if no custom IR is active
+    if (irChanged && !customIRActive)
         loadIRAtIndex(newParams.irIndex);
 }
 
@@ -345,7 +346,30 @@ void Convolution::loadIRAtIndex(int index)
     // CRITICAL: Reset ALL state before loading new IR to prevent blips
     // This clears: convolver buffers, delay lines, filter states
     reset();
-    
+
     loadIR(irFile);
     currentIRIndex = index;
+}
+
+void Convolution::loadCustomIR(const juce::File& file)
+{
+    if (!file.existsAsFile())
+    {
+        DBG("Convolution::loadCustomIR - File does not exist: " + file.getFullPathName());
+        return;
+    }
+
+    reset();
+    loadIR(file);
+    customIRActive = true;
+    customIRPath = file.getFullPathName();
+    currentIRIndex = -1;
+    DBG("Convolution::loadCustomIR - Loaded custom IR: " + file.getFullPathName());
+}
+
+void Convolution::clearCustomIR()
+{
+    customIRActive = false;
+    customIRPath = {};
+    currentIRIndex = -1;
 }

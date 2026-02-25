@@ -46,10 +46,16 @@ public:
                          size_t dataSize,
                          double sampleRate,
                          int numChannels);
-    
+
     // IR bank management
     void setIRBank(std::shared_ptr<IRBank> bank);
     void loadIRAtIndex(int index);
+
+    // User-loaded custom IR (bypasses bank)
+    void loadCustomIR(const juce::File& file);
+    void clearCustomIR();
+    bool hasCustomIR() const { return customIRActive; }
+    juce::String getCustomIRPath() const { return customIRPath; }
 
 private:
     // Helper: configure HP/LP filters for a given sample rate
@@ -65,7 +71,9 @@ private:
     float preDelaySamples = 0.0f;
     bool isPreDelayActive = false;  // Cache to avoid checking every block
     int currentIRIndex = -1;
-    
+    bool customIRActive = false;
+    juce::String customIRPath;
+
     std::shared_ptr<IRBank> irBank;
 
     // JUCE convolution engine (handles stereo buffers if IR is stereo)
