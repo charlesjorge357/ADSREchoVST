@@ -14,17 +14,17 @@ jobs:
         include:
           - name: Windows-VST3
             os: windows-latest
-            artifact_name: ADSREcho-Windows-VST3
+            artifact_name: ADSREcho-Windows
             cmake_args: -DCMAKE_BUILD_TYPE=Release
 
           - name: macOS-Universal-VST3-AU
             os: macos-13
-            artifact_name: ADSREcho-macOS-VST3-AU
+            artifact_name: ADSREcho-macOS
             cmake_args: -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
 
           - name: Linux-VST3
             os: ubuntu-22.04
-            artifact_name: ADSREcho-Linux-VST3
+            artifact_name: ADSREcho-Linux
             cmake_args: -DCMAKE_BUILD_TYPE=Release
 
     steps:
@@ -70,38 +70,37 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --parallel
 
-      - name: Package Windows
+      # ===== Windows Installer (Inno Setup) =====
+      - name: Build Windows Installer
         if: runner.os == 'Windows'
         run: |
-          mkdir release
-          cp -r build/*_artefacts/Release/VST3/* release/
-          cd release
-          7z a ../${{ matrix.artifact_name }}-${{ steps.version.outputs.VERSION }}.zip *
-        shell: bash
+          iscc /DAppVersion="${{ steps.version.outputs.VERSION }}" installer\windows\installer.iss
+        shell: cmd
 
-      - name: Package macOS
+      # ===== macOS Installer (pkgbuild) =====
+      - name: Build macOS Installer
         if: runner.os == 'macOS'
         run: |
-          mkdir release
-          cp -r build/*_artefacts/Release/VST3/* release/ || true
-          cp -r build/*_artefacts/Release/AU/* release/ || true
-          cd release
-          zip -r ../${{ matrix.artifact_name }}-${{ steps.version.outputs.VERSION }}.zip *
+          chmod +x installer/macos/build_pkg.sh
+          cd installer/macos
+          ./build_pkg.sh "${{ steps.version.outputs.VERSION }}"
 
+      # ===== Linux (tar.gz — no installer standard) =====
       - name: Package Linux
         if: runner.os == 'Linux'
         run: |
-          mkdir release
+          mkdir -p release
           cp -r build/*_artefacts/Release/VST3/* release/
           cd release
-          tar -czf ../${{ matrix.artifact_name }}-${{ steps.version.outputs.VERSION }}.tar.gz *
+          tar -czf ../ADSREcho-Linux-${{ steps.version.outputs.VERSION }}.tar.gz *
 
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: |
-            *.zip
+            release/*.exe
+            release/*.pkg
             *.tar.gz
 
   create-release:
@@ -132,32 +131,26 @@ jobs:
 
             ### Features
             - Algorithmic Reverb (Hall & Plate models)
-            - Delay with Haas effect and Ping-Pong stereo
-            - Convolution engine with custom IR loading
-            - Compression and EQ modules
+            - Delay with BPM sync, Ping-Pong, and filtering
             - Flexible routing and mixing system
 
             ### Downloads
-            - **Windows**: VST3 format
-            - **macOS**: Universal Binary (Intel + Apple Silicon) - VST3 and AU formats
-            - **Linux**: VST3 format
+            - **Windows**: Run the `.exe` installer — places VST3 in the standard plugin directory
+            - **macOS**: Run the `.pkg` installer — installs VST3 and AU to system plugin directories
+            - **Linux**: Extract `.tar.gz` and copy VST3 to `~/.vst3/`
 
-            ### Installation
-            1. Download the appropriate package for your platform
-            2. Extract the archive
-            3. Copy the plugin files to your DAW's plugin directory
+            ### Supported DAWs
+            - FL Studio (VST3)
+            - Ableton Live (VST3, AU on macOS)
 
             ### System Requirements
             - Windows 10 or later / macOS 10.13+ / Linux (Ubuntu 20.04+)
-            - VST3 / AU compatible DAW
 
             ---
             Built with JUCE Framework | Licensed under GPLv3
           files: |
-            artifacts/**/*.zip
+            artifacts/**/*.exe
+            artifacts/**/*.pkg
             artifacts/**/*.tar.gz
           draft: false
           prerelease: false
-
-  # Optional: Create installers using NSIS (Windows), pkgbuild (macOS), etc.
-  # This would be added in a future iteration
