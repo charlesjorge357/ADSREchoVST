@@ -3,7 +3,13 @@
 // Looks for IRs next to the plugin binary (where post-build script copies them)
 // ==============================================================================
 #pragma once
-#include <JuceHeader.h>
+
+#if __has_include("JuceHeader.h")
+  #include "JuceHeader.h"
+#else
+  #include <juce_core/juce_core.h>
+  #include <juce_audio_basics/juce_audio_basics.h>
+#endif
 
 class IRBank
 {

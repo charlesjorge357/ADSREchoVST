@@ -1,6 +1,11 @@
 #pragma once
 
-#include <JuceHeader.h>
+#if __has_include("JuceHeader.h")
+  #include "JuceHeader.h"
+#else
+  #include <juce_audio_basics/juce_audio_basics.h>
+  #include <juce_dsp/juce_dsp.h>
+#endif
 
 // Forward declaration
 class IRBank;

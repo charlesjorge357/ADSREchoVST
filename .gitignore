@@ -450,6 +450,9 @@ ml/models/*.pth
 ml/data/cache/
 *.onnx
 
+# Claude Code
+.claude/
+
 # macOS
 .DS_Store
 *.dSYM
