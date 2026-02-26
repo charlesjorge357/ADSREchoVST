@@ -58,7 +58,21 @@ target_sources(ADSREcho
     PRIVATE
         Source/PluginEditor.cpp
         Source/PluginProcessor.cpp
- "Source/DatorroHall.h" "Source/IRBank.h")
+        Source/BasicCompressor.cpp
+        Source/BasicDelay.cpp
+        Source/BasicEQ.cpp
+        Source/CompressorModule.cpp
+        Source/Convolution.cpp
+        Source/ConvolutionModule.cpp
+        Source/CustomDelays.cpp
+        Source/DatorroHall.cpp
+        Source/DelayModule.cpp
+        Source/EQModule.cpp
+        Source/HybridPlate.cpp
+        Source/LFO.cpp
+        Source/ModuleSlotEditor.cpp
+        Source/PsychoDamping.cpp
+        Source/ReverbModule.cpp)
 
 # Compile definitions
 target_compile_definitions(ADSREcho
