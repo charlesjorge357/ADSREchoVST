@@ -99,6 +99,9 @@ public:
     // IR Bank accessor for UI
     std::shared_ptr<IRBank> getIRBank() const { return irBank; }
 
+    static constexpr int MAX_SLOTS = 8;
+    static constexpr int NUM_CHAINS = 2;
+
 private:
     juce::dsp::ProcessSpec spec;
 
@@ -118,9 +121,6 @@ private:
     std::atomic<bool> moveRequested{ false };
     PendingMove pendingMove;
     void executeSlotMove();
-
-    static constexpr int MAX_SLOTS = 8;
-    static constexpr int NUM_CHAINS = 2;
 
     void setSlotDefaults(juce::String slotID);
 

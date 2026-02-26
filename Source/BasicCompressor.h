@@ -42,7 +42,7 @@ private:
     double envelopeState = 0.0;
 
     // Smooth gain reduction state (separate smoother to avoid zipper noise
-    // when the envelope changes quickly — models the optical cell's lag)
+    // when the envelope changes quickly â€” models the optical cell's lag)
     double gainReductionState = 0.0;
 
     // Pre-detector low-mid emphasis filter (models optical cell sensitivity)

@@ -76,7 +76,7 @@ void BasicCompressor::processBlock(juce::AudioBuffer<float>& buffer)
 
         // ---- Smooth gain reduction (models optical cell lag) ----
         // A secondary smoother on the GR signal itself gives the
-        // characteristic optical "rounding" — gain reduction never snaps
+        // characteristic optical "rounding" â€” gain reduction never snaps
         gainReductionState = gainReductionState * 0.9995
                            + targetGrDb         * 0.0005;
 
@@ -137,7 +137,7 @@ double BasicCompressor::computeGainReductionDb(double inputDb) const
 }
 
 // ---------------------------------------------------------------------------
-// Program-dependent time constants — LA-2A behaviour
+// Program-dependent time constants â€” LA-2A behaviour
 // Attack: faster when signal is well above threshold (LED drives harder)
 // Release: slower for sustained signals, faster for brief transients
 // ---------------------------------------------------------------------------
@@ -172,7 +172,7 @@ double BasicCompressor::computeReleaseCoeff(double inputDb) const
 }
 
 // ---------------------------------------------------------------------------
-// Parameter setters — same guard pattern as BasicDelay/BasicEQ
+// Parameter setters â€” same guard pattern as BasicDelay/BasicEQ
 // ---------------------------------------------------------------------------
 
 void BasicCompressor::setThreshold(float dBFS)

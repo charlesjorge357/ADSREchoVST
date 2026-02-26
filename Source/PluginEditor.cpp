@@ -14,80 +14,54 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     startTimerHz(30);
-    
     currentlyDisplayedChain = 0;
 
-    // MASTER MIX (Chain 0)
-    addAndMakeVisible(masterMixSlider0);
-    addAndMakeVisible(masterMixLabel0);
-    masterMixSlider0.setSliderStyle(juce::Slider::Rotary);
-    masterMixSlider0.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    masterMixAttachment0 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.apvts, "chain_0.masterMix", masterMixSlider0);
-    masterMixLabel0.setText("Master Mix (Chain 1)", juce::dontSendNotification);
-    masterMixLabel0.setJustificationType(juce::Justification::horizontallyCentred);
+    // Per-chain controls
+    for (int chain = 0; chain < numChains; ++chain)
+        setupChainControls(chain);
 
-    // GAIN (Chain 0)
-    addAndMakeVisible(gainSlider0);
-    addAndMakeVisible(gainLabel0);
-    gainSlider0.setSliderStyle(juce::Slider::Rotary);
-    gainSlider0.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    gainAttachment0 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.apvts, "chain_0.gain", gainSlider0);
-    gainLabel0.setText("Gain (Chain 1)", juce::dontSendNotification);
-    gainLabel0.setJustificationType(juce::Justification::horizontallyCentred);
-
-    addAndMakeVisible(masterMixSlider1);
-    addAndMakeVisible(masterMixLabel1);
-    masterMixSlider1.setSliderStyle(juce::Slider::Rotary);
-    masterMixSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    masterMixAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.apvts, "chain_1.masterMix", masterMixSlider1);
-    masterMixLabel1.setText("Master Mix (Chain 2)", juce::dontSendNotification);
-    masterMixLabel1.setJustificationType(juce::Justification::horizontallyCentred);
-
-    // GAIN (Chain 0)
-    addAndMakeVisible(gainSlider1);
-    addAndMakeVisible(gainLabel1);
-    gainSlider1.setSliderStyle(juce::Slider::Rotary);
-    gainSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    gainAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.apvts, "chain_1.gain", gainSlider1);
-    gainLabel1.setText("Gain (Chain 2)", juce::dontSendNotification);
-    gainLabel1.setJustificationType(juce::Justification::horizontallyCentred);
-
-    // Chain Selector and Toggle
+    // Chain selector
     addAndMakeVisible(chainSelector);
-    chainSelector.addItem("Chain 1", 1);
-    chainSelector.addItem("Chain 2", 2);
+    for (int i = 0; i < numChains; ++i)
+        chainSelector.addItem("Chain " + juce::String(i + 1), i + 1);
 
     chainSelector.setSelectedId(1, juce::dontSendNotification);
-
     chainSelector.onChange = [this]
         {
             currentlyDisplayedChain = chainSelector.getSelectedId() - 1;
             rebuildModuleEditors();
         };
 
+    // Parallel toggle
     addAndMakeVisible(parallelEnableToggle);
-    parallelEnableToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-        audioProcessor.apvts, "parallelEnabled", parallelEnableToggle);
+    parallelEnableToggleAttachment =
+        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            audioProcessor.apvts, "parallelEnabled", parallelEnableToggle);
 
-    // Add slot button
+    parallelEnableToggle.onClick = [this]
+        {
+            bool enabled = parallelEnableToggle.getToggleState();
+
+            masterMixSliders[1].setVisible(enabled);
+            masterMixLabels[1].setVisible(enabled);
+            gainSliders[1].setVisible(enabled);
+            gainLabels[1].setVisible(enabled);
+        };
+
+    // Add module button
     addAndMakeVisible(addButton);
     addButton.onClick = [this]
-    {
-        audioProcessor.addModule(currentlyDisplayedChain, ModuleType::Delay);
-        attemptedChange = true;
-    };
+        {
+            audioProcessor.addModule(currentlyDisplayedChain, ModuleType::Delay);
+            attemptedChange = true;
+        };
 
-    // Creates module viewport for the module container, giving scrollbar if enough modules are added    
+    // Module viewport
     addAndMakeVisible(moduleViewport);
     moduleViewport.setViewedComponent(&moduleContainer, false);
     moduleViewport.setScrollBarsShown(true, false);
 
     setSize(800, 600);
-
     rebuildModuleEditors();
 }
 
@@ -100,41 +74,36 @@ ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
 //==============================================================================
 void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    //// (Our component is opaque, so we must completely fill the background with a solid colour)
-    //g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
-    //g.setColour (juce::Colours::white);
-    //g.setFont (juce::FontOptions (15.0f));
-    //g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
 
 void ADSREchoAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced(10);
 
-    // Arrange the layout of the master controls at the top
     auto top = area.removeFromTop(110);
-    auto masterMixArea0 = top.removeFromLeft(120);
-    auto gainArea0 = top.removeFromLeft(120);
-    masterMixSlider0.setBounds(masterMixArea0.removeFromTop(80));
-    masterMixLabel0.setBounds(masterMixArea0.removeFromTop(20));
-    gainSlider0.setBounds(gainArea0.removeFromTop(80));
-    gainLabel0.setBounds(gainArea0.removeFromTop(20));
 
-    auto masterMixArea1 = top.removeFromLeft(120);
-    auto gainArea1 = top.removeFromLeft(120);
-    masterMixSlider1.setBounds(masterMixArea1.removeFromTop(80));
-    masterMixLabel1.setBounds(masterMixArea1.removeFromTop(20));
-    gainSlider1.setBounds(gainArea1.removeFromTop(80));
-    gainLabel1.setBounds(gainArea1.removeFromTop(20));
+    // Gain and mix sliders per chain
+    for (int chain = 0; chain < numChains; ++chain)
+    {
+        auto chainArea = top.removeFromLeft(240);
 
-    chainSelector.setBounds(top.removeFromLeft(90));
+        auto mixArea = chainArea.removeFromLeft(120);
+        auto gainArea = chainArea.removeFromLeft(120);
 
-    parallelEnableToggle.setBounds(top.removeFromLeft(25));
+        masterMixSliders[chain].setBounds(mixArea.removeFromTop(80));
+        masterMixLabels[chain].setBounds(mixArea.removeFromTop(20));
+
+        gainSliders[chain].setBounds(gainArea.removeFromTop(80));
+        gainLabels[chain].setBounds(gainArea.removeFromTop(20));
+    }
+
+    chainSelector.setBounds(top.removeFromLeft(100));
+    parallelEnableToggle.setBounds(top.removeFromLeft(30));
 
     addButton.setBounds(area.removeFromTop(30));
 
-    // Sets the layout of each Module Editor, created down sequentially in the module viewport.
+    // Modules on the chain are added down sequentially
     moduleViewport.setBounds(area);
 
     constexpr int slotHeight = 160;
@@ -161,15 +130,63 @@ void ADSREchoAudioProcessorEditor::handleAsyncUpdate()
     rebuildModuleEditors();
 }
 
+// Setup for each chain mixer/gain slider
+void ADSREchoAudioProcessorEditor::setupChainControls(int chainIndex)
+{
+    auto& mixSlider = masterMixSliders[chainIndex];
+    auto& mixLabel = masterMixLabels[chainIndex];
+    auto& gainSlider = gainSliders[chainIndex];
+    auto& gainLabel = gainLabels[chainIndex];
+
+    addAndMakeVisible(mixSlider);
+    addAndMakeVisible(mixLabel);
+    addAndMakeVisible(gainSlider);
+    addAndMakeVisible(gainLabel);
+
+    mixSlider.setSliderStyle(juce::Slider::Rotary);
+    mixSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+
+    gainSlider.setSliderStyle(juce::Slider::Rotary);
+    gainSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+
+    const juce::String chain = juce::String(chainIndex);
+
+    masterMixAttachments[chainIndex] =
+        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.apvts, "chain_" + chain + ".masterMix", mixSlider);
+
+    gainAttachments[chainIndex] =
+        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.apvts, "chain_" + chain + ".gain", gainSlider);
+
+    mixLabel.setText("Master Mix (Chain " + juce::String(chainIndex + 1) + ")",
+        juce::dontSendNotification);
+    gainLabel.setText("Gain (Chain " + juce::String(chainIndex + 1) + ")",
+        juce::dontSendNotification);
+
+    mixLabel.setJustificationType(juce::Justification::horizontallyCentred);
+    gainLabel.setJustificationType(juce::Justification::horizontallyCentred);
+
+    if (chainIndex > 0) {
+        mixSlider.setVisible(false);
+        mixLabel.setVisible(false);
+        gainSlider.setVisible(false);
+        gainLabel.setVisible(false);
+    }
+}
+
+
 // Rebuilds the module editor list, based on the current module slot list
 void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 {
     moduleEditors.clear();
+    moduleContainer.removeAllChildren();
 
-    for (int i = 0; i < audioProcessor.getNumSlots(); i++)
+    for (int i = 0; i < audioProcessor.getNumSlots(); ++i)
     {
-        if (audioProcessor.slotIsEmpty(currentlyDisplayedChain, i)) { continue; }
-        
+        if (audioProcessor.slotIsEmpty(currentlyDisplayedChain, i))
+            continue;
+
         auto info = audioProcessor.getSlotInfo(currentlyDisplayedChain, i);
 
         auto* editor = new ModuleSlotEditor(
@@ -186,5 +203,4 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 
     resized();
 }
-
 
