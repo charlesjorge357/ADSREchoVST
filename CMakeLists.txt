@@ -16,6 +16,7 @@ add_subdirectory(JUCE)
 
 # Plugin formats to build
 set(PLUGIN_FORMATS VST3)
+set(PLUGIN_FORMATS VST3 Standalone)
 
 # Add AU format on macOS
 if(APPLE)
