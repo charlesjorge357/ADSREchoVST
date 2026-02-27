@@ -71,6 +71,7 @@ target_sources(ADSREcho
         Source/EQModule.cpp
         Source/HybridPlate.cpp
         Source/LFO.cpp
+	Source/BaseModuleSlotEditor.cpp
         Source/ModuleSlotEditor.cpp
         Source/PsychoDamping.cpp
         Source/ReverbModule.cpp)
