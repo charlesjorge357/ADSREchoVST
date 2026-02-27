@@ -244,34 +244,6 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         }
 
     }
-
-    //for (int ch = 0; ch < totalNumInputChannels; ++ch)
-    //{
-    //    buffer.addFrom(ch, 0, chainTempBuffer, ch, 0, numSamples);
-    //}
-    
-    //for (auto& slot : slots) 
-    //{
-    //    slot->process(buffer, midiMessages, getPlayHead());
-    //}
-
-    //// ============ MASTER DRY/WET MIX ============
-    //const float masterWet = apvts.getRawParameterValue("MasterMix")->load();
-    //const float masterDry = 1.0f - masterWet;
-
-    //// Blend original dry with all processed effects
-    //for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    //{
-    //    auto* processedData = buffer.getWritePointer(channel);
-    //    const auto* originalDryData = masterDryBuffer.getReadPointer(channel);
-
-    //    for (int i = 0; i < numSamples; ++i)
-    //        processedData[i] = originalDryData[i] * masterDry + processedData[i] * masterWet;
-    //}
-    //
-    //// Apply master output gain
-    //float gainValue = juce::Decibels::decibelsToGain(apvts.getRawParameterValue("Gain")->load());
-    //buffer.applyGain(gainValue);
 }
 
 //==============================================================================

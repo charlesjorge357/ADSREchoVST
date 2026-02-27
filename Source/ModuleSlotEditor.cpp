@@ -7,90 +7,46 @@
 #include "ModuleSlotEditor.h"
 
 ModuleSlotEditor::ModuleSlotEditor(
-    int cIndex, int sIndex,
+    int cIndex,
+    int sIndex,
     const SlotInfo& info,
     ADSREchoAudioProcessor& p,
-    juce::AudioProcessorValueTreeState& apvts)
-    : chainIndex(cIndex), slotIndex(sIndex),
-    slotID(info.slotID),
-    processor(p)
+    juce::AudioProcessorValueTreeState& state)
+
+    : BaseModuleSlotEditor(
+        cIndex,
+        sIndex,
+        info,
+        p,
+        state)
 {
-    //Module Title
-    title.setText(info.moduleType, juce::dontSendNotification);
-    addAndMakeVisible(title);
+    buildEditor(info);
+}
 
-    //Module Type Selector
-    addAndMakeVisible(typeSelector);
-    typeSelector.addItem("Delay", 1);
-    typeSelector.addItem("Reverb", 2);
-    typeSelector.addItem("Convolution", 3);
-    typeSelector.addItem("EQ", 4);
-    typeSelector.addItem("Compressor", 5);
-
-    if (info.moduleType == "Delay")
-    {
-        typeSelector.setSelectedId(1, juce::dontSendNotification);
-    }
-    else if (info.moduleType == "Reverb")
-    {
-        typeSelector.setSelectedId(2, juce::dontSendNotification);
-    }
-    else if (info.moduleType == "Convolution")
-    {
-        typeSelector.setSelectedId(3, juce::dontSendNotification);
-    }
-    else if (info.moduleType == "EQ")
-    {
-        typeSelector.setSelectedId(4, juce::dontSendNotification);
-    }
-    else if (info.moduleType == "Compressor")
-    {
-        typeSelector.setSelectedId(5, juce::dontSendNotification);
-    }
-
-    typeSelector.onChange = [this] 
-    { 
-        processor.changeModuleType(chainIndex, slotIndex, static_cast<ModuleType>(typeSelector.getSelectedId()));
-    };
-
-    //Module Enabled
-    addAndMakeVisible(enableToggle);
-    enableToggleAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-        apvts, slotID + ".enabled", enableToggle);
-
-    //Module Control Sliders (and ComboBoxes for special params)
+void ModuleSlotEditor::buildEditor(const SlotInfo& info)
+{
     auto usedParams = info.usedParameters;
+
     for (const auto& suffix : usedParams)
     {
         auto id = slotID + "." + suffix;
+
         auto* param = processor.apvts.getParameter(id);
-        
-        // Special handling for IR index - use ComboBox instead of slider
+
         if (suffix == "convIrIndex")
-        {
             addIRSelectorForParameter(id);
-        }
-        else if (dynamic_cast<juce::AudioParameterBool*>(param))
-        {
+
+        else if (dynamic_cast<
+            juce::AudioParameterBool*>(param))
             addToggleForParameter(id);
-        }
-        else if (dynamic_cast<juce::AudioParameterChoice*>(param))
-        {
+
+        else if (dynamic_cast<
+            juce::AudioParameterChoice*>(param))
             addChoiceForParameter(id);
-        }
+
         else
-        {
             addSliderForParameter(id);
-        }
     }
-
-
-    //Module Remove Button
-    addAndMakeVisible(removeButton);
-    removeButton.onClick = [this]
-        {
-            processor.removeModule(chainIndex, slotIndex);
-        };
 }
 
 void ModuleSlotEditor::addSliderForParameter(juce::String id)
@@ -285,56 +241,57 @@ void ModuleSlotEditor::addIRSelectorForParameter(juce::String id)
     };
 }
 
-void ModuleSlotEditor::resized()
+void ModuleSlotEditor::layoutEditor(juce::Rectangle<int>& r)
 {
-    auto r = getLocalBounds().reduced(6);
 
-    auto titleArea = r.removeFromTop(20);
-    enableToggle.setBounds(titleArea.removeFromLeft(25));
-    title.setBounds(titleArea.removeFromLeft(80));
-    typeSelector.setBounds(titleArea);
-
-    r.removeFromTop(5);
-    r.removeFromRight(5);
-
-    removeButton.setBounds(r.removeFromRight(30));
-
-    // Layout IR selectors
-    for (int i = 0; i < irSelectors.size(); i++)
+    for (int i = 0;i < irSelectors.size();i++)
     {
-        auto a = r.removeFromLeft(90);  // Wider for ComboBox
-        irSelectorLabels[i]->setBounds(a.removeFromBottom(30));
-        irSelectors[i]->setBounds(a.removeFromTop(25));
+        auto a = r.removeFromLeft(90);
+
+        irSelectorLabels[i]->setBounds(
+            a.removeFromBottom(30));
+
+        irSelectors[i]->setBounds(
+            a.removeFromTop(25));
     }
 
-    // Layout Browse button next to IR selector
     if (hasIRSelector)
     {
-        auto browseArea = r.removeFromLeft(55);
-        browseIRButton.setBounds(browseArea.removeFromTop(25));
+        auto a = r.removeFromLeft(60);
+
+        browseIRButton.setBounds(
+            a.removeFromTop(25));
     }
 
-    // Layout Other Components
-    for (int i = 0; i < sliders.size(); i++)
+    for (int i = 0;i < sliders.size();i++)
     {
         auto a = r.removeFromLeft(70);
-        sliderLabels[i]->setBounds(a.removeFromBottom(30));
+
+        sliderLabels[i]->setBounds(
+            a.removeFromBottom(30));
+
         sliders[i]->setBounds(a);
     }
-    
-    for (int i = 0; i < comboBoxes.size(); i++)
+
+    for (int i = 0;i < comboBoxes.size();i++)
     {
         auto a = r.removeFromLeft(70);
-        comboBoxLabels[i]->setBounds(a.removeFromBottom(30));
-        comboBoxes[i]->setBounds(a.removeFromTop(25));
+
+        comboBoxLabels[i]->setBounds(
+            a.removeFromBottom(30));
+
+        comboBoxes[i]->setBounds(
+            a.removeFromTop(25));
     }
 
-    for (int i = 0; i < toggles.size(); i++)
+    for (int i = 0;i < toggles.size();i++)
     {
         auto a = r.removeFromLeft(70);
-        toggleLabels[i]->setBounds(a.removeFromBottom(30));
-        toggles[i]->setBounds(a.removeFromTop(25));
+
+        toggleLabels[i]->setBounds(
+            a.removeFromBottom(30));
+
+        toggles[i]->setBounds(
+            a.removeFromTop(25));
     }
-
-
 }

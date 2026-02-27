@@ -6,83 +6,73 @@
 
 #pragma once
 
-#if __has_include("JuceHeader.h")
-  #include "JuceHeader.h"
-#else
-  #include <juce_audio_basics/juce_audio_basics.h>
-  #include <juce_audio_formats/juce_audio_formats.h>
-  #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
-  #include <juce_audio_processors/juce_audio_processors.h>
-  #include <juce_audio_utils/juce_audio_utils.h>
-  #include <juce_core/juce_core.h>
-  #include <juce_data_structures/juce_data_structures.h>
-  #include <juce_dsp/juce_dsp.h>
-  #include <juce_events/juce_events.h>
-  #include <juce_graphics/juce_graphics.h>
-  #include <juce_gui_basics/juce_gui_basics.h>
-  #include <juce_gui_extra/juce_gui_extra.h>
-#endif
-
-#include "PluginProcessor.h"
+#include "BaseModuleSlotEditor.h"
 #include "ConvolutionModule.h"
 
-class ModuleSlotEditor : public juce::Component
+class ModuleSlotEditor : public BaseModuleSlotEditor
 {
 public:
-    ModuleSlotEditor(int cIndex, int sIndex,
+
+    ModuleSlotEditor(
+        int cIndex,
+        int sIndex,
         const SlotInfo& info,
         ADSREchoAudioProcessor& processor,
         juce::AudioProcessorValueTreeState& apvts);
 
-    void resized() override;
-
 private:
-    int chainIndex;
-    int slotIndex;
-    juce::String slotID;
 
-    ADSREchoAudioProcessor& processor;
+    // Sliders
 
-    // Module Settings
-    juce::Label title;
-    juce::ComboBox typeSelector;
-    juce::ToggleButton enableToggle{ "Enabled" };
-
-    juce::Viewport controlsViewport;
-    juce::Component controlsContainer;
-
-    // Module Sliders
     std::vector<std::unique_ptr<juce::Slider>> sliders;
     std::vector<std::unique_ptr<juce::Label>> sliderLabels;
 
-    // Module Combo Boxes
+    std::vector<std::unique_ptr<
+        juce::AudioProcessorValueTreeState::SliderAttachment>>
+        sliderAttachments;
+
+    // ComboBoxes
+
     std::vector<std::unique_ptr<juce::ComboBox>> comboBoxes;
     std::vector<std::unique_ptr<juce::Label>> comboBoxLabels;
 
-    // Module Toggles
-    std::vector<std::unique_ptr<juce::Button>> toggles;
-    std::vector<std::unique_ptr<juce::Label>>toggleLabels;
+    std::vector<std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>>
+        comboBoxAttachments;
 
-    // IR Selectors (ComboBoxes)
+    // Toggles
+
+    std::vector<std::unique_ptr<juce::Button>> toggles;
+    std::vector<std::unique_ptr<juce::Label>> toggleLabels;
+
+    std::vector<std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ButtonAttachment>>
+        toggleAttachments;
+
+    // IR Selectors
+
     std::vector<std::unique_ptr<juce::ComboBox>> irSelectors;
     std::vector<std::unique_ptr<juce::Label>> irSelectorLabels;
 
-    // Custom IR Browse button
     juce::TextButton browseIRButton{ "Browse" };
+
     std::unique_ptr<juce::FileChooser> fileChooser;
+
     bool hasIRSelector = false;
 
-    juce::TextButton removeButton{ "-" };
+    // Base overrides
 
-    // Module Attachments
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableToggleAttachment;
-    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;
-    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>> comboBoxAttachments;
-    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>> toggleAttachments;
+    void buildEditor(const SlotInfo& info) override;
+
+    void layoutEditor(juce::Rectangle<int>& r) override;
+
+    // Helpers
 
     void addSliderForParameter(juce::String id);
+
     void addToggleForParameter(juce::String id);
+
     void addChoiceForParameter(juce::String id);
+
     void addIRSelectorForParameter(juce::String id);
 };

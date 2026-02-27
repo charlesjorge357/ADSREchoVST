@@ -92,10 +92,10 @@
           <FILE id="a5oZbv" name="DelayModule.cpp" compile="1" resource="0" file="Source/DelayModule.cpp"/>
           <FILE id="Uf1JUr" name="DelayModule.h" compile="0" resource="0" file="Source/DelayModule.h"/>
         </GROUP>
-        <FILE id="sWFdPm" name="GenericModuleSlotEditor.cpp" compile="1" resource="0"
-              file="Source/GenericModuleSlotEditor.cpp"/>
-        <FILE id="AnPu1u" name="GenericModuleSlotEditor.h" compile="0" resource="0"
-              file="Source/GenericModuleSlotEditor.h"/>
+        <FILE id="sWFdPm" name="BaseModuleSlotEditor.cpp" compile="1" resource="0"
+              file="Source/BaseModuleSlotEditor.cpp"/>
+        <FILE id="AnPu1u" name="BaseModuleSlotEditor.h" compile="0" resource="0"
+              file="Source/BaseModuleSlotEditor.h"/>
         <FILE id="KtNE91" name="ModuleSlot.h" compile="0" resource="0" file="Source/ModuleSlot.h"/>
         <FILE id="HcV9cp" name="ModuleSlotEditor.cpp" compile="1" resource="0"
               file="Source/ModuleSlotEditor.cpp"/>

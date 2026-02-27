@@ -55,7 +55,7 @@ private:
     juce::Component moduleContainer;
 
     juce::TextButton addButton{ "+" };
-    juce::OwnedArray<ModuleSlotEditor> moduleEditors;
+    std::vector<std::unique_ptr<BaseModuleSlotEditor>> moduleEditors;
 
     juce::ComboBox chainSelector;
     int currentlyDisplayedChain = 0;

@@ -109,7 +109,7 @@ void ADSREchoAudioProcessorEditor::resized()
     constexpr int slotHeight = 160;
     int y = 0;
 
-    for (auto* editor : moduleEditors)
+    for (auto& editor : moduleEditors)
     {
         editor->setBounds(0, y, moduleViewport.getWidth(), slotHeight);
         y += slotHeight + 6;
@@ -167,7 +167,11 @@ void ADSREchoAudioProcessorEditor::setupChainControls(int chainIndex)
     mixLabel.setJustificationType(juce::Justification::horizontallyCentred);
     gainLabel.setJustificationType(juce::Justification::horizontallyCentred);
 
-    if (chainIndex > 0) {
+    // Set Sliders invisible if 2nd chain not active
+    auto* param = audioProcessor.apvts.getRawParameterValue("parallelEnabled");
+    bool parallelMixersEnabled = param->load() > 0.5f;;
+
+    if (chainIndex > 0 && !parallelMixersEnabled) {
         mixSlider.setVisible(false);
         mixLabel.setVisible(false);
         gainSlider.setVisible(false);
@@ -180,6 +184,7 @@ void ADSREchoAudioProcessorEditor::setupChainControls(int chainIndex)
 void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 {
     moduleEditors.clear();
+
     moduleContainer.removeAllChildren();
 
     for (int i = 0; i < audioProcessor.getNumSlots(); ++i)
@@ -187,18 +192,22 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
         if (audioProcessor.slotIsEmpty(currentlyDisplayedChain, i))
             continue;
 
-        auto info = audioProcessor.getSlotInfo(currentlyDisplayedChain, i);
+        auto info =
+            audioProcessor.getSlotInfo(
+                currentlyDisplayedChain, i);
 
-        auto* editor = new ModuleSlotEditor(
-            currentlyDisplayedChain,
-            i,
-            info,
-            audioProcessor,
-            audioProcessor.apvts
-        );
+        auto editor =
+            std::make_unique<ModuleSlotEditor>(
+                currentlyDisplayedChain,
+                i,
+                info,
+                audioProcessor,
+                audioProcessor.apvts
+            );
 
-        moduleEditors.add(editor);
-        moduleContainer.addAndMakeVisible(editor);
+        moduleContainer.addAndMakeVisible(editor.get());
+
+        moduleEditors.push_back(std::move(editor));
     }
 
     resized();
