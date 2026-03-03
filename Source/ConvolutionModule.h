@@ -23,14 +23,14 @@ public:
     std::vector<juce::String> getUsedParameters() const override;
 
     void setID(juce::String& newID) override;
-    juce::String getID() const override;
+    juce::String getID()   const override;
     juce::String getType() const override;
-    
+
     void setIRBank(std::shared_ptr<IRBank> bank);
 
     void loadCustomIR(const juce::File& file);
     void clearCustomIR();
-    bool hasCustomIR() const;
+    bool hasCustomIR()             const;
     juce::String getCustomIRPath() const;
 
 private:
@@ -38,4 +38,9 @@ private:
     juce::AudioProcessorValueTreeState& state;
 
     Convolution convolutionReverb;
+
+    // Pre-built parameter IDs - avoids String heap allocation every process block
+    juce::String pMix, pPreDelay, pIrIndex, pIrGain, pLowCut, pHighCut, pEnabled;
+
+    void rebuildParamIDs();
 };

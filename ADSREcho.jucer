@@ -138,6 +138,14 @@
       <FILE id="DXNRwl" name="BasicEQ.cpp" compile="1" resource="0" file="Source/BasicEQ.cpp"/>
       <FILE id="qoO0w9" name="BasicEQ.h" compile="0" resource="0" file="Source/BasicEQ.h"/>
       <FILE id="NVYLLL" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+      <FILE id="siLycI" name="CompressorDisplayComponent.cpp" compile="1"
+            resource="0" file="Source/CompressorDisplayComponent.cpp"/>
+      <FILE id="cAmPbi" name="CompressorDisplayComponent.h" compile="0" resource="0"
+            file="Source/CompressorDisplayComponent.h"/>
+      <FILE id="UdZCiI" name="CompressorModuleSlotEditor.cpp" compile="1"
+            resource="0" file="Source/CompressorModuleSlotEditor.cpp"/>
+      <FILE id="bJqX3O" name="CompressorModuleSlotEditor.h" compile="0" resource="0"
+            file="Source/CompressorModuleSlotEditor.h"/>
       <FILE id="svJoLe" name="BasicCompressor.cpp" compile="1" resource="0"
             file="Source/BasicCompressor.cpp"/>
       <FILE id="JfOV2E" name="BasicCompressor.h" compile="0" resource="0"

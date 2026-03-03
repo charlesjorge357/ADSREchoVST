@@ -29,6 +29,15 @@ public:
     void setInputGain(float dB);       // -18 to +18 dB
     void setOutputGain(float dB);      // -18 to +18 dB
 
+    // Returns the current gain reduction in dB (always <= 0)
+    float getCurrentGainReductionDb() const { return (float)gainReductionState; }
+
+    // Returns the current input envelope level in dB
+    float getCurrentInputLevelDb() const
+    {
+        return juce::Decibels::gainToDecibels((float)envelopeState, -100.0f);
+    }
+
 private:
     // -----------------------------------------------------------------------
     // Optical cell simulation

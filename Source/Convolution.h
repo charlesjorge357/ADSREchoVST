@@ -13,13 +13,13 @@ class IRBank;
 // Parameters for the convolution reverb engine
 struct ConvolutionParameters
 {
-    float mix        = 0.5f;    // 0 = fully dry, 1 = fully wet
-    float preDelay   = 0.0f;    // pre delay before IR, in ms
+    float mix        = 0.5f;     // 0 = fully dry, 1 = fully wet
+    float preDelay   = 0.0f;     // pre delay before IR, in ms
 
-    int irIndex      = 0;       // which IR to use (0, 1, 2, ...)
-    float irGainDb   = 0.0f;    // gain applied to IR output
+    int   irIndex    = 0;        // which IR to use (0, 1, 2, ...)
+    float irGainDb   = 0.0f;     // gain applied to IR output
 
-    float lowCutHz   = 80.0f;   // high pass cutoff
+    float lowCutHz   = 80.0f;    // high pass cutoff
     float highCutHz  = 12000.0f; // low pass cutoff
 };
 
@@ -30,76 +30,70 @@ public:
     Convolution();
     ~Convolution();
 
-    // Prepare internal DSP for a given sample rate, block size, and channel count
     void prepare(const juce::dsp::ProcessSpec& spec);
-
-    // Reset internal state (clear delay lines, filters, convolver history)
     void reset();
 
-    // Set all parameters at once (called by ConvolutionModule)
     void setParameters(const ConvolutionParameters& newParams);
-
-    // Get current parameters (for inspection or smoothing)
     ConvolutionParameters& getParameters();
 
-    // Main processing entry point
     void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi);
 
-    // IR loading helpers
     void loadIR(const juce::File& file);
     void loadIRFromMemory(const void* data,
-                         size_t dataSize,
-                         double sampleRate,
-                         int numChannels);
+                          size_t dataSize,
+                          double sampleRate,
+                          int numChannels);
 
-    // IR bank management
     void setIRBank(std::shared_ptr<IRBank> bank);
     void loadIRAtIndex(int index);
 
-    // User-loaded custom IR (bypasses bank)
     void loadCustomIR(const juce::File& file);
     void clearCustomIR();
-    bool hasCustomIR() const { return customIRActive; }
+    bool hasCustomIR()          const { return customIRActive; }
     juce::String getCustomIRPath() const { return customIRPath; }
 
 private:
-    // Helper: configure HP/LP filters for a given sample rate
     void updateFilters();
-    
-    // Helper: update pre-delay samples based on parameters
     void updatePreDelay();
 
     ConvolutionParameters parameters;
 
-    bool prepared = false;
+    bool   prepared          = false;
     double currentSampleRate = 44100.0;
-    float preDelaySamples = 0.0f;
-    bool isPreDelayActive = false;  // Cache to avoid checking every block
-    int currentIRIndex = -1;
-    bool customIRActive = false;
+    float  preDelaySamples   = 0.0f;
+    bool   isPreDelayActive  = false;
+    int    currentIRIndex    = -1;
+    bool   customIRActive    = false;
     juce::String customIRPath;
+
+    // Cached filter frequencies - avoids recomputing coefficients when unchanged
+    float lastLowCutHz  = -1.0f;
+    float lastHighCutHz = -1.0f;
 
     std::shared_ptr<IRBank> irBank;
 
-    // JUCE convolution engine (handles stereo buffers if IR is stereo)
     juce::dsp::Convolution convolver;
 
     static constexpr int kMaxPreDelaySeconds = 2;
     static constexpr int kMaxSampleRate      = 192000;
     static constexpr int kMaxDelaySamples    = kMaxPreDelaySeconds * kMaxSampleRate;
 
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> preDelayL { kMaxDelaySamples };
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> preDelayR { kMaxDelaySamples };
+    // None interpolation: pre-delay is always a static value, no sub-sample
+    // accuracy needed, avoids a multiply-add per sample vs Linear
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::None> preDelayL { kMaxDelaySamples };
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::None> preDelayR { kMaxDelaySamples };
 
-    // Simple HP / LP filters per channel for tone shaping
-    juce::dsp::IIR::Filter<float> lowCutL;
-    juce::dsp::IIR::Filter<float> lowCutR;
-    juce::dsp::IIR::Filter<float> highCutL;
-    juce::dsp::IIR::Filter<float> highCutR;
-    
-    // SIMD-optimized dry/wet mixer
+    // Two stereo filters instead of four mono filters - halves filter overhead
+    // and avoids branching on numChannels in processBlock
+    using MonoFilter   = juce::dsp::IIR::Filter<float>;
+    using StereoFilter = juce::dsp::ProcessorDuplicator<MonoFilter, juce::dsp::IIR::Coefficients<float>>;
+
+    StereoFilter lowCut;
+    StereoFilter highCut;
+
     juce::dsp::DryWetMixer<float> dryWetMixer;
-    
-    // Parameter smoothing for IR gain
+
+    // Smoothed IR gain - setTargetValue is called only when irGainDb changes,
+    // not every block
     juce::SmoothedValue<float> smoothedIRGain;
 };

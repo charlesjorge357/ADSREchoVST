@@ -28,6 +28,7 @@
 #include "PluginProcessor.h"
 #include "ModuleSlotEditor.h"
 #include "EQModuleSlotEditor.h"
+#include "CompressorModuleSlotEditor.h"
 
 //==============================================================================
 /**
