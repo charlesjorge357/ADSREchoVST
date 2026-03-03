@@ -38,6 +38,21 @@ void EQModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /*mid
 
     if (*state.getRawParameterValue(moduleID + ".enabled") > 0.5f)
         eq.processBlock(buffer);
+
+
+
+    auto* samples = buffer.getReadPointer(0);
+
+    for (int i = 0; i < buffer.getNumSamples(); i++)
+    {
+        fftBuffer[fftIndex++] = samples[i];
+
+        if (fftIndex == fftSize)
+        {
+            fftReady = true;
+            fftIndex = 0;
+        }
+    }
 }
 
 std::vector<juce::String> EQModule::getUsedParameters() const
@@ -50,6 +65,14 @@ std::vector<juce::String> EQModule::getUsedParameters() const
 }
 
 void EQModule::setID(juce::String& newID) { moduleID = newID; }
+
+float EQModule::getMagnitudeForFrequency(float freq) {
+    return eq.getMagnitudeForFrequency(freq);
+}
+
+float EQModule::getSampleRate() {
+    return eq.sampleRate;
+}
 
 juce::String EQModule::getID()   const { return moduleID; }
 juce::String EQModule::getType() const { return "EQ"; }

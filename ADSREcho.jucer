@@ -75,6 +75,10 @@
       </GROUP>
       <GROUP id="{9D5CDAC7-64FA-EAD2-C694-A4240E21939C}" name="ModularClasses">
         <GROUP id="{5BA6067D-D5D0-1D4A-2C04-A23A964D8A65}" name="EffectModules">
+          <FILE id="xwowHZ" name="EQDisplayComponent.cpp" compile="1" resource="0"
+                file="Source/EQDisplayComponent.cpp"/>
+          <FILE id="kAhUse" name="EQDisplayComponent.h" compile="0" resource="0"
+                file="Source/EQDisplayComponent.h"/>
           <FILE id="P80Zvy" name="EQModule.h" compile="0" resource="0" file="Source/EQModule.h"/>
           <FILE id="QYJmz3" name="EQModule.cpp" compile="1" resource="0" file="Source/EQModule.cpp"/>
           <FILE id="Ctbnri" name="CompressorModule.cpp" compile="1" resource="0"
@@ -96,6 +100,10 @@
               file="Source/BaseModuleSlotEditor.cpp"/>
         <FILE id="AnPu1u" name="BaseModuleSlotEditor.h" compile="0" resource="0"
               file="Source/BaseModuleSlotEditor.h"/>
+        <FILE id="cW0Ap4" name="EQModuleSlotEditor.cpp" compile="1" resource="0"
+              file="Source/EQModuleSlotEditor.cpp"/>
+        <FILE id="yvuUXz" name="EQModuleSlotEditor.h" compile="0" resource="0"
+              file="Source/EQModuleSlotEditor.h"/>
         <FILE id="KtNE91" name="ModuleSlot.h" compile="0" resource="0" file="Source/ModuleSlot.h"/>
         <FILE id="HcV9cp" name="ModuleSlotEditor.cpp" compile="1" resource="0"
               file="Source/ModuleSlotEditor.cpp"/>

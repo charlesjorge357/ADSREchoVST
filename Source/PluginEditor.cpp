@@ -61,7 +61,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     moduleViewport.setViewedComponent(&moduleContainer, false);
     moduleViewport.setScrollBarsShown(true, false);
 
-    setSize(800, 600);
+    setSize(900, 700);
     rebuildModuleEditors();
 }
 
@@ -106,7 +106,7 @@ void ADSREchoAudioProcessorEditor::resized()
     // Modules on the chain are added down sequentially
     moduleViewport.setBounds(area);
 
-    constexpr int slotHeight = 160;
+    constexpr int slotHeight = 200;
     int y = 0;
 
     for (auto& editor : moduleEditors)
@@ -196,14 +196,37 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
             audioProcessor.getSlotInfo(
                 currentlyDisplayedChain, i);
 
-        auto editor =
-            std::make_unique<ModuleSlotEditor>(
-                currentlyDisplayedChain,
-                i,
-                info,
-                audioProcessor,
-                audioProcessor.apvts
-            );
+        std::unique_ptr<BaseModuleSlotEditor> editor;
+
+        if (info.moduleType == "EQ") {
+            editor =
+                std::make_unique<EQModuleSlotEditor>(
+                    currentlyDisplayedChain,
+                    i,
+                    info,
+                    audioProcessor,
+                    audioProcessor.apvts
+                );
+        }
+        else {
+            editor =
+                std::make_unique<ModuleSlotEditor>(
+                    currentlyDisplayedChain,
+                    i,
+                    info,
+                    audioProcessor,
+                    audioProcessor.apvts
+                );
+        }
+
+        //auto editor =
+        //    std::make_unique<ModuleSlotEditor>(
+        //        currentlyDisplayedChain,
+        //        i,
+        //        info,
+        //        audioProcessor,
+        //        audioProcessor.apvts
+        //    );
 
         moduleContainer.addAndMakeVisible(editor.get());
 

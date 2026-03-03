@@ -34,6 +34,9 @@ public:
     void setHighGain(float gainDb);    // dB
     void setHighQ(float q);            // Q factor
 
+    float getMagnitudeForFrequency(float freq);
+    double sampleRate = 44100.0;
+
 private:
     // Each band is a stereo IIR filter chain (L + R processed separately via ProcessorDuplicator)
     using MonoFilter = juce::dsp::IIR::Filter<float>;
@@ -56,7 +59,7 @@ private:
     float highGain = 0.0f;
     float highQ    = 0.707f;
 
-    double sampleRate = 44100.0;
+
 
     void updateLowCoeffs();
     void updateMidCoeffs();

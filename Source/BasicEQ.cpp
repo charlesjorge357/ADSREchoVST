@@ -125,3 +125,12 @@ void BasicEQ::updateHighCoeffs()
     *highShelf.state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(
         sampleRate, highFreq, highQ, juce::Decibels::decibelsToGain(highGain));
 }
+
+float BasicEQ::getMagnitudeForFrequency(float freq)
+{
+    auto low = lowShelf.state->getMagnitudeForFrequency(freq, sampleRate);
+    auto mid = midPeak.state->getMagnitudeForFrequency(freq, sampleRate);
+    auto high = highShelf.state->getMagnitudeForFrequency(freq, sampleRate);
+
+    return low * mid * high;
+}
