@@ -30,6 +30,16 @@ void CompressorModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
 
     if (*state.getRawParameterValue(moduleID + ".enabled") > 0.5f)
         compressor.processBlock(buffer);
+
+    // Push meter values for the UI to poll - same pattern as EQModule::fftReady
+    inputLevelDb.store  (compressor.getCurrentInputLevelDb(),   std::memory_order_relaxed);
+    gainReductionDb.store(compressor.getCurrentGainReductionDb(), std::memory_order_relaxed);
+    meterReady.store(true, std::memory_order_release);
+}
+
+float CompressorModule::getThresholdDb() const
+{
+    return state.getRawParameterValue(moduleID + ".compThreshold")->load();
 }
 
 std::vector<juce::String> CompressorModule::getUsedParameters() const

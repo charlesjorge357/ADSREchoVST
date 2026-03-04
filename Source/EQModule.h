@@ -41,8 +41,8 @@ public:
     juce::String getID() const override;
     void setID(juce::String& newID) override;
     juce::String getType() const override;
-    float EQModule::getMagnitudeForFrequency(float freq);
-    float EQModule::getSampleRate();
+    float getMagnitudeForFrequency(float freq);
+    float getSampleRate();
 
     // EQModule has no playhead dependency, but we keep the base default
     static constexpr int fftSize = 2048;

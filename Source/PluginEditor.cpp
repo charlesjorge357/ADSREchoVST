@@ -208,6 +208,17 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
                     audioProcessor.apvts
                 );
         }
+        else if (info.moduleType == "Compressor")
+        {
+            editor = 
+                std::make_unique<CompressorModuleSlotEditor>(
+                    currentlyDisplayedChain, 
+                    i, 
+                    info,
+                    audioProcessor, 
+                    audioProcessor.apvts
+                );
+        }
         else {
             editor =
                 std::make_unique<ModuleSlotEditor>(
@@ -235,4 +246,3 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 
     resized();
 }
-

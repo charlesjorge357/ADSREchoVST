@@ -13,6 +13,19 @@ ConvolutionModule::ConvolutionModule(const juce::String& id,
                                      juce::AudioProcessorValueTreeState& apvts)
     : moduleID(id), state(apvts)
 {
+    rebuildParamIDs();
+}
+
+void ConvolutionModule::rebuildParamIDs()
+{
+    // Build all parameter ID strings once so process() never allocates
+    pMix      = moduleID + ".mix";
+    pPreDelay = moduleID + ".preDelay";
+    pIrIndex  = moduleID + ".convIrIndex";
+    pIrGain   = moduleID + ".convIrGain";
+    pLowCut   = moduleID + ".convLowCut";
+    pHighCut  = moduleID + ".convHighCut";
+    pEnabled  = moduleID + ".enabled";
 }
 
 void ConvolutionModule::prepare(const juce::dsp::ProcessSpec& spec)
@@ -23,28 +36,23 @@ void ConvolutionModule::prepare(const juce::dsp::ProcessSpec& spec)
 void ConvolutionModule::process(juce::AudioBuffer<float>& buffer,
                                 juce::MidiBuffer& midi)
 {
-    // Build parameter struct from APVTS
     ConvolutionParameters params;
 
-    params.mix       = state.getRawParameterValue(moduleID + ".mix")->load();
-    params.preDelay  = state.getRawParameterValue(moduleID + ".preDelay")->load();
-
-    // Convolution-specific controls
-    params.irIndex   = state.getRawParameterValue(moduleID + ".convIrIndex")->load();
-    params.irGainDb  = state.getRawParameterValue(moduleID + ".convIrGain")->load();
-    params.lowCutHz  = state.getRawParameterValue(moduleID + ".convLowCut")->load();
-    params.highCutHz = state.getRawParameterValue(moduleID + ".convHighCut")->load();
+    params.mix       = state.getRawParameterValue(pMix)     ->load();
+    params.preDelay  = state.getRawParameterValue(pPreDelay) ->load();
+    params.irIndex   = (int)state.getRawParameterValue(pIrIndex)  ->load();
+    params.irGainDb  = state.getRawParameterValue(pIrGain)   ->load();
+    params.lowCutHz  = state.getRawParameterValue(pLowCut)   ->load();
+    params.highCutHz = state.getRawParameterValue(pHighCut)  ->load();
 
     convolutionReverb.setParameters(params);
 
-    // Enabled flag follows same pattern as DatorroModule
-    if (*state.getRawParameterValue(moduleID + ".enabled") == true)
+    if (*state.getRawParameterValue(pEnabled) > 0.5f)
         convolutionReverb.processBlock(buffer, midi);
 }
 
 std::vector<juce::String> ConvolutionModule::getUsedParameters() const
 {
-    // Same style as DatorroModule: param *names* only, no prefix
     return {
         "mix",
         "preDelay",
@@ -58,6 +66,7 @@ std::vector<juce::String> ConvolutionModule::getUsedParameters() const
 void ConvolutionModule::setID(juce::String& newID)
 {
     moduleID = newID;
+    rebuildParamIDs(); // Keep cached IDs in sync
 }
 
 juce::String ConvolutionModule::getID() const

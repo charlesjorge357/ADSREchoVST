@@ -25,6 +25,18 @@ public:
     void setID(juce::String& newID) override;
     juce::String getType() const override;
 
+    // -----------------------------------------------------------------------
+    // Meter data - written by audio thread, read by UI thread (same pattern
+    // as EQModule::fftReady / fftBuffer).
+    // meterReady is set to true each process block so the editor can poll.
+    // -----------------------------------------------------------------------
+    std::atomic<float> inputLevelDb  { -100.0f };
+    std::atomic<float> gainReductionDb { 0.0f };
+    std::atomic<bool>  meterReady    { false };
+
+    // Expose threshold so the display can draw the threshold line
+    float getThresholdDb() const;
+
 private:
     juce::String moduleID;
     juce::AudioProcessorValueTreeState& state;
