@@ -54,7 +54,7 @@ void EQDisplayComponent::drawNextFrame()
 
         float newValue = fftData[i];
 
-        float decay = 0.80f;
+        float decay = 0.78f;
 
         smoothedFFT[i] = std::max(newValue, smoothedFFT[i] * decay);
     }
@@ -98,27 +98,47 @@ void EQDisplayComponent::paint(juce::Graphics& g)
 
         float freq = minFreq * std::pow(maxFreq / minFreq, normX);
 
-        int index = juce::jlimit(0,
-            fftSize / 2,
-            (int)(freq * fftSize / sampleRate));
+        float bin = freq * fftSize / sampleRate;
+
+        int center = (int)bin;
 
         float mag = 0.0f;
-        int count = 3;
+        //int radius = (int) juce::jmap(freq, 20.0f, 20000.0f, 6.0f, 2.0f);
+        int radius = 1;
 
-        for (int k = -count; k <= count; k++)
+        for (int k = -radius; k <= radius; k++)
         {
             int idx = juce::jlimit(
                 0,
                 fftSize / 2,
-                index + k);
+                center + k);
 
             mag += smoothedFFT[idx];
         }
 
-        mag /= (2 * count + 1);
+        mag /= (2 * radius + 1);
+
+        float magNext = 0.0f;
+
+        for (int k = -radius; k <= radius; k++)
+        {
+            int idx = juce::jlimit(
+                0,
+                fftSize / 2,
+                center + 1 + k);
+
+            magNext += smoothedFFT[idx];
+        }
+
+        magNext /= (2 * radius + 1);
+
+        float frac = bin - center;
+
+        float finalMag =
+            mag * (1 - frac) + magNext * frac;
 
         float level = juce::Decibels::gainToDecibels(
-            mag, -100.0f);
+            finalMag, -100.0f);
 
         float y = juce::jmap(level,
             -80.0f, 10.0f,
