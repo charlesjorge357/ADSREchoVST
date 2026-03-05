@@ -29,7 +29,7 @@
 #include "DelayPanel.h"
 #include "Convolve.h"
 #include "ReverbPanel.h"
-#include "Clookandfeel.h"
+//#include "Clookandfeel.h"
 #include "equalizerPanel.h"
 #include "Compressor.h"
 #include "ModuleSlotEditor.h"
@@ -63,7 +63,7 @@ private:
     juce::Viewport moduleViewport;
     juce::Component moduleContainer; 
     
-    CustomLNF customTypeFace;
+    /*CustomLNF customTypeFace;
     
     juce::Image customImage;
 
@@ -80,9 +80,9 @@ private:
     juce::TextButton delayButton;
     juce::TextButton equalizerButton;
     juce::TextButton compressorButton;
-    
+    */
 
-    juce::Slider masterMix;
+    //juce::Slider masterMix;
 
     juce::TextButton addButton{ "+" };
     std::vector<std::unique_ptr<BaseModuleSlotEditor>> moduleEditors;

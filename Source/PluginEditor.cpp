@@ -116,14 +116,14 @@ void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     //g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
-    customImage = juce::ImageCache::getFromMemory(BinaryData::JUCEBack_png, BinaryData::JUCEBack_pngSize);
-    g.drawImageAt(customImage,0,0);
+    //customImage = juce::ImageCache::getFromMemory(BinaryData::JUCEBack_png, BinaryData::JUCEBack_pngSize);
+    //g.drawImageAt(customImage,0,0);
 
     //g.fillAll(juce::Colour(0xff1B1F23));
 
 
 
-    g.setColour (juce::Colours::white);
+   /* g.setColour (juce::Colours::white);
     g.setFont (juce::FontOptions (15.0f));
 
     auto bounds = getLocalBounds();
@@ -135,7 +135,7 @@ void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
     g.fillRoundedRectangle(sideBar, 10.0f);
 
     g.setColour(juce::Colour(0xff262B31));
-    g.drawRoundedRectangle(sideBar,10.0f,1.5f);
+    g.drawRoundedRectangle(sideBar,10.0f,1.5f);*/
 
     //g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
