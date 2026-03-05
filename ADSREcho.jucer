@@ -3,6 +3,19 @@
 <JUCERPROJECT id="SWXzGM" name="ADSREcho" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
+    <GROUP id="{1083EC7B-2EC2-6031-0CE1-DD64BA8F67A3}" name="Resources">
+      <FILE id="W64atF" name="freepik.jpg" compile="0" resource="1" file="../Downloads/freepik.jpg"/>
+      <FILE id="Be1vQZ" name="Designer.otf" compile="0" resource="1" file="../Downloads/designer_2/Designer.otf"/>
+      <FILE id="wzkpzj" name="delayBackground.png" compile="0" resource="1"
+            file="../Downloads/delayBackground.png"/>
+      <FILE id="yJwpYw" name="Ellipse 1.svg" compile="0" resource="1" file="../Downloads/Ellipse 1.svg"/>
+      <FILE id="I3wRPS" name="reverbBackground.png" compile="0" resource="1"
+            file="../Downloads/reverbBackground.png"/>
+      <FILE id="F9h8qH" name="convoBackground.png" compile="0" resource="1"
+            file="../Downloads/convoBackground.png"/>
+      <FILE id="TiwrGm" name="JUCEBack.png" compile="0" resource="1" file="Resources/JUCEBack.png"/>
+      <FILE id="AHPqvW" name="testing.png" compile="0" resource="1" file="Resources/testing.png"/>
+    </GROUP>
     <GROUP id="{618D5F69-5971-EB1B-AEB0-4D399985702C}" name="Source">
       <GROUP id="{821B96C5-8187-C1F8-D67F-4DB9BF75EBF4}" name="IRs">
         <FILE id="JuH3NG" name="Block Inside.wav" compile="0" resource="1"
@@ -112,6 +125,17 @@
       </GROUP>
       <FILE id="xECwoY" name="BasicDelay.cpp" compile="1" resource="0" file="Source/BasicDelay.cpp"/>
       <FILE id="dlgVHy" name="BasicDelay.h" compile="0" resource="0" file="Source/BasicDelay.h"/>
+
+      <FILE id="TJd6NK" name="equalizerPanel.cpp" compile="1" resource="0"
+            file="Source/equalizerPanel.cpp"/>
+      <FILE id="TVogg0" name="equalizerPanel.h" compile="0" resource="0"
+            file="Source/equalizerPanel.h"/>
+      <FILE id="tzYIfh" name="Clookandfeel.cpp" compile="1" resource="0"
+            file="Source/Clookandfeel.cpp"/>
+      <FILE id="bObx9N" name="Clookandfeel.h" compile="0" resource="0" file="Source/Clookandfeel.h"/>
+      <FILE id="mlLOH0" name="ReverbPanel.cpp" compile="1" resource="0" file="Source/ReverbPanel.cpp"/>
+      <FILE id="iClaz8" name="ReverbPanel.h" compile="0" resource="0" file="Source/ReverbPanel.h"/>
+      <FILE id="radGK1" name="DelayPanel.h" compile="0" resource="0" file="Source/DelayPanel.h"/>
       <FILE id="wk3eO3" name="PsychoDamping.cpp" compile="1" resource="0"
             file="Source/PsychoDamping.cpp"/>
       <FILE id="s5E8n8" name="PsychoDamping.h" compile="0" resource="0" file="Source/PsychoDamping.h"/>
@@ -137,6 +161,9 @@
             file="Source/PluginEditor.cpp"/>
       <FILE id="DXNRwl" name="BasicEQ.cpp" compile="1" resource="0" file="Source/BasicEQ.cpp"/>
       <FILE id="qoO0w9" name="BasicEQ.h" compile="0" resource="0" file="Source/BasicEQ.h"/>
+      <FILE id="BnA0Zi" name="DelayPanel.cpp" compile="1" resource="0" file="Source/DelayPanel.cpp"/>
+      <FILE id="Xl77TW" name="Compressor.cpp" compile="1" resource="0" file="Source/Compressor.cpp"/>
+      <FILE id="ortEcz" name="Compressor.h" compile="0" resource="0" file="Source/Compressor.h"/>
       <FILE id="NVYLLL" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
       <FILE id="siLycI" name="CompressorDisplayComponent.cpp" compile="1"
             resource="0" file="Source/CompressorDisplayComponent.cpp"/>
@@ -151,6 +178,8 @@
       <FILE id="JfOV2E" name="BasicCompressor.h" compile="0" resource="0"
             file="Source/BasicCompressor.h"/>
     </GROUP>
+    <FILE id="BSqhBK" name="Convolve.cpp" compile="1" resource="0" file="Source/Convolve.cpp"/>
+    <FILE id="DzfKzc" name="Convolve.h" compile="0" resource="0" file="Source/Convolve.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>

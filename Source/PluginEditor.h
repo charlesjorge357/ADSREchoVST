@@ -26,6 +26,12 @@
 #endif
 
 #include "PluginProcessor.h"
+#include "DelayPanel.h"
+#include "Convolve.h"
+#include "ReverbPanel.h"
+#include "Clookandfeel.h"
+#include "equalizerPanel.h"
+#include "Compressor.h"
 #include "ModuleSlotEditor.h"
 #include "EQModuleSlotEditor.h"
 #include "CompressorModuleSlotEditor.h"
@@ -43,6 +49,7 @@ public:
 
     //void changeListenerCallback(juce::ChangeBroadcaster*) override;
     //==============================================================================
+    
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -54,7 +61,28 @@ private:
     //==============================================================================
        // Chain / module UI
     juce::Viewport moduleViewport;
-    juce::Component moduleContainer;
+    juce::Component moduleContainer; 
+    
+    CustomLNF customTypeFace;
+    
+    juce::Image customImage;
+
+
+    ReverbPanel revebPanel;
+    ConvolvePanel convolvePanel;
+    DelayPanel delayPanel;
+    EqualizerPanel equalizerPanel;
+    Compressor compressorPanel;
+    
+
+    juce::TextButton reverbButton;
+    juce::TextButton convolveButton;
+    juce::TextButton delayButton;
+    juce::TextButton equalizerButton;
+    juce::TextButton compressorButton;
+    
+
+    juce::Slider masterMix;
 
     juce::TextButton addButton{ "+" };
     std::vector<std::unique_ptr<BaseModuleSlotEditor>> moduleEditors;
@@ -97,3 +125,4 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ADSREchoAudioProcessorEditor)
 };
+

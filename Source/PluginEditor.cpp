@@ -63,6 +63,45 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
 
     setSize(900, 700);
     rebuildModuleEditors();
+
+    //CustomLNF::setDefaultLookAndFeel(&customTypeFace);
+
+    //addAndMakeVisible(viewport);
+    //viewport.setViewedComponent(&container, false);
+    //viewport.setScrollBarPosition(false,true);
+    //
+    //
+    //reverbButton.setButtonText("Reverb");
+    //addAndMakeVisible(reverbButton);
+
+    //convolveButton.setButtonText("Convolve");
+    //addAndMakeVisible(convolveButton);
+
+    //delayButton.setButtonText("Delay");
+    //addAndMakeVisible(delayButton);
+
+    //equalizerButton.setButtonText("Equalizer");
+    //addAndMakeVisible(equalizerButton);
+
+    //compressorButton.setButtonText("Compressor");
+    //addAndMakeVisible(compressorButton);
+
+
+    //container.addAndMakeVisible(delayPanel);
+    //container.addAndMakeVisible(convolvePanel);
+    //container.addAndMakeVisible(revebPanel);
+    //container.addAndMakeVisible(equalizerPanel);
+    //container.addAndMakeVisible(compressorPanel);
+
+    //masterMix.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    //masterMix.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    //masterMix.setRange(0.0, 100.0, 1.0); // 0-100%
+    //masterMix.setValue(50.0); // Start at 50% mix
+    //addAndMakeVisible(masterMix);
+
+
+    //setSize (1250, 750);
+    
 }
 
 ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
@@ -74,7 +113,31 @@ ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
 //==============================================================================
 void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 {
+    // (Our component is opaque, so we must completely fill the background with a solid colour)
+    //g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
+    customImage = juce::ImageCache::getFromMemory(BinaryData::JUCEBack_png, BinaryData::JUCEBack_pngSize);
+    g.drawImageAt(customImage,0,0);
+
+    //g.fillAll(juce::Colour(0xff1B1F23));
+
+
+
+    g.setColour (juce::Colours::white);
+    g.setFont (juce::FontOptions (15.0f));
+
+    auto bounds = getLocalBounds();
+    auto sideBar = bounds.removeFromLeft(200).reduced(10).toFloat();
+
+    sideBar = sideBar.removeFromTop(400);
+
+    g.setColour(juce::Colour(0xff2B2E33));
+    g.fillRoundedRectangle(sideBar, 10.0f);
+
+    g.setColour(juce::Colour(0xff262B31));
+    g.drawRoundedRectangle(sideBar,10.0f,1.5f);
+
+    //g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
 
 void ADSREchoAudioProcessorEditor::resized()
@@ -246,3 +309,113 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
 
     resized();
 }
+    //std::cout << ("Editor resized!");
+
+    // This is generally where you'll want to lay out the positions of any
+    // subcomponents in your editor..
+    //auto bounds = getLocalBounds();
+
+    //customImage.setBoundsRelative(0.0f, 0.0f, 0.25f, 0.25f);
+
+
+    //auto sidebarArea = bounds.removeFromLeft(200);
+    //sidebarArea = sidebarArea.removeFromTop(350);
+    
+    //// Master Mix section at the bottom
+    //auto masterMixArea = bounds.removeFromBottom(100);
+
+    //auto buttonArea = sidebarArea.reduced(20,15);
+
+    //int buttonHeight = 50;    
+
+    //auto panelArea = bounds;
+    //panelArea.reduce(15,15);
+
+    //int panelWidth = (panelArea.getWidth()-20) / 4;
+    //int panelspacing = 10;
+    //masterMixArea.reduce(20, 10); // Add some padding
+    
+    // Center the knob horizontally
+    //int knobSize = 80;
+    //auto knobArea = masterMixArea.withSizeKeepingCentre(knobSize, knobSize);
+    //masterMix.setBounds(knobArea);
+    
+    // Label above the knob
+   /* auto labelArea = juce::Rectangle<int>(
+        knobArea.getX() - 50, 
+        knobArea.getY() - 25, 
+        knobSize + 100, 
+        20
+    );*/
+    //masterMixLabel.setBounds(labelArea);
+
+    /*int spacings = 5;
+    buttonArea.removeFromTop(50);
+    reverbButton.setBounds(buttonArea.removeFromTop(buttonHeight));
+    buttonArea.removeFromTop(spacings);
+    convolveButton.setBounds(buttonArea.removeFromTop(buttonHeight));
+    buttonArea.removeFromTop(spacings);
+    delayButton.setBounds(buttonArea.removeFromTop(buttonHeight));
+    buttonArea.removeFromTop(spacings);
+    equalizerButton.setBounds(buttonArea.removeFromTop(buttonHeight));
+    buttonArea.removeFromTop(spacings);
+    compressorButton.setBounds(buttonArea.removeFromTop(buttonHeight));*/
+
+
+    //viewport.setBounds(bounds.reduced(15,15));
+    //const int panelWidth = 245;   // choose what looks good
+    //const int panelSpacing = 10;
+
+    //delayPanel.setBounds(panelArea);
+
+    //auto dim = panelArea.removeFromLeft(panelWidth);
+
+   // delayPanel.setBounds(dim);
+
+    //td::cout << "delay panel dim" << dim.getWidth() << "x" << dim.getHeight();
+
+    //int xPosition = 0;
+    //int panelHeight = viewport.getHeight();
+
+    //delayPanel.setBounds(xPosition, 0, panelWidth, panelHeight);
+    //xPosition += panelWidth + panelSpacing;
+
+    //convolvePanel.setBounds(xPosition, 0, panelWidth, panelHeight);
+    //xPosition += panelWidth + panelSpacing;
+
+    //revebPanel.setBounds(xPosition, 0, panelWidth, panelHeight);
+    //xPosition += panelWidth + panelSpacing;
+
+    //equalizerPanel.setBounds(xPosition, 0, panelWidth, panelHeight);
+    //xPosition += panelWidth + panelSpacing;
+
+    //compressorPanel.setBounds(xPosition,0,panelWidth,panelHeight);
+    //xPosition += panelWidth + panelSpacing;
+
+    
+
+    
+    //container.setSize(xPosition, panelHeight);
+
+
+
+    /*panelArea.removeFromLeft(panelspacing);
+
+    convolvePanel.setBounds(panelArea.removeFromLeft(panelWidth));
+
+    panelArea.removeFromLeft(panelspacing);
+
+    revebPanel.setBounds(panelArea.removeFromLeft(panelWidth));
+    panelArea.removeFromLeft(panelspacing);*/
+
+    //equalizerPanel.setBounds(panelArea);
+
+    //equalizerPanel.setBounds(panelArea.removeFromLeft(panelWidth));
+
+
+
+
+    //delayPanel.setBounds (getLocalBounds());
+
+
+
