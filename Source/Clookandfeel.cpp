@@ -10,8 +10,6 @@
 
 #include "Clookandfeel.h"
 
-#include <JuceHeader.h>
-
 
 juce::Typeface::Ptr CustomLNF::getTypefaceForFont(const juce::Font& f)
 {
