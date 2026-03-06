@@ -13,6 +13,8 @@
 ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
+    juce::LookAndFeel::setDefaultLookAndFeel(&customLNF);
+
     startTimerHz(30);
     currentlyDisplayedChain = 0;
 
@@ -59,7 +61,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     // Module viewport
     addAndMakeVisible(moduleViewport);
     moduleViewport.setViewedComponent(&moduleContainer, false);
-    moduleViewport.setScrollBarsShown(true, false);
+    moduleViewport.setScrollBarsShown(false, true);
 
     setSize(900, 700);
     rebuildModuleEditors();
@@ -106,6 +108,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
 
 ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
 {
+    juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
     // Stop the timer when the editor is destroyed
     stopTimer();
 }
@@ -164,21 +167,23 @@ void ADSREchoAudioProcessorEditor::resized()
     chainSelector.setBounds(top.removeFromLeft(100));
     parallelEnableToggle.setBounds(top.removeFromLeft(30));
 
-    addButton.setBounds(area.removeFromTop(30));
+    addButton.setBounds(area.removeFromRight(40).removeFromTop(40));
 
-    // Modules on the chain are added down sequentially
+    // Modules on the chain are displayed as side-by-side columns
     moduleViewport.setBounds(area);
 
-    constexpr int slotHeight = 200;
-    int y = 0;
+    constexpr int columnWidth = 245;
+    constexpr int columnSpacing = 6;
+    int x = 0;
+    int columnHeight = moduleViewport.getHeight();
 
     for (auto& editor : moduleEditors)
     {
-        editor->setBounds(0, y, moduleViewport.getWidth(), slotHeight);
-        y += slotHeight + 6;
+        editor->setBounds(x, 0, columnWidth, columnHeight);
+        x += columnWidth + columnSpacing;
     }
 
-    moduleContainer.setSize(moduleViewport.getWidth(), y);
+    moduleContainer.setSize(x, columnHeight);
 }
 
 // On a constant timer, checks if the ui needs to be rebuild, then calls for a rebuild asynchronously
