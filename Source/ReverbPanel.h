@@ -27,12 +27,13 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
+#include "Clookandfeel.h"
 
 class ReverbPanel : public juce::Component
 {
     public:
         ReverbPanel();
-        ~ReverbPanel() override = default;
+        ~ReverbPanel() override;
 
         void paint(juce::Graphics&) override;
         void resized() override;
@@ -42,6 +43,7 @@ class ReverbPanel : public juce::Component
 
 
     private:
+        CustomLNF lnf;
         juce::Label titleLabel;
         juce::ComboBox typeDrop;
         

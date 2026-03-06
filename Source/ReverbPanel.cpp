@@ -12,6 +12,7 @@
 
 ReverbPanel::ReverbPanel() {
 
+    setLookAndFeel(&lnf);
 
 
     typeDrop.addItem("Type",1);
@@ -159,36 +160,25 @@ void ReverbPanel::resized()
     //   // slider.setBounds(cell.reduced(10));
     //};
 
-    int width = 2;
-    int height = 4;
-    int cellWidth = area.getWidth() / width;
-    int cellHeight = area.getHeight() / height;
+    const int cols = 2;
+    const int rows = 4;
+    const int cellWidth = area.getWidth() / cols;
+    const int cellHeight = area.getHeight() / rows;
+    const int knobSize = 55;
 
     auto setupKnobInGrid = [&](juce::Label& label, juce::Slider& slider, int col, int row) {
         auto cell = juce::Rectangle<int>(area.getX() + col * cellWidth, area.getY() + row * cellHeight, cellWidth, cellHeight);
+        label.setBounds(cell.removeFromTop(16));
+        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
+    };
 
-      /*  label.setBounds(cell.removeFromTop(1));*/
-
-
-        int knobSize = 70;
-        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
-        slider.setBounds(knobArea);
-
-        label.setBounds(knobArea.getX(), knobArea.getY() - 18, knobArea.getWidth(), 15);
-
-
-        };
-
-
-    
     setupKnobInGrid(roomSizeLabel, roomSize, 0, 0);
     setupKnobInGrid(decayLabel, decay, 1, 0);
     setupKnobInGrid(dampingLabel, damping, 0, 1);
     setupKnobInGrid(modRateLabel, modRate, 1, 1);
     setupKnobInGrid(modDepthLabel, modDepth, 0, 2);
-    //setupKnobInGrid(reverbDepthLabel, reverbDepth, 1, 2); //this is commented out in the header file, so I commented it out here too
-    setupKnobInGrid(preDelayLabel, preDelay, 0, 3);  // Centered in last row
-    setupKnobInGrid(mixLabel, Mix, 1,3);
+    setupKnobInGrid(preDelayLabel, preDelay, 0, 3);
+    setupKnobInGrid(mixLabel, Mix, 1, 3);
 
 
 
@@ -232,4 +222,8 @@ void ReverbPanel::resized()
     setupRow(modDepthLabel, modDepth);
     setupRow(reverbDepthLabel, reverbDepth);
     setupRow(preDelayLabel, preDelay);*/
+}
+
+ReverbPanel::~ReverbPanel() {
+    setLookAndFeel(nullptr);
 }
