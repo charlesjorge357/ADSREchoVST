@@ -121,7 +121,7 @@ void DelayPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
                                 const juce::String& slotID)
 {
     auto attach = [&](juce::Slider& s, const juce::String& suffix) {
-        return std::make_unique
+        return std::make_unique<
             juce::AudioProcessorValueTreeState::SliderAttachment>(
                 apvts, slotID + "." + suffix, s);
     };
@@ -141,7 +141,7 @@ void DelayPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
     if (noteDivParam)
         for (int i = 0; i < noteDivParam->choices.size(); ++i)
             noteDivsion.addItem(noteDivParam->choices[i], i + 1);
-    noteDivAttach = std::make_unique
+    noteDivAttach = std::make_unique<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
             apvts, slotID + ".delayNoteDiv", noteDivsion);
 
@@ -151,11 +151,11 @@ void DelayPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
     if (modeParam)
         for (int i = 0; i < modeParam->choices.size(); ++i)
             mode.addItem(modeParam->choices[i], i + 1);
-    modeAttach = std::make_unique
+    modeAttach = std::make_unique<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
             apvts, slotID + ".delayMode", mode);
 
-    syncAttach = std::make_unique
+    syncAttach = std::make_unique<
         juce::AudioProcessorValueTreeState::ButtonAttachment>(
             apvts, slotID + ".delaySyncEnabled", bmpTog);
 }
