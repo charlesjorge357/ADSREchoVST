@@ -78,7 +78,13 @@ target_sources(ADSREcho
         Source/EQModuleSlotEditor.cpp
         Source/ModuleSlotEditor.cpp
         Source/PsychoDamping.cpp
-        Source/ReverbModule.cpp)
+        Source/ReverbModule.cpp
+        Source/Clookandfeel.cpp
+        Source/CompressorPanel.cpp
+        Source/Convolve.cpp
+        Source/DelayPanel.cpp
+        Source/EQPanel.cpp
+        Source/ReverbPanel.cpp)
 
 # Compile definitions
 target_compile_definitions(ADSREcho
