@@ -210,57 +210,31 @@ void DelayPanel::resized()
     mode.setBounds(modeArea.reduced(30, 0));
  
 
-    int width = 2;
-    int height = 4;
-    int cellWidth = area.getWidth() / width;
-    int cellHeight = area.getHeight() / height;
+    const int cols = 2;
+    const int rows = 4;
+    const int cellWidth = area.getWidth() / cols;
+    const int cellHeight = area.getHeight() / rows;
+    const int knobSize = 55;
 
     auto setKnobInGrid = [&](juce::Label& label, juce::Slider& slider, int col, int row) {
         auto cell = juce::Rectangle<int>(area.getX() + col * cellWidth, area.getY() + row * cellHeight, cellWidth, cellHeight);
+        label.setBounds(cell.removeFromTop(16));
+        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
+    };
 
-      /*  label.setBounds(cell.removeFromTop(1));*/
+    setKnobInGrid(feedbackLabel, feedbackSlider, 0, 0);
+    setKnobInGrid(timeLabel, timeSlider, 1, 0);
 
-
-        int knobSize = 70;
-        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
-        slider.setBounds(knobArea);
-
-        label.setBounds(knobArea.getX(), knobArea.getY() - 18, knobArea.getWidth(), 15);
-
-
-        };
-
-    
-
-    setKnobInGrid(feedbackLabel,feedbackSlider, 0,0);
-    setKnobInGrid(timeLabel,timeSlider,1,0);
-    setKnobInGrid(bpmLabel,bpmSlider,0,1);
-
-   /* auto bpmCell = juce::Rectangle<int>(area.getX() + 0 * cellWidth, area.getY() + 1 * cellHeight, cellWidth, cellHeight);
-
-    bmpTog.setBounds(bpmCell.removeFromTop(30).reduced(10, 0));*/
-
-    //.setBounds(bpmCell.removeFromBottom(20).reduced(10, 0));
-
+    // BPM cell: toggle at top, then knob
     auto bpmCell = juce::Rectangle<int>(area.getX() + 0 * cellWidth, area.getY() + 1 * cellHeight, cellWidth, cellHeight);
-    
-    // Place toggle centered above where the knob will be
-    int knobSize = 70;
-    int toggleHeight = 25;
-    auto knobCenterX = bpmCell.getCentreX();
-    auto toggleArea = juce::Rectangle<int>(knobCenterX - 50, bpmCell.getY() + 5, 100, toggleHeight);
-    bmpTog.setBounds(toggleArea);
-    
-    // Now place BPM knob and label normally, but shifted down to make room for toggle
-    auto knobArea = bpmCell.withSizeKeepingCentre(knobSize, knobSize).translated(0, 15);
-    bpmSlider.setBounds(knobArea);
-    bpmLabel.setBounds(knobArea.getX(), knobArea.getY() - 18, knobArea.getWidth(), 15);
-    
-    
-    setKnobInGrid(panLabel,panSlider,1,1);
-    setKnobInGrid(lowpassLabel,lowpassSlider,0,2);
-    setKnobInGrid(highpassLabel,highpassSlider,1,2);
-    setKnobInGrid(mixLabel,mixSlider,0,3);
+    bmpTog.setBounds(bpmCell.removeFromTop(20));
+    bpmLabel.setBounds(bpmCell.removeFromTop(14));
+    bpmSlider.setBounds(bpmCell.withSizeKeepingCentre(knobSize, knobSize));
+
+    setKnobInGrid(panLabel, panSlider, 1, 1);
+    setKnobInGrid(lowpassLabel, lowpassSlider, 0, 2);
+    setKnobInGrid(highpassLabel, highpassSlider, 1, 2);
+    setKnobInGrid(mixLabel, mixSlider, 0, 3);
 
 }
 

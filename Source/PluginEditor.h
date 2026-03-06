@@ -29,7 +29,7 @@
 #include "DelayPanel.h"
 #include "ConvolutionPanel.h"
 #include "ReverbPanel.h"
-//#include "Clookandfeel.h"
+#include "Clookandfeel.h"
 #include "EQPanel.h"
 #include "CompressorPanel.h"
 #include "ModuleSlotEditor.h"
@@ -60,8 +60,9 @@ private:
 
     //==============================================================================
        // Chain / module UI
+    CustomLNF customLNF;
     juce::Viewport moduleViewport;
-    juce::Component moduleContainer; 
+    juce::Component moduleContainer;
     
     /*CustomLNF customTypeFace;
     
