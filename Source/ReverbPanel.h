@@ -37,6 +37,9 @@ class ReverbPanel : public juce::Component
         void paint(juce::Graphics&) override;
         void resized() override;
 
+        void attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
+                   const juce::String& slotID);
+
 
     private:
         juce::Label titleLabel;
@@ -48,7 +51,7 @@ class ReverbPanel : public juce::Component
         juce::Label dampingLabel;
         juce::Label modRateLabel;
         juce::Label modDepthLabel;
-        juce::Label reverbDepthLabel;
+        //juce::Label reverbDepthLabel;
         juce::Label preDelayLabel;
         juce::Label mixLabel;
 
@@ -64,11 +67,17 @@ class ReverbPanel : public juce::Component
         juce::Slider damping;
         juce::Slider modRate;
         juce::Slider modDepth;
-        juce::Slider reverbDepth;
+        //juce::Slider reverbDepth;
         juce::Slider preDelay;
         juce::Slider Mix;
 
         juce::Image reverbBackground;
+
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+            roomSizeAttach, decayAttach, dampingAttach, modRateAttach,
+            modDepthAttach, preDelayAttach, mixAttach;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+            typeAttach;
 
 
 

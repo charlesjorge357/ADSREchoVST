@@ -15,6 +15,7 @@
 #include "BaseModuleSlotEditor.h"
 #include "CompressorModule.h"
 #include "CompressorDisplayComponent.h"
+#include "CompressorPanel.h"
 
 class CompressorModuleSlotEditor : public BaseModuleSlotEditor,
                                    private juce::Timer
@@ -28,35 +29,15 @@ public:
         juce::AudioProcessorValueTreeState& apvts);
 
 private:
-    // Sliders
-    std::vector<std::unique_ptr<juce::Slider>> sliders;
-    std::vector<std::unique_ptr<juce::Label>>  sliderLabels;
-    std::vector<std::unique_ptr<
-        juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;
-
-    // Toggles
-    std::vector<std::unique_ptr<juce::Button>> toggles;
-    std::vector<std::unique_ptr<juce::Label>>  toggleLabels;
-    std::vector<std::unique_ptr<
-        juce::AudioProcessorValueTreeState::ButtonAttachment>> toggleAttachments;
-
-    // ComboBoxes
-    std::vector<std::unique_ptr<juce::ComboBox>> comboBoxes;
-    std::vector<std::unique_ptr<juce::Label>>    comboBoxLabels;
-    std::vector<std::unique_ptr<
-        juce::AudioProcessorValueTreeState::ComboBoxAttachment>> comboBoxAttachments;
 
     // Base overrides
     void buildEditor(const SlotInfo& info) override;
     void layoutEditor(juce::Rectangle<int>& r) override;
 
-    // Helpers (identical to EQModuleSlotEditor)
-    void addSliderForParameter(const juce::String& id);
-    void addToggleForParameter(const juce::String& id);
-    void addChoiceForParameter(const juce::String& id);
 
     CompressorModule*                        mod     = nullptr;
     std::unique_ptr<CompressorDisplayComponent> display;
+    std::unique_ptr<CompressorPanel> panel;
 
     void timerCallback() override;
 

@@ -4,15 +4,7 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
     <GROUP id="{1083EC7B-2EC2-6031-0CE1-DD64BA8F67A3}" name="Resources">
-      <FILE id="W64atF" name="freepik.jpg" compile="0" resource="1" file="../Downloads/freepik.jpg"/>
-      <FILE id="Be1vQZ" name="Designer.otf" compile="0" resource="1" file="../Downloads/designer_2/Designer.otf"/>
-      <FILE id="wzkpzj" name="delayBackground.png" compile="0" resource="1"
-            file="../Downloads/delayBackground.png"/>
-      <FILE id="yJwpYw" name="Ellipse 1.svg" compile="0" resource="1" file="../Downloads/Ellipse 1.svg"/>
-      <FILE id="I3wRPS" name="reverbBackground.png" compile="0" resource="1"
-            file="../Downloads/reverbBackground.png"/>
-      <FILE id="F9h8qH" name="convoBackground.png" compile="0" resource="1"
-            file="../Downloads/convoBackground.png"/>
+      <FILE id="qk2ieD" name="Designer.otf" compile="0" resource="1" file="Resources/Designer.otf"/>
       <FILE id="TiwrGm" name="JUCEBack.png" compile="0" resource="1" file="Resources/JUCEBack.png"/>
       <FILE id="AHPqvW" name="testing.png" compile="0" resource="1" file="Resources/testing.png"/>
     </GROUP>
@@ -88,6 +80,14 @@
       </GROUP>
       <GROUP id="{9D5CDAC7-64FA-EAD2-C694-A4240E21939C}" name="ModularClasses">
         <GROUP id="{5BA6067D-D5D0-1D4A-2C04-A23A964D8A65}" name="EffectModules">
+          <FILE id="yhB2cd" name="CompressorPanel.cpp" compile="1" resource="0"
+                file="Source/CompressorPanel.cpp"/>
+          <FILE id="tA3YQ5" name="CompressorPanel.h" compile="0" resource="0"
+                file="Source/CompressorPanel.h"/>
+          <FILE id="g0Ixvw" name="ConvolutionPanel.h" compile="0" resource="0"
+                file="Source/ConvolutionPanel.h"/>
+          <FILE id="nJtlH4" name="EQPanel.cpp" compile="1" resource="0" file="Source/EQPanel.cpp"/>
+          <FILE id="QXisuk" name="EQPanel.h" compile="0" resource="0" file="Source/EQPanel.h"/>
           <FILE id="xwowHZ" name="EQDisplayComponent.cpp" compile="1" resource="0"
                 file="Source/EQDisplayComponent.cpp"/>
           <FILE id="kAhUse" name="EQDisplayComponent.h" compile="0" resource="0"
@@ -125,11 +125,6 @@
       </GROUP>
       <FILE id="xECwoY" name="BasicDelay.cpp" compile="1" resource="0" file="Source/BasicDelay.cpp"/>
       <FILE id="dlgVHy" name="BasicDelay.h" compile="0" resource="0" file="Source/BasicDelay.h"/>
-
-      <FILE id="TJd6NK" name="equalizerPanel.cpp" compile="1" resource="0"
-            file="Source/equalizerPanel.cpp"/>
-      <FILE id="TVogg0" name="equalizerPanel.h" compile="0" resource="0"
-            file="Source/equalizerPanel.h"/>
       <FILE id="tzYIfh" name="Clookandfeel.cpp" compile="1" resource="0"
             file="Source/Clookandfeel.cpp"/>
       <FILE id="bObx9N" name="Clookandfeel.h" compile="0" resource="0" file="Source/Clookandfeel.h"/>
@@ -162,8 +157,6 @@
       <FILE id="DXNRwl" name="BasicEQ.cpp" compile="1" resource="0" file="Source/BasicEQ.cpp"/>
       <FILE id="qoO0w9" name="BasicEQ.h" compile="0" resource="0" file="Source/BasicEQ.h"/>
       <FILE id="BnA0Zi" name="DelayPanel.cpp" compile="1" resource="0" file="Source/DelayPanel.cpp"/>
-      <FILE id="Xl77TW" name="Compressor.cpp" compile="1" resource="0" file="Source/Compressor.cpp"/>
-      <FILE id="ortEcz" name="Compressor.h" compile="0" resource="0" file="Source/Compressor.h"/>
       <FILE id="NVYLLL" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
       <FILE id="siLycI" name="CompressorDisplayComponent.cpp" compile="1"
             resource="0" file="Source/CompressorDisplayComponent.cpp"/>
@@ -179,7 +172,6 @@
             file="Source/BasicCompressor.h"/>
     </GROUP>
     <FILE id="BSqhBK" name="Convolve.cpp" compile="1" resource="0" file="Source/Convolve.cpp"/>
-    <FILE id="DzfKzc" name="Convolve.h" compile="0" resource="0" file="Source/Convolve.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>

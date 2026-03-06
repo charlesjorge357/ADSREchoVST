@@ -70,8 +70,8 @@ ReverbPanel::ReverbPanel() {
     setupKnob(modDepth);
     setupLabel(modDepthLabel, "Mod Depth");
 
-    setupKnob(reverbDepth);
-    setupLabel(reverbDepthLabel, "Depth");
+    //setupKnob(reverbDepth);
+    //setupLabel(reverbDepthLabel, "Depth");
 
     setupKnob(preDelay);
     setupLabel(preDelayLabel, "Pre Delay");
@@ -82,6 +82,34 @@ ReverbPanel::ReverbPanel() {
     //reverbBackground = juce::ImageCache::getFromMemory(BinaryData::reverbBackground_png, BinaryData::reverbBackground_pngSize);
 
 
+}
+
+void ReverbPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
+                                 const juce::String& slotID)
+{
+    auto attach = [&](juce::Slider& s, const juce::String& suffix) {
+        return std::make_unique
+            juce::AudioProcessorValueTreeState::SliderAttachment>(
+                apvts, slotID + "." + suffix, s);
+    };
+
+    roomSizeAttach = attach(roomSize,  "roomSize");
+    decayAttach    = attach(decay,     "decayTime");
+    dampingAttach  = attach(damping,   "damping");
+    modRateAttach  = attach(modRate,   "modRate");
+    modDepthAttach = attach(modDepth,  "modDepth");
+    preDelayAttach = attach(preDelay,  "preDelay");
+    mixAttach      = attach(Mix,       "mix");
+
+    auto* typeParam = dynamic_cast<juce::AudioParameterChoice*>(
+        apvts.getParameter(slotID + ".reverbType"));
+    typeDrop.clear(juce::dontSendNotification);
+    if (typeParam)
+        for (int i = 0; i < typeParam->choices.size(); ++i)
+            typeDrop.addItem(typeParam->choices[i], i + 1);
+    typeAttach = std::make_unique
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+            apvts, slotID + ".reverbType", typeDrop);
 }
 
 void ReverbPanel::paint(juce::Graphics& g) {

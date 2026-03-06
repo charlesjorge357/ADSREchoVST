@@ -40,6 +40,9 @@ class DelayPanel : public juce::Component
         void resized() override;
         void updateToggleState(juce::Button*, juce::String);
 
+        void attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
+                   const juce::String& slotID);
+
 
     private:
 
@@ -73,6 +76,14 @@ class DelayPanel : public juce::Component
         juce::Slider lowpassSlider;
         juce::Slider highpassSlider;
         juce::Slider mixSlider;
+
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+            timeAttach, feedbackAttach, bpmAttach, panAttach,
+            lowpassAttach, highpassAttach, mixAttach;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+            noteDivAttach, modeAttach;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
+            syncAttach;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayPanel);
 

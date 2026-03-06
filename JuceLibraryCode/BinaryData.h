@@ -8,23 +8,8 @@
 
 namespace BinaryData
 {
-    extern const char*   freepik_jpg;
-    const int            freepik_jpgSize = 5649828;
-
     extern const char*   Designer_otf;
     const int            Designer_otfSize = 133824;
-
-    extern const char*   delayBackground_png;
-    const int            delayBackground_pngSize = 549940;
-
-    extern const char*   Ellipse_1_svg;
-    const int            Ellipse_1_svgSize = 452;
-
-    extern const char*   reverbBackground_png;
-    const int            reverbBackground_pngSize = 609024;
-
-    extern const char*   convoBackground_png;
-    const int            convoBackground_pngSize = 552694;
 
     extern const char*   JUCEBack_png;
     const int            JUCEBack_pngSize = 602171;
@@ -147,7 +132,7 @@ namespace BinaryData
     const int            Vocal_Duo_wavSize = 529124;
 
     // Number of elements in the namedResourceList and originalFileNames arrays.
-    const int namedResourceListSize = 46;
+    const int namedResourceListSize = 41;
 
     // Points to the start of a list of resource names.
     extern const char* namedResourceList[];
