@@ -9,6 +9,7 @@
 */
 
 #include "Clookandfeel.h"
+#include "BinaryData.h"
 
 
 juce::Typeface::Ptr CustomLNF::getTypefaceForFont(const juce::Font& f)
