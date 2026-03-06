@@ -9,6 +9,10 @@
 #include "BaseModuleSlotEditor.h"
 #include "ConvolutionModule.h"
 
+class DelayPanel;
+class ReverbPanel;
+class ConvolutionPanel;
+
 class ModuleSlotEditor : public BaseModuleSlotEditor
 {
 public:
