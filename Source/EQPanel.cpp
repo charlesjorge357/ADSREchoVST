@@ -15,6 +15,8 @@
 
 EQPanel::EQPanel()
 {
+    setLookAndFeel(&lnf);
+
     equalizerLabel.setText("Equalizer", juce::dontSendNotification);
     equalizerLabel.setJustificationType(juce::Justification::centredTop);
     equalizerLabel.setFont(juce::FontOptions(20.0f));
@@ -101,7 +103,7 @@ void EQPanel::resized()
     const int rows       = 3;
     const int cellWidth  = area.getWidth()  / cols;
     const int cellHeight = area.getHeight() / rows;
-    const int knobSize   = 70;
+    const int knobSize   = 55;
 
     auto placeKnob = [&](juce::Label& label, juce::Slider& slider,
                          int col, int row)
@@ -112,12 +114,8 @@ void EQPanel::resized()
             cellWidth,
             cellHeight);
 
-        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
-        slider.setBounds(knobArea);
-        label.setBounds(knobArea.getX(),
-                        knobArea.getY() - 18,
-                        knobArea.getWidth(),
-                        15);
+        label.setBounds(cell.removeFromTop(16));
+        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
     };
 
     placeKnob(lowFreqLabel,  lowFreq,  0, 0);
@@ -129,4 +127,8 @@ void EQPanel::resized()
     placeKnob(highFreqLabel, highFreq, 0, 2);
     placeKnob(highGainLabel, highGain, 1, 2);
     placeKnob(highQLabel,    highQ,    2, 2);
+}
+
+EQPanel::~EQPanel() {
+    setLookAndFeel(nullptr);
 }

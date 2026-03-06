@@ -15,6 +15,8 @@
 
 ConvolutionPanel::ConvolutionPanel()
 {
+    setLookAndFeel(&lnf);
+
     titleLabel.setText("Convolution", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredTop);
     titleLabel.setFont(juce::Font(juce::FontOptions(20.0f, juce::Font::bold | juce::Font::italic)));
@@ -197,18 +199,14 @@ void ConvolutionPanel::resized()
 
     const int numKnobs  = 5;
     const int cellHeight = area.getHeight() / numKnobs;
-    const int knobSize   = 70;
+    const int knobSize   = 55;
 
     auto placeKnob = [&](juce::Label& label, juce::Slider& slider, int row)
     {
         auto cell = area.withHeight(cellHeight)
                         .withY(area.getY() + row * cellHeight);
-        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
-        slider.setBounds(knobArea);
-        label.setBounds(knobArea.getX(),
-                        knobArea.getY() - 18,
-                        knobArea.getWidth(),
-                        15);
+        label.setBounds(cell.removeFromTop(16));
+        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
     };
 
     placeKnob(irGainLabel,   irGainSlider,   0);
@@ -216,4 +214,8 @@ void ConvolutionPanel::resized()
     placeKnob(highCutLabel,  highCutSlider,  2);
     placeKnob(preDelayLabel, preDelaySlider, 3);
     placeKnob(mixLabel,      mixSlider,      4);
+}
+
+ConvolutionPanel::~ConvolutionPanel() {
+    setLookAndFeel(nullptr);
 }

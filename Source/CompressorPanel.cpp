@@ -15,6 +15,8 @@
 
 CompressorPanel::CompressorPanel()
 {
+    setLookAndFeel(&lnf);
+
     titleLabel.setText("Compressor", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredTop);
     titleLabel.setFont(juce::Font(juce::FontOptions(20.0f, juce::Font::bold | juce::Font::italic)));
@@ -98,7 +100,7 @@ void CompressorPanel::resized()
     const int rows       = 3;
     const int cellWidth  = area.getWidth()  / cols;
     const int cellHeight = area.getHeight() / rows;
-    const int knobSize   = 70;
+    const int knobSize   = 55;
 
     auto placeKnob = [&](juce::Label& label, juce::Slider& slider,
                          int col, int row)
@@ -109,12 +111,8 @@ void CompressorPanel::resized()
             cellWidth,
             cellHeight);
 
-        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
-        slider.setBounds(knobArea);
-        label.setBounds(knobArea.getX(),
-                        knobArea.getY() - 18,
-                        knobArea.getWidth(),
-                        15);
+        label.setBounds(cell.removeFromTop(16));
+        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
     };
 
     placeKnob(thresholdLabel, threshold, 0, 0);
@@ -123,4 +121,8 @@ void CompressorPanel::resized()
     placeKnob(releaseLabel,   release,   1, 1);
     placeKnob(inputLabel,     input,     0, 2);
     placeKnob(outputLabel,    output,    1, 2);
+}
+
+CompressorPanel::~CompressorPanel() {
+    setLookAndFeel(nullptr);
 }

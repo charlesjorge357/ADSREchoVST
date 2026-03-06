@@ -28,11 +28,13 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
+#include "Clookandfeel.h"
+
 class CompressorPanel : public juce::Component
 {
 public:
     CompressorPanel();
-    ~CompressorPanel() override = default;
+    ~CompressorPanel() override;
 
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -43,6 +45,7 @@ public:
                        const juce::String& slotID);
 
 private:
+    CustomLNF lnf;
     juce::Label titleLabel;
 
     juce::Slider threshold;

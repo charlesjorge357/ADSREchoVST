@@ -30,12 +30,13 @@
 
 #include "ConvolutionModule.h"
 #include "PluginProcessor.h"
+#include "Clookandfeel.h"
 
 class ConvolutionPanel : public juce::Component
 {
 public:
     ConvolutionPanel();
-    ~ConvolutionPanel() override = default;
+    ~ConvolutionPanel() override;
 
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -48,6 +49,7 @@ public:
                        int slotIndex);
 
 private:
+    CustomLNF lnf;
     // -------------------------------------------------------------------------
     // UI
     // -------------------------------------------------------------------------
