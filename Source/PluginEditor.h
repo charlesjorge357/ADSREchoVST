@@ -27,7 +27,7 @@
 
 #include "PluginProcessor.h"
 #include "DelayPanel.h"
-#include "Convolve.h"
+#include "ConvolutionPanel.h"
 #include "ReverbPanel.h"
 //#include "Clookandfeel.h"
 #include "equalizerPanel.h"
