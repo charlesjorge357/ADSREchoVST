@@ -43,8 +43,8 @@ void CompressorModuleSlotEditor::buildEditor(const SlotInfo& info)
 
 void CompressorModuleSlotEditor::layoutEditor(juce::Rectangle<int>& r)
 {
-    auto displayArea = r.removeFromLeft(120);
-    if (display) display->setBounds(displayArea.reduced(5));
+    if (display) display->setBounds(r.removeFromTop(120).reduced(4));
+    r.removeFromTop(4);
     if (panel)   panel->setBounds(r);
 }
 
