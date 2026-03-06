@@ -186,7 +186,7 @@ void ReverbPanel::resized()
     setupKnobInGrid(dampingLabel, damping, 0, 1);
     setupKnobInGrid(modRateLabel, modRate, 1, 1);
     setupKnobInGrid(modDepthLabel, modDepth, 0, 2);
-    setupKnobInGrid(reverbDepthLabel, reverbDepth, 1, 2);
+    //setupKnobInGrid(reverbDepthLabel, reverbDepth, 1, 2); //this is commented out in the header file, so I commented it out here too
     setupKnobInGrid(preDelayLabel, preDelay, 0, 3);  // Centered in last row
     setupKnobInGrid(mixLabel, Mix, 1,3);
 
