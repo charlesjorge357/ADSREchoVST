@@ -86,6 +86,14 @@ target_sources(ADSREcho
         Source/EQPanel.cpp
         Source/ReverbPanel.cpp)
 
+# Binary resources (fonts, images)
+juce_add_binary_data(ADSREchoBinaryData
+    SOURCES
+        Resources/Designer.otf
+        Resources/JUCEBack.png
+        Resources/testing.png
+)
+
 # Compile definitions
 target_compile_definitions(ADSREcho
     PUBLIC
@@ -99,6 +107,7 @@ target_compile_definitions(ADSREcho
 # Link JUCE modules
 target_link_libraries(ADSREcho
     PRIVATE
+        ADSREchoBinaryData
         juce::juce_audio_utils
         juce::juce_audio_processors
         juce::juce_dsp
