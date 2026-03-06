@@ -98,26 +98,20 @@ BaseModuleSlotEditor::BaseModuleSlotEditor(
 
 void BaseModuleSlotEditor::resized()
 {
-    auto r = getLocalBounds().reduced(6);
+    auto r = getLocalBounds().reduced(4);
 
+    // Title at the top of the column
+    title.setBounds(r.removeFromTop(22));
+    r.removeFromTop(2);
 
-    auto titleArea = r.removeFromTop(20);
+    // Control row: enable toggle | type selector | remove button
+    auto controlRow = r.removeFromTop(24);
+    enableToggle.setBounds(controlRow.removeFromLeft(25));
+    removeButton.setBounds(controlRow.removeFromRight(30));
+    typeSelector.setBounds(controlRow);
 
-    enableToggle.setBounds(
-        titleArea.removeFromLeft(25));
+    r.removeFromTop(4);
 
-    title.setBounds(
-        titleArea.removeFromLeft(80));
-
-    typeSelector.setBounds(titleArea);
-
-
-    r.removeFromTop(5);
-
-
-    removeButton.setBounds(
-        r.removeFromRight(30));
-
-
+    // Remaining area for panel content
     layoutEditor(r);
 }
