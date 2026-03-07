@@ -11,6 +11,20 @@
 #include "Clookandfeel.h"
 #include "BinaryData.h"
 
+CustomLNF::CustomLNF()
+{
+    // ComboBox colours
+    setColour(juce::ComboBox::backgroundColourId,  juce::Colour(0xff2A2E35));
+    setColour(juce::ComboBox::outlineColourId,     juce::Colour(0xff555555));
+    setColour(juce::ComboBox::textColourId,        juce::Colours::white);
+    setColour(juce::ComboBox::arrowColourId,       juce::Colours::lightgrey);
+
+    // PopupMenu colours (dropdown list)
+    setColour(juce::PopupMenu::backgroundColourId,            juce::Colour(0xff2A2E35));
+    setColour(juce::PopupMenu::textColourId,                  juce::Colours::white);
+    setColour(juce::PopupMenu::highlightedBackgroundColourId, juce::Colour(0xff4A90D9));
+    setColour(juce::PopupMenu::highlightedTextColourId,       juce::Colours::white);
+}
 
 juce::Typeface::Ptr CustomLNF::getTypefaceForFont(const juce::Font& f)
 {

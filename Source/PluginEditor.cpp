@@ -69,7 +69,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     moduleViewport.setViewedComponent(&moduleContainer, false);
     moduleViewport.setScrollBarsShown(false, true);
 
-    setSize(900, 700);
+    setSize(950, 800);
     rebuildModuleEditors();
 }
 
@@ -83,23 +83,46 @@ ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
 void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
+    int w = static_cast<int>(bounds.getWidth());
+    int h = static_cast<int>(bounds.getHeight());
 
-    // Base gradient — dark steel
+    // Base fill — dark grey
+    g.fillAll(juce::Colour(0xff2A2A2A));
+
+    // Carbon-fiber weave pattern
+    // Alternating light/dark squares in a diagonal twill pattern
+    constexpr int cellSize = 6;
+    juce::Random rng(42);
+
+    for (int row = 0; row < h; row += cellSize)
+    {
+        for (int col = 0; col < w; col += cellSize)
+        {
+            // Diagonal twill: checkerboard offset every other row
+            bool dark = ((col / cellSize) + (row / cellSize)) % 2 == 0;
+
+            float base = dark ? 0.14f : 0.19f;
+            float noise = rng.nextFloat() * 0.02f;
+            float lum = base + noise;
+
+            g.setColour(juce::Colour::fromFloatRGBA(lum, lum, lum, 1.0f));
+            g.fillRect(col, row, cellSize, cellSize);
+        }
+    }
+
+    // Fine grid lines for weave definition
+    g.setColour(juce::Colour(0x18000000));
+    for (int row = 0; row < h; row += cellSize)
+        g.drawHorizontalLine(row, 0.0f, (float)w);
+    for (int col = 0; col < w; col += cellSize)
+        g.drawVerticalLine(col, 0.0f, (float)h);
+
+    // Subtle top-to-bottom gradient overlay for depth
     g.setGradientFill(juce::ColourGradient(
-        juce::Colour(0xff2A2D32), 0.0f, 0.0f,
-        juce::Colour(0xff1A1D22), 0.0f, bounds.getHeight(),
+        juce::Colour(0x15FFFFFF), 0.0f, 0.0f,
+        juce::Colour(0x10000000), 0.0f, bounds.getHeight(),
         false));
     g.fillRect(bounds);
-
-    // Brushed-metal horizontal lines
-    juce::Random rng(42);
-    g.setColour(juce::Colour(0x08FFFFFF));
-    for (float y = 0; y < bounds.getHeight(); y += 2.0f)
-    {
-        float alpha = 0.03f + rng.nextFloat() * 0.04f;
-        g.setColour(juce::Colours::white.withAlpha(alpha));
-        g.drawHorizontalLine(static_cast<int>(y), 0.0f, bounds.getWidth());
-    }
 }
 
 void ADSREchoAudioProcessorEditor::resized()

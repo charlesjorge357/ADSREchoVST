@@ -20,14 +20,6 @@ BaseModuleSlotEditor::BaseModuleSlotEditor(
     processor(p),
     apvts(state)
 {
-    // Title
-
-    title.setText(info.moduleType,
-        juce::dontSendNotification);
-
-    addAndMakeVisible(title);
-
-
     // Module selector
 
     addAndMakeVisible(typeSelector);
@@ -95,14 +87,22 @@ BaseModuleSlotEditor::BaseModuleSlotEditor(
 
 }
 
+void BaseModuleSlotEditor::paint(juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+
+    // Column background
+    g.setColour(juce::Colour(0xff222528));
+    g.fillRoundedRectangle(bounds, 6.0f);
+
+    // Subtle border
+    g.setColour(juce::Colour(0xff3A3E45));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
+}
 
 void BaseModuleSlotEditor::resized()
 {
     auto r = getLocalBounds().reduced(4);
-
-    // Title at the top of the column
-    title.setBounds(r.removeFromTop(22));
-    r.removeFromTop(2);
 
     // Control row: enable toggle | type selector | remove button
     auto controlRow = r.removeFromTop(24);

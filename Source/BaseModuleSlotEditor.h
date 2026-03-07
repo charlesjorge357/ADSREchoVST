@@ -39,6 +39,7 @@ public:
 
     virtual ~BaseModuleSlotEditor() = default;
 
+    void paint(juce::Graphics&) override;
     virtual void resized() override;
 
 protected:

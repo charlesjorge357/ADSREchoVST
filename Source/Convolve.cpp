@@ -199,7 +199,7 @@ void ConvolutionPanel::resized()
 
     const int numKnobs  = 5;
     const int cellHeight = area.getHeight() / numKnobs;
-    const int knobSize   = 55;
+    const int knobSize   = 80;
 
     auto placeKnob = [&](juce::Label& label, juce::Slider& slider, int row)
     {

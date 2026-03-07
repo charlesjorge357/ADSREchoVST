@@ -43,7 +43,8 @@ void CompressorModuleSlotEditor::buildEditor(const SlotInfo& info)
 
 void CompressorModuleSlotEditor::layoutEditor(juce::Rectangle<int>& r)
 {
-    if (display) display->setBounds(r.removeFromTop(120).reduced(4));
+    int displayHeight = juce::jmax(100, static_cast<int>(r.getHeight() * 0.5f));
+    if (display) display->setBounds(r.removeFromTop(displayHeight).reduced(4));
     r.removeFromTop(4);
     if (panel)   panel->setBounds(r);
 }
