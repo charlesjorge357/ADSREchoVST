@@ -177,8 +177,8 @@ void ReverbPanel::resized()
     setupKnobInGrid(dampingLabel, damping, 0, 1);
     setupKnobInGrid(modRateLabel, modRate, 1, 1);
     setupKnobInGrid(modDepthLabel, modDepth, 0, 2);
-    setupKnobInGrid(preDelayLabel, preDelay, 0, 3);
-    setupKnobInGrid(mixLabel, Mix, 1, 3);
+    setupKnobInGrid(preDelayLabel, preDelay, 1, 2);
+    setupKnobInGrid(mixLabel, Mix, 0, 3);
 
 
 
