@@ -110,6 +110,16 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
 
     setSize(950, 800);
     rebuildModuleEditors();
+
+    // Sync preset name on construction (e.g. after FL Studio window mode switch recreates the editor)
+    const auto& name = audioProcessor.currentPresetName;
+    if (name.isNotEmpty())
+    {
+        auto names = presetManager.getPresetNames();
+        int idx = names.indexOf(name);
+        presetComboBox.setSelectedId(idx >= 0 ? idx + 1 : 0, juce::dontSendNotification);
+        presetNameEditor.setText(name, juce::dontSendNotification);
+    }
 }
 
 ADSREchoAudioProcessorEditor::~ADSREchoAudioProcessorEditor()
