@@ -36,6 +36,7 @@
 #include "EQModuleSlotEditor.h"
 #include "CompressorModuleSlotEditor.h"
 #include "MasterPanel.h"
+#include "PresetManager.h"
 
 //==============================================================================
 /**
@@ -70,6 +71,15 @@ private:
 
     juce::ComboBox chainSelector;
     int currentlyDisplayedChain = 0;
+
+    //==============================================================================
+    // Preset manager
+    PresetManager presetManager;
+    juce::ComboBox presetComboBox;
+    juce::TextEditor presetNameEditor;
+    juce::TextButton savePresetButton{ "Save" };
+
+    void refreshPresetComboBox();
 
     //==============================================================================
     // Master controls (per chain)

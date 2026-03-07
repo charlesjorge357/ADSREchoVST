@@ -259,7 +259,7 @@ juce::AudioProcessorEditor* ADSREchoAudioProcessor::createEditor()
 }
 
 //==============================================================================
-void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+juce::ValueTree ADSREchoAudioProcessor::getStateTree()
 {
     auto state = apvts.copyState();
 
@@ -271,7 +271,7 @@ void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     {
         juce::ValueTree chain("Chain");
         chain.setProperty("index", j, nullptr);
-        
+
         for (int i = 0; i < MAX_SLOTS; ++i)
         {
             if (auto* mod = slots[j][i]->get())
@@ -280,7 +280,6 @@ void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
                 slot.setProperty("index", i, nullptr);
                 slot.setProperty("type", mod->getType(), nullptr);
 
-                // Save custom IR path for Convolution modules
                 if (auto* convMod = dynamic_cast<ConvolutionModule*>(mod))
                 {
                     if (convMod->hasCustomIR())
@@ -295,23 +294,15 @@ void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     }
 
     state.addChild(moduleState, -1, nullptr);
-
-    auto xml = state.createXml();
-    copyXmlToBinary(*xml, destData);
+    state.setProperty("currentPresetName", currentPresetName, nullptr);
+    return state;
 }
 
-void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
 {
-    auto xml = getXmlFromBinary(data, sizeInBytes);
-    if (!xml) {
-        DBG("no xml!");
-        return;
-    }
-    auto state = juce::ValueTree::fromXml(*xml);
-
     // Clear Modules
     for (auto& chain : slots)
-        for(auto& slot : chain)
+        for (auto& slot : chain)
             slot->clearModule();
 
     numModules = std::vector<int>(NUM_CHAINS, 0);
@@ -330,20 +321,17 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
 
             if (type == "Delay")
             {
-                auto module = std::make_unique<DelayModule>("null", apvts);
-                slots[chainIndex][slotIndex]->setModule(std::move(module));
+                slots[chainIndex][slotIndex]->setModule(std::make_unique<DelayModule>("null", apvts));
             }
             else if (type == "Reverb")
             {
-                auto module = std::make_unique<ReverbModule>("null", apvts);
-                slots[chainIndex][slotIndex]->setModule(std::move(module));
+                slots[chainIndex][slotIndex]->setModule(std::make_unique<ReverbModule>("null", apvts));
             }
             else if (type == "Convolution")
             {
                 auto module = std::make_unique<ConvolutionModule>("null", apvts);
                 module->setIRBank(irBank);
 
-                // Restore custom IR if one was saved
                 auto customIRPath = slotState.getProperty("customIRPath", "").toString();
                 if (customIRPath.isNotEmpty())
                 {
@@ -356,23 +344,39 @@ void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBy
             }
             else if (type == "EQ")
             {
-                auto module = std::make_unique<EQModule>("null", apvts);
-                slots[chainIndex][slotIndex]->setModule(std::move(module));
+                slots[chainIndex][slotIndex]->setModule(std::make_unique<EQModule>("null", apvts));
             }
             else if (type == "Compressor")
             {
-                auto module = std::make_unique<CompressorModule>("null", apvts);
-                slots[chainIndex][slotIndex]->setModule(std::move(module));
+                slots[chainIndex][slotIndex]->setModule(std::make_unique<CompressorModule>("null", apvts));
             }
 
             numModules[chainIndex]++;
         }
     }
 
-    // Restore Parameters
+    // Restore preset name and parameters
+    currentPresetName = state.getProperty("currentPresetName", "").toString();
     apvts.replaceState(state);
 
     uiNeedsRebuild.store(true, std::memory_order_release);
+}
+
+void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    auto state = getStateTree();
+    auto xml = state.createXml();
+    copyXmlToBinary(*xml, destData);
+}
+
+void ADSREchoAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    auto xml = getXmlFromBinary(data, sizeInBytes);
+    if (!xml) {
+        DBG("no xml!");
+        return;
+    }
+    loadFromValueTree(juce::ValueTree::fromXml(*xml));
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::createParameterLayout()

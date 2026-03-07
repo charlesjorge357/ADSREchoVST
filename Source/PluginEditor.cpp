@@ -11,7 +11,7 @@
 
 //==============================================================================
 ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+    : AudioProcessorEditor (&p), audioProcessor (p), presetManager (p)
 {
     juce::LookAndFeel::setDefaultLookAndFeel(&customLNF);
 
@@ -55,6 +55,45 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
             bool enabled = parallelEnableToggle.getToggleState();
             masterPanels[1]->setVisible(enabled);
         };
+
+    // Preset name editor
+    presetNameEditor.setTextToShowWhenEmpty("Preset name...", juce::Colours::grey);
+    presetNameEditor.setMultiLine(false);
+    addAndMakeVisible(presetNameEditor);
+
+    // Save button
+    savePresetButton.onClick = [this]
+        {
+            auto name = presetNameEditor.getText().trim();
+            if (name.isEmpty()) return;
+            if (presetManager.savePreset(name))
+            {
+                refreshPresetComboBox();
+                // Select the newly saved preset in the combo box
+                auto names = presetManager.getPresetNames();
+                int idx = names.indexOf(name);
+                if (idx >= 0)
+                    presetComboBox.setSelectedItemIndex(idx, juce::dontSendNotification);
+            }
+        };
+    addAndMakeVisible(savePresetButton);
+
+    // Preset combo box
+    presetComboBox.setTextWhenNothingSelected("-- Load Preset --");
+    presetComboBox.onChange = [this]
+        {
+            int idx = presetComboBox.getSelectedItemIndex();
+            if (idx < 0) return;
+            auto files = presetManager.getPresetFiles();
+            if (juce::isPositiveAndBelow(idx, files.size()))
+            {
+                presetManager.loadPreset(files[idx]);
+                presetNameEditor.setText(files[idx].getFileNameWithoutExtension(),
+                                         juce::dontSendNotification);
+            }
+        };
+    addAndMakeVisible(presetComboBox);
+    refreshPresetComboBox();
 
     // Add module button
     addAndMakeVisible(addButton);
@@ -138,6 +177,12 @@ void ADSREchoAudioProcessorEditor::resized()
     chainSelector.setBounds(top.removeFromLeft(100));
     parallelEnableToggle.setBounds(top.removeFromLeft(30));
 
+    top.removeFromLeft(16); // spacer
+    presetNameEditor.setBounds(top.removeFromLeft(150).withSizeKeepingCentre(150, 26));
+    savePresetButton.setBounds(top.removeFromLeft(60).withSizeKeepingCentre(56, 26));
+    top.removeFromLeft(8); // spacer
+    presetComboBox.setBounds(top.removeFromLeft(200).withSizeKeepingCentre(200, 26));
+
     addButton.setBounds(area.removeFromRight(40).removeFromTop(40));
 
     // Modules on the chain are displayed as side-by-side columns
@@ -167,6 +212,31 @@ void ADSREchoAudioProcessorEditor::timerCallback()
 void ADSREchoAudioProcessorEditor::handleAsyncUpdate()
 {
     rebuildModuleEditors();
+
+    // Sync preset combobox to the restored preset name (mirrors Serum behaviour)
+    refreshPresetComboBox();
+
+    const auto& name = audioProcessor.currentPresetName;
+    if (name.isNotEmpty())
+    {
+        auto names = presetManager.getPresetNames();
+        int idx = names.indexOf(name);
+        presetComboBox.setSelectedId(idx >= 0 ? idx + 1 : 0, juce::dontSendNotification);
+        presetNameEditor.setText(name, juce::dontSendNotification);
+    }
+    else
+    {
+        presetComboBox.setSelectedId(0, juce::dontSendNotification);
+        presetNameEditor.clear();
+    }
+}
+
+void ADSREchoAudioProcessorEditor::refreshPresetComboBox()
+{
+    presetComboBox.clear(juce::dontSendNotification);
+    auto names = presetManager.getPresetNames();
+    for (int i = 0; i < names.size(); ++i)
+        presetComboBox.addItem(names[i], i + 1);
 }
 
 // Rebuilds the module editor list, based on the current module slot list

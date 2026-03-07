@@ -172,6 +172,11 @@
             file="Source/BasicCompressor.h"/>
     </GROUP>
     <FILE id="BSqhBK" name="Convolve.cpp" compile="1" resource="0" file="Source/Convolve.cpp"/>
+    <FILE id="ianb9y" name="MasterPanel.cpp" compile="1" resource="0" file="Source/MasterPanel.cpp"/>
+    <FILE id="sjuKM1" name="MasterPanel.h" compile="0" resource="0" file="Source/MasterPanel.h"/>
+    <FILE id="PsYqDQ" name="PresetManager.cpp" compile="1" resource="0"
+          file="Source/PresetManager.cpp"/>
+    <FILE id="uHA0Q1" name="PresetManager.h" compile="0" resource="0" file="Source/PresetManager.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
