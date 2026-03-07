@@ -103,7 +103,7 @@ void EQPanel::resized()
     const int rows       = 3;
     const int cellWidth  = area.getWidth()  / cols;
     const int cellHeight = area.getHeight() / rows;
-    const int knobSize   = 55;
+    const int knobSize   = 80;
 
     auto placeKnob = [&](juce::Label& label, juce::Slider& slider,
                          int col, int row)

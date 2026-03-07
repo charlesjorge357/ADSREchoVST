@@ -164,7 +164,7 @@ void ReverbPanel::resized()
     const int rows = 4;
     const int cellWidth = area.getWidth() / cols;
     const int cellHeight = area.getHeight() / rows;
-    const int knobSize = 55;
+    const int knobSize = 80;
 
     auto setupKnobInGrid = [&](juce::Label& label, juce::Slider& slider, int col, int row) {
         auto cell = juce::Rectangle<int>(area.getX() + col * cellWidth, area.getY() + row * cellHeight, cellWidth, cellHeight);

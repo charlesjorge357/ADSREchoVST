@@ -35,6 +35,7 @@
 #include "ModuleSlotEditor.h"
 #include "EQModuleSlotEditor.h"
 #include "CompressorModuleSlotEditor.h"
+#include "MasterPanel.h"
 
 //==============================================================================
 /**
@@ -64,27 +65,6 @@ private:
     juce::Viewport moduleViewport;
     juce::Component moduleContainer;
     
-    /*CustomLNF customTypeFace;
-    
-    juce::Image customImage;
-
-
-    ReverbPanel revebPanel;
-    ConvolvePanel convolvePanel;
-    DelayPanel delayPanel;
-    EqualizerPanel equalizerPanel;
-    Compressor compressorPanel;
-    
-
-    juce::TextButton reverbButton;
-    juce::TextButton convolveButton;
-    juce::TextButton delayButton;
-    juce::TextButton equalizerButton;
-    juce::TextButton compressorButton;
-    */
-
-    //juce::Slider masterMix;
-
     juce::TextButton addButton{ "+" };
     std::vector<std::unique_ptr<BaseModuleSlotEditor>> moduleEditors;
 
@@ -94,16 +74,7 @@ private:
     //==============================================================================
     // Master controls (per chain)
     static constexpr int numChains = ADSREchoAudioProcessor::NUM_CHAINS;
-
-    std::array<juce::Slider, numChains> masterMixSliders;
-    std::array<juce::Slider, numChains> gainSliders;
-
-    std::array<std::unique_ptr<
-        juce::AudioProcessorValueTreeState::SliderAttachment>, numChains>
-        masterMixAttachments,
-        gainAttachments;
-
-    std::array<juce::Label, numChains> masterMixLabels, gainLabels;
+    std::array<std::unique_ptr<MasterPanel>, numChains> masterPanels;
 
     //==============================================================================
     // Parallel enable
@@ -115,7 +86,6 @@ private:
     //==============================================================================
     // Refactored helpers
     void rebuildModuleEditors();
-    void setupChainControls(int chainIndex);
 
     //==============================================================================
     // Async + timer

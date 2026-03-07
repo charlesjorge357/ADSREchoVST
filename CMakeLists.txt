@@ -84,6 +84,7 @@ target_sources(ADSREcho
         Source/Convolve.cpp
         Source/DelayPanel.cpp
         Source/EQPanel.cpp
+        Source/MasterPanel.cpp
         Source/ReverbPanel.cpp)
 
 # Binary resources (fonts, images)
