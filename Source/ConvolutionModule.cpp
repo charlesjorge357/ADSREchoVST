@@ -103,3 +103,13 @@ juce::String ConvolutionModule::getCustomIRPath() const
 {
     return convolutionReverb.getCustomIRPath();
 }
+
+void ConvolutionModule::forceReloadIR(int index)
+{
+    convolutionReverb.forceLoadIRAtIndex(index);
+}
+
+bool ConvolutionModule::isIRMissing() const
+{
+    return convolutionReverb.isIRMissing();
+}

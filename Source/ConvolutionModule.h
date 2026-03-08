@@ -33,6 +33,13 @@ public:
     bool hasCustomIR()             const;
     juce::String getCustomIRPath() const;
 
+    // Forces the convolver to reload the IR at the given bank index,
+    // bypassing the cached-index guard. Used after preset restore.
+    void forceReloadIR(int index);
+
+    // True when the last requested bank IR was not found (out of range or file missing).
+    bool isIRMissing() const;
+
 private:
     juce::String moduleID;
     juce::AudioProcessorValueTreeState& state;

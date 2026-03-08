@@ -32,6 +32,13 @@ ConvolutionPanel::ConvolutionPanel()
     addAndMakeVisible(dropDown);
     addAndMakeVisible(browseButton);
 
+    // Missing-IR warning — hidden by default, shown in attachToAPVTS if needed
+    irMissingLabel.setText("! IR not found in bank, using Bypass", juce::dontSendNotification);
+    irMissingLabel.setJustificationType(juce::Justification::centred);
+    irMissingLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+    irMissingLabel.setColour(juce::Label::textColourId, juce::Colour(0xFFFFAA00));
+    addChildComponent(irMissingLabel); // hidden by default; setVisible(true) only when IR is missing
+
     auto setupKnob = [this](juce::Slider& s)
     {
         s.setSliderStyle(juce::Slider::Rotary);
@@ -110,9 +117,11 @@ void ConvolutionPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
             processor.slots[chainIndex][slotIndex]->get()))
     {
         if (mod->hasCustomIR())
+        {
             dropDown.setText(juce::File(mod->getCustomIRPath())
                                  .getFileNameWithoutExtension(),
                              juce::dontSendNotification);
+        }
     }
 
     // onChange - manual gesture because convIrIndex is a float param
@@ -128,11 +137,13 @@ void ConvolutionPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
             p->endChangeGesture();
         }
 
-        // Selecting a bank IR always clears any custom IR
+        // Selecting a bank IR clears any custom IR and dismisses the missing-IR warning
         if (proc)
             if (auto* mod = dynamic_cast<ConvolutionModule*>(
                     proc->slots[chainIdx][slotIdx]->get()))
                 mod->clearCustomIR();
+
+        irMissingLabel.setVisible(false);
     };
 
     // Browse button - async file chooser, same logic as ModuleSlotEditor
@@ -195,7 +206,10 @@ void ConvolutionPanel::resized()
     browseButton.setBounds(irRow.removeFromRight(55));
     dropDown.setBounds(irRow.reduced(4, 0));
 
-    area.removeFromTop(10);
+    // Missing-IR warning row (only visible when needed)
+    irMissingLabel.setBounds(area.removeFromTop(14));
+
+    area.removeFromTop(4);
 
     const int numKnobs  = 5;
     const int cellHeight = area.getHeight() / numKnobs;

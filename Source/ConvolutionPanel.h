@@ -60,6 +60,9 @@ private:
     juce::Label    dropDownLabel;
     juce::TextButton browseButton { "Browse" };
 
+    // Shown when the saved IR index is missing from the user's IR bank
+    juce::Label    irMissingLabel;
+
     juce::Slider   irGainSlider;
     juce::Slider   lowCutSlider;
     juce::Slider   highCutSlider;

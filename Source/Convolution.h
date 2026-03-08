@@ -52,6 +52,12 @@ public:
     bool hasCustomIR()          const { return customIRActive; }
     juce::String getCustomIRPath() const { return customIRPath; }
 
+    // Force reload regardless of cached index (call after preset restore)
+    void forceLoadIRAtIndex(int index);
+
+    // True if the last requested bank IR was missing/out-of-range
+    bool isIRMissing() const { return irMissingFlag; }
+
 private:
     void updateFilters();
     void updatePreDelay();
@@ -65,6 +71,7 @@ private:
     int    currentIRIndex    = -1;
     bool   customIRActive    = false;
     juce::String customIRPath;
+    bool   irMissingFlag     = false;
 
     // Cached filter frequencies - avoids recomputing coefficients when unchanged
     float lastLowCutHz  = -1.0f;

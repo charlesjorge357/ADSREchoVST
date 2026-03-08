@@ -258,21 +258,14 @@ void Convolution::loadIRAtIndex(int index)
         return;
     }
 
-    if (!juce::isPositiveAndBelow(index, irBank->getNumIRs()))
-    {
-        DBG("Convolution::loadIRAtIndex - ERROR: Index out of range: " + juce::String(index));
-        return;
-    }
-
     if (index == currentIRIndex)
         return;
 
-    if (index == 0)
+    // Helper lambda to load the bypass impulse (used for fallback below)
+    auto loadBypass = [this]()
     {
         reset();
-
         std::vector<float> impulse(1, 1.0f);
-
         try
         {
             convolver.loadImpulseResponse(
@@ -281,14 +274,31 @@ void Convolution::loadIRAtIndex(int index)
                 juce::dsp::Convolution::Stereo::no,
                 juce::dsp::Convolution::Trim::no,
                 1);
-
-            DBG("Convolution::loadIRAtIndex - Loaded BYPASS IR");
-            currentIRIndex = 0;
         }
         catch (const std::exception& e)
         {
             DBG("Convolution::loadIRAtIndex - Exception loading bypass IR: " + juce::String(e.what()));
         }
+    };
+
+    if (index == 0)
+    {
+        loadBypass();
+        DBG("Convolution::loadIRAtIndex - Loaded BYPASS IR");
+        currentIRIndex = 0;
+        irMissingFlag  = false;
+        return;
+    }
+
+    // Out-of-range: the user's IR bank has fewer entries than when the preset was saved
+    if (!juce::isPositiveAndBelow(index, irBank->getNumIRs()))
+    {
+        DBG("Convolution::loadIRAtIndex - IR index " + juce::String(index)
+            + " out of range (bank has " + juce::String(irBank->getNumIRs())
+            + " entries). Falling back to Bypass.");
+        loadBypass();
+        currentIRIndex = index; // cache the bad index to stop the audio thread retrying every block
+        irMissingFlag  = true;
         return;
     }
 
@@ -296,14 +306,25 @@ void Convolution::loadIRAtIndex(int index)
 
     if (!irFile.existsAsFile())
     {
-        DBG("Convolution::loadIRAtIndex - ERROR: IR file missing for index "
+        DBG("Convolution::loadIRAtIndex - IR file missing for index "
             + juce::String(index) + ": " + irFile.getFullPathName());
+        loadBypass();
+        currentIRIndex = index; // same: prevent retry loop
+        irMissingFlag  = true;
         return;
     }
 
     reset();
     loadIR(irFile);
     currentIRIndex = index;
+    irMissingFlag  = false;
+}
+
+void Convolution::forceLoadIRAtIndex(int index)
+{
+    currentIRIndex = -1;    // bypass the cached-index guard so loadIRAtIndex always runs
+    irMissingFlag  = false;
+    loadIRAtIndex(index);
 }
 
 void Convolution::loadCustomIR(const juce::File& file)
