@@ -147,6 +147,21 @@
       <FILE id="IjrF4B" name="ProcessorBase.h" compile="0" resource="0" file="Source/ProcessorBase.h"/>
       <FILE id="rb6xHe" name="Convolution.cpp" compile="1" resource="0" file="Source/Convolution.cpp"/>
       <FILE id="M9bvTK" name="Convolution.h" compile="0" resource="0" file="Source/Convolution.h"/>
+      <FILE id="Nu1cAB" name="NonUniformConvolver.cpp" compile="1" resource="0"
+            file="Source/NonUniformConvolver.cpp"/>
+      <FILE id="Nu1cAC" name="NonUniformConvolver.h" compile="0" resource="0"
+            file="Source/NonUniformConvolver.h"/>
+      <FILE id="fc1AAA" name="AudioFFT.cpp" compile="1" resource="0" file="Source/fftconvolver/AudioFFT.cpp"/>
+      <FILE id="fc1AAB" name="AudioFFT.h" compile="0" resource="0" file="Source/fftconvolver/AudioFFT.h"/>
+      <FILE id="fc1AAC" name="FFTConvolver.cpp" compile="1" resource="0"
+            file="Source/fftconvolver/FFTConvolver.cpp"/>
+      <FILE id="fc1AAD" name="FFTConvolver.h" compile="0" resource="0" file="Source/fftconvolver/FFTConvolver.h"/>
+      <FILE id="fc1AAE" name="TwoStageFFTConvolver.cpp" compile="1" resource="0"
+            file="Source/fftconvolver/TwoStageFFTConvolver.cpp"/>
+      <FILE id="fc1AAF" name="TwoStageFFTConvolver.h" compile="0" resource="0"
+            file="Source/fftconvolver/TwoStageFFTConvolver.h"/>
+      <FILE id="fc1AAG" name="Utilities.cpp" compile="1" resource="0" file="Source/fftconvolver/Utilities.cpp"/>
+      <FILE id="fc1AAH" name="Utilities.h" compile="0" resource="0" file="Source/fftconvolver/Utilities.h"/>
       <FILE id="HDEqaF" name="Utilities.h" compile="0" resource="0" file="Source/Utilities.h"/>
       <FILE id="H4DcER" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>

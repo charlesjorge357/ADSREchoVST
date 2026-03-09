@@ -64,6 +64,11 @@ target_sources(ADSREcho
         Source/BasicEQ.cpp
         Source/CompressorModule.cpp
         Source/Convolution.cpp
+        Source/NonUniformConvolver.cpp
+        Source/fftconvolver/AudioFFT.cpp
+        Source/fftconvolver/FFTConvolver.cpp
+        Source/fftconvolver/TwoStageFFTConvolver.cpp
+        Source/fftconvolver/Utilities.cpp
         Source/ConvolutionModule.cpp
         Source/CustomDelays.cpp
         Source/DatorroHall.cpp
@@ -105,6 +110,12 @@ target_compile_definitions(ADSREcho
         JUCE_REPORT_APP_USAGE=0
 )
 
+# MSVC x64 doesn't define __SSE__ even though SSE is always available on x64.
+# Enable it explicitly so fftconvolver uses aligned allocation + vectorised multiply-accumulate.
+if(MSVC)
+    target_compile_definitions(ADSREcho PRIVATE FFTCONVOLVER_USE_SSE)
+endif()
+
 # Link JUCE modules
 target_link_libraries(ADSREcho
     PRIVATE
@@ -122,6 +133,7 @@ target_link_libraries(ADSREcho
 target_include_directories(ADSREcho
     PRIVATE
         Source
+        Source/fftconvolver
 )
 
 # macOS specific compiler options

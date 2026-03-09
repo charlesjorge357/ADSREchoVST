@@ -32,4 +32,18 @@ private:
     juce::AudioProcessorValueTreeState& state;
     DatorroHall datorroReverb;
     HybridPlate hybridPlateReverb;
+
+    // Cached raw param pointers — built once in rebuildParamIDs(), avoids
+    // string allocation every processBlock
+    std::atomic<float>* pMix        = nullptr;
+    std::atomic<float>* pRoomSize   = nullptr;
+    std::atomic<float>* pDecayTime  = nullptr;
+    std::atomic<float>* pDamping    = nullptr;
+    std::atomic<float>* pModRate    = nullptr;
+    std::atomic<float>* pModDepth   = nullptr;
+    std::atomic<float>* pPreDelay   = nullptr;
+    std::atomic<float>* pEnabled    = nullptr;
+    std::atomic<float>* pReverbType = nullptr;
+
+    void rebuildParamIDs();
 };

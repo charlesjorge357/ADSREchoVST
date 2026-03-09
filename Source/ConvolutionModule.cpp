@@ -18,14 +18,14 @@ ConvolutionModule::ConvolutionModule(const juce::String& id,
 
 void ConvolutionModule::rebuildParamIDs()
 {
-    // Build all parameter ID strings once so process() never allocates
-    pMix      = moduleID + ".mix";
-    pPreDelay = moduleID + ".preDelay";
-    pIrIndex  = moduleID + ".convIrIndex";
-    pIrGain   = moduleID + ".convIrGain";
-    pLowCut   = moduleID + ".convLowCut";
-    pHighCut  = moduleID + ".convHighCut";
-    pEnabled  = moduleID + ".enabled";
+    // Cache raw pointers once so process() does direct atomic loads, not HashMap lookups
+    pMix      = state.getRawParameterValue(moduleID + ".mix");
+    pPreDelay = state.getRawParameterValue(moduleID + ".preDelay");
+    pIrIndex  = state.getRawParameterValue(moduleID + ".convIrIndex");
+    pIrGain   = state.getRawParameterValue(moduleID + ".convIrGain");
+    pLowCut   = state.getRawParameterValue(moduleID + ".convLowCut");
+    pHighCut  = state.getRawParameterValue(moduleID + ".convHighCut");
+    pEnabled  = state.getRawParameterValue(moduleID + ".enabled");
 }
 
 void ConvolutionModule::prepare(const juce::dsp::ProcessSpec& spec)
@@ -36,19 +36,19 @@ void ConvolutionModule::prepare(const juce::dsp::ProcessSpec& spec)
 void ConvolutionModule::process(juce::AudioBuffer<float>& buffer,
                                 juce::MidiBuffer& midi)
 {
-    ConvolutionParameters params;
+    if (pEnabled->load() < 0.5f)
+        return;
 
-    params.mix       = state.getRawParameterValue(pMix)     ->load();
-    params.preDelay  = state.getRawParameterValue(pPreDelay) ->load();
-    params.irIndex   = (int)state.getRawParameterValue(pIrIndex)  ->load();
-    params.irGainDb  = state.getRawParameterValue(pIrGain)   ->load();
-    params.lowCutHz  = state.getRawParameterValue(pLowCut)   ->load();
-    params.highCutHz = state.getRawParameterValue(pHighCut)  ->load();
+    ConvolutionParameters params;
+    params.mix       = pMix->load();
+    params.preDelay  = pPreDelay->load();
+    params.irIndex   = (int) pIrIndex->load();
+    params.irGainDb  = pIrGain->load();
+    params.lowCutHz  = pLowCut->load();
+    params.highCutHz = pHighCut->load();
 
     convolutionReverb.setParameters(params);
-
-    if (*state.getRawParameterValue(pEnabled) > 0.5f)
-        convolutionReverb.processBlock(buffer, midi);
+    convolutionReverb.processBlock(buffer, midi);
 }
 
 std::vector<juce::String> ConvolutionModule::getUsedParameters() const

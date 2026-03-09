@@ -239,6 +239,12 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
 
     const float slew = 0.001f; // modulation slew
 
+    // Hoist base delay computation (depends only on roomSize, constant per block)
+    float precomputedBase[fdnCount];
+    for (int i = 0; i < fdnCount; ++i)
+        precomputedBase[i] = juce::jlimit(1.0f, maxDelaySamples[i],
+                                          baseDelaySamples[i] * roomSize);
+
     for (int n = 0; n < numSamples; ++n)
     {
         const float dryL = left[n];
@@ -285,8 +291,8 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
         const float lfoVals[fdnCount] = {
             lfo0,
             lfo90,
-            std::tanh(lfo0 + 0.5f * lfo90),
-            std::tanh(lfo90 - 0.5f * lfo0)
+            fastTanh(lfo0 + 0.5f * lfo90),
+            fastTanh(lfo90 - 0.5f * lfo0)
         };
 
         //===========================
@@ -296,8 +302,7 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
 
         for (int i = 0; i < fdnCount; ++i)
         {
-            const float base = juce::jlimit(1.0f, maxDelaySamples[i],
-                                            baseDelaySamples[i] * roomSize);
+            const float base = precomputedBase[i];
 
             const float modRatio   = 0.003f; // 0.3% of base -> subtle plate motion
             const float modSamples = base * modRatio * modDepth * lfoVals[i];

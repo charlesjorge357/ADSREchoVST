@@ -337,6 +337,19 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
 
     const float slew = 0.001f; // Smooth modulation
 
+    // Hoist loop-invariant modulation bases (depend only on roomSize/decay, constant per block)
+    const float normDecay    = juce::jlimit(0.0f, 1.0f, decaySec / 20.0f);
+    const float densityScale = 1.0f + 0.20f * normDecay;
+
+    float precomputedBaseL[4], precomputedBaseR[4];
+    for (int i = 0; i < 4; ++i)
+    {
+        precomputedBaseL[i] = juce::jlimit(1.0f, maxDelaySamplesL[i],
+                                           baseDelaySamplesL[i] * roomSize * densityScale);
+        precomputedBaseR[i] = juce::jlimit(1.0f, maxDelaySamplesR[i],
+                                           baseDelaySamplesR[i] * roomSize * densityScale);
+    }
+
     //===============================
     // Process samples
     //===============================
@@ -412,38 +425,26 @@ void DatorroHall::processBlock(juce::AudioBuffer<float>& buffer,
         {
             lfo0,
             lfo90,
-            std::tanh(lfo0 + 0.5f * lfo90),
-            std::tanh(lfo90 - 0.5f * lfo0)
+            fastTanh(lfo0 + 0.5f * lfo90),
+            fastTanh(lfo90 - 0.5f * lfo0)
         };
 
 
 
 
         //===========================
-        // PER-LINE MODULATION (with decay-dependent density scaling)
+        // PER-LINE MODULATION
         //===========================
-
-        // Decay → echo-density scaling factor
-        const float normDecay = juce::jlimit(0.0f, 1.0f, decaySec / 20.0f);
-        const float densityScale = 1.0f + 0.20f * normDecay;  // up to +20% delay stretch
-
         for (int i = 0; i < 4; ++i)
         {
-            // Base delay now stretches with decay length
-            const float baseL = juce::jlimit(1.0f, maxDelaySamplesL[i],
-                                             baseDelaySamplesL[i] * roomSize * densityScale);
+            const float baseL = precomputedBaseL[i];
+            const float baseR = precomputedBaseR[i];
 
-            const float baseR = juce::jlimit(1.0f, maxDelaySamplesR[i],
-                                             baseDelaySamplesR[i] * roomSize * densityScale);
+            const float modSampsL = baseL * 0.01f * modDepth * lfoVals[i];
+            const float modSampsR = baseR * 0.01f * modDepth * lfoVals[i];
 
-            const float modRatio  = 0.01f;  // 1% modulation
-            const float modSampsL = baseL * modRatio * modDepth * lfoVals[i];
-            const float modSampsR = baseR * modRatio * modDepth * lfoVals[i];
-
-            const float targetL = juce::jlimit(1.0f, maxDelaySamplesL[i],
-                                               baseL + modSampsL);
-            const float targetR = juce::jlimit(1.0f, maxDelaySamplesR[i],
-                                               baseR + modSampsR);
+            const float targetL = juce::jlimit(1.0f, maxDelaySamplesL[i], baseL + modSampsL);
+            const float targetR = juce::jlimit(1.0f, maxDelaySamplesR[i], baseR + modSampsR);
 
             currentDelayL_samps[i] += slew * (targetL - currentDelayL_samps[i]);
             currentDelayR_samps[i] += slew * (targetR - currentDelayR_samps[i]);
@@ -587,8 +588,11 @@ ReverbProcessorParameters& DatorroHall::getParameters()
 
 void DatorroHall::setParameters(const ReverbProcessorParameters& params)
 {
-    parameters = params;
-    updateInternalParamsFromUserParams();
+    if (!(params == parameters))
+    {
+        parameters = params;
+        updateInternalParamsFromUserParams();
+    }
 }
 
 //==============================================================================

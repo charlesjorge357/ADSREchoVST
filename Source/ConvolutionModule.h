@@ -46,8 +46,14 @@ private:
 
     Convolution convolutionReverb;
 
-    // Pre-built parameter IDs - avoids String heap allocation every process block
-    juce::String pMix, pPreDelay, pIrIndex, pIrGain, pLowCut, pHighCut, pEnabled;
+    // Cached raw pointers — built once in rebuildParamIDs(), avoids HashMap lookup every block
+    std::atomic<float>* pMix      = nullptr;
+    std::atomic<float>* pPreDelay = nullptr;
+    std::atomic<float>* pIrIndex  = nullptr;
+    std::atomic<float>* pIrGain   = nullptr;
+    std::atomic<float>* pLowCut   = nullptr;
+    std::atomic<float>* pHighCut  = nullptr;
+    std::atomic<float>* pEnabled  = nullptr;
 
     void rebuildParamIDs();
 };

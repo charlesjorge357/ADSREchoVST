@@ -131,6 +131,11 @@ private:
 
     std::vector<int> numModules = std::vector<int>(NUM_CHAINS, 0);
 
+    // Cached raw param pointers for processBlock hot path (avoids string allocation per block)
+    std::atomic<float>* pParallelEnabled            = nullptr;
+    std::atomic<float>* pChainMasterMix[NUM_CHAINS] = {};
+    std::atomic<float>* pChainGain[NUM_CHAINS]      = {};
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
 };

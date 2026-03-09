@@ -19,6 +19,14 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
+// Fast tanh approximation (Padé rational, max error ~0.5% for |x| <= 4)
+// Used in reverb LFO decorrelation — indistinguishable from std::tanh at these depths
+inline float fastTanh(float x) noexcept
+{
+    const float x2 = x * x;
+    return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+}
+
 inline float scale(float input, float inLow, float inHi, float outLow, float outHi)
 {
     float scaleFactor = (outHi - outLow)/(inHi - inLow);

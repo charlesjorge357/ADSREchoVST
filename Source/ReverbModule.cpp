@@ -9,7 +9,22 @@
 
 #include "ReverbModule.h"
 ReverbModule::ReverbModule(const juce::String& id, juce::AudioProcessorValueTreeState& apvts)
-    : moduleID(id), state(apvts) {
+    : moduleID(id), state(apvts)
+{
+    rebuildParamIDs();
+}
+
+void ReverbModule::rebuildParamIDs()
+{
+    pMix        = state.getRawParameterValue(moduleID + ".mix");
+    pRoomSize   = state.getRawParameterValue(moduleID + ".roomSize");
+    pDecayTime  = state.getRawParameterValue(moduleID + ".decayTime");
+    pDamping    = state.getRawParameterValue(moduleID + ".damping");
+    pModRate    = state.getRawParameterValue(moduleID + ".modRate");
+    pModDepth   = state.getRawParameterValue(moduleID + ".modDepth");
+    pPreDelay   = state.getRawParameterValue(moduleID + ".preDelay");
+    pEnabled    = state.getRawParameterValue(moduleID + ".enabled");
+    pReverbType = state.getRawParameterValue(moduleID + ".reverbType");
 }
 
 void ReverbModule::prepare(const juce::dsp::ProcessSpec& spec)
@@ -20,31 +35,28 @@ void ReverbModule::prepare(const juce::dsp::ProcessSpec& spec)
 
 void ReverbModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
+    if (pEnabled->load() < 0.5f)
+        return;
+
     ReverbProcessorParameters params;
-    params.mix = state.getRawParameterValue(moduleID + ".mix")->load();
-    params.roomSize = state.getRawParameterValue(moduleID + ".roomSize")->load();
-    params.decayTime = state.getRawParameterValue(moduleID + ".decayTime")->load();
-    params.damping = state.getRawParameterValue(moduleID + ".damping")->load();
-    params.modRate = state.getRawParameterValue(moduleID + ".modRate")->load();
-    params.modDepth = state.getRawParameterValue(moduleID + ".modDepth")->load();
-    params.preDelay = state.getRawParameterValue(moduleID + ".preDelay")->load();
-    
+    params.mix       = pMix->load();
+    params.roomSize  = pRoomSize->load();
+    params.decayTime = pDecayTime->load();
+    params.damping   = pDamping->load();
+    params.modRate   = pModRate->load();
+    params.modDepth  = pModDepth->load();
+    params.preDelay  = pPreDelay->load();
 
-    datorroReverb.setParameters(params);
-    hybridPlateReverb.setParameters(params);
-
-    if (*state.getRawParameterValue(moduleID + ".enabled") == true) 
-    { 
-        if (static_cast<int>(state.getRawParameterValue(moduleID + ".reverbType")->load()) == 0)
-        {
-            datorroReverb.processBlock(buffer, midi);
-        }
-        else 
-        {
-            hybridPlateReverb.processBlock(buffer, midi);
-        }
+    if (static_cast<int>(pReverbType->load()) == 0)
+    {
+        datorroReverb.setParameters(params);
+        datorroReverb.processBlock(buffer, midi);
     }
-
+    else
+    {
+        hybridPlateReverb.setParameters(params);
+        hybridPlateReverb.processBlock(buffer, midi);
+    }
 }
 
 std::vector<juce::String> ReverbModule::getUsedParameters() const
@@ -61,7 +73,7 @@ std::vector<juce::String> ReverbModule::getUsedParameters() const
     };
 }
 
-void ReverbModule::setID(juce::String& newID) { moduleID = newID; }
+void ReverbModule::setID(juce::String& newID) { moduleID = newID; rebuildParamIDs(); }
 
 juce::String ReverbModule::getID() const { return moduleID; }
 juce::String ReverbModule::getType() const { return "Reverb"; }

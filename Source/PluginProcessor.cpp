@@ -35,6 +35,15 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
             slots[j].push_back(std::make_unique<ModuleSlot>(prefix));
         }
     }
+
+    // Cache hot-path param pointers once — avoids String heap allocation in processBlock
+    pParallelEnabled = apvts.getRawParameterValue("parallelEnabled");
+    for (int j = 0; j < NUM_CHAINS; j++)
+    {
+        juce::String prefix = "chain_" + juce::String(j);
+        pChainMasterMix[j] = apvts.getRawParameterValue(prefix + ".masterMix");
+        pChainGain[j]      = apvts.getRawParameterValue(prefix + ".gain");
+    }
 }
 
 ADSREchoAudioProcessor::~ADSREchoAudioProcessor()
@@ -205,7 +214,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
     buffer.clear();
     // Process the audio through each module slot effect
-    bool parallelEnabled = apvts.getRawParameterValue("parallelEnabled")->load();
+    const bool parallelEnabled = pParallelEnabled->load() > 0.5f;
 
     for (int chainIndex = 0; chainIndex < NUM_CHAINS - !parallelEnabled; chainIndex++)
     {
@@ -222,8 +231,8 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         }
 
         // ===== Chain mix =====
-        float wet = apvts.getRawParameterValue("chain_" + juce::String(chainIndex) + ".masterMix")->load();
-        float dry = 1.0f - wet;
+        const float wet = pChainMasterMix[chainIndex]->load();
+        const float dry = 1.0f - wet;
 
         for (int ch = 0; ch < totalNumInputChannels; ++ch)
         {
@@ -235,7 +244,7 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         }
 
         // ===== Chain gain =====
-        float gainValue = apvts.getRawParameterValue("chain_" + juce::String(chainIndex) + ".gain")->load();
+        const float gainValue = pChainGain[chainIndex]->load();
         chainTempBuffer.applyGain(juce::Decibels::decibelsToGain(gainValue));
 
         for (int ch = 0; ch < totalNumInputChannels; ++ch)

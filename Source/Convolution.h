@@ -1,10 +1,20 @@
 #pragma once
 
+// ---------------------------------------------------------------------------
+// Engine selection — flip to 0 to use JUCE's built-in convolver instead.
+// ---------------------------------------------------------------------------
+#define USE_CUSTOM_CONVOLVER 1
+
 #if __has_include("JuceHeader.h")
   #include "JuceHeader.h"
 #else
   #include <juce_audio_basics/juce_audio_basics.h>
+  #include <juce_audio_formats/juce_audio_formats.h>
   #include <juce_dsp/juce_dsp.h>
+#endif
+
+#if USE_CUSTOM_CONVOLVER
+  #include "fftconvolver/TwoStageFFTConvolver.h"
 #endif
 
 // Forward declaration
@@ -23,7 +33,8 @@ struct ConvolutionParameters
     float highCutHz  = 12000.0f; // low pass cutoff
 };
 
-// Simple stereo convolution reverb wrapper using juce::dsp::Convolution
+// Stereo convolution reverb wrapper.
+// Engine selected at compile time via USE_CUSTOM_CONVOLVER.
 class Convolution
 {
 public:
@@ -62,6 +73,15 @@ private:
     void updateFilters();
     void updatePreDelay();
 
+#if USE_CUSTOM_CONVOLVER
+    // Reads a stereo (or mono duplicated to stereo) IR from a file,
+    // resampling to targetSampleRate if the file's native rate differs.
+    using StereoIR = std::pair<std::vector<float>, std::vector<float>>;
+    static StereoIR readStereoIR(const juce::File& file, double targetSampleRate);
+    static StereoIR readStereoIRFromMemory(const void* data, size_t dataSize, double targetSampleRate);
+    void loadCustomEngineIR(const std::vector<float>& irL, const std::vector<float>& irR);
+#endif
+
     ConvolutionParameters parameters;
 
     bool   prepared          = false;
@@ -79,7 +99,20 @@ private:
 
     std::shared_ptr<IRBank> irBank;
 
-    juce::dsp::Convolution convolver;
+#if USE_CUSTOM_CONVOLVER
+    // Two mono convolvers — L and R convolved separately to preserve stereo IRs.
+    fftconvolver::TwoStageFFTConvolver convolverL;
+    fftconvolver::TwoStageFFTConvolver convolverR;
+    size_t headBlockSize_ = 512;
+    size_t tailBlockSize_ = 4096;
+    // Scratch buffer: TwoStageFFTConvolver requires separate input/output pointers.
+    // After the head convolver writes to output, the tail reads from "input" — if
+    // input==output, the tail gets the head's result instead of the dry signal,
+    // causing runaway feedback for IRs longer than tailBlockSize samples.
+    std::vector<float> monoInBuf;
+#else
+    juce::dsp::Convolution convolver { juce::dsp::Convolution::NonUniform { 8192 } };
+#endif
 
     static constexpr int kMaxPreDelaySeconds = 2;
     static constexpr int kMaxSampleRate      = 192000;
