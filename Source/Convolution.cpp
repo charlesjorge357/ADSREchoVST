@@ -2,7 +2,17 @@
 #include "IRBank.h"
 
 Convolution::Convolution() {}
-Convolution::~Convolution() {}
+
+Convolution::~Convolution()
+{
+#if USE_CUSTOM_CONVOLVER
+    // Stop background threads explicitly here, before member destructors run.
+    // This ensures threads are joined while the TwoStageFFTConvolver data they
+    // access is still valid, and before JUCE's thread infrastructure tears down.
+    convolverL.stopBackgroundThread();
+    convolverR.stopBackgroundThread();
+#endif
+}
 
 // ===========================================================================
 // prepare
@@ -68,6 +78,9 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
 void Convolution::reset()
 {
 #if USE_CUSTOM_CONVOLVER
+    // Ensure background tail work is finished before wiping convolver state.
+    convolverL.waitForCompletion();
+    convolverR.waitForCompletion();
     convolverL.reset();
     convolverR.reset();
 #else
@@ -351,6 +364,11 @@ void Convolution::loadCustomEngineIR(const std::vector<float>& irL, const std::v
     for (float s : irL)  sumSq += (double)s * s;
     for (float s : useR) sumSq += (double)s * s;
     const float energy = (float)std::sqrt(sumSq);
+
+    // Wait for any in-flight tail work before swapping the IR — init() calls
+    // reset() which clears the convolver state the background thread is reading.
+    convolverL.waitForCompletion();
+    convolverR.waitForCompletion();
 
     if (energy > 1e-6f)
     {

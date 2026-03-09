@@ -15,7 +15,96 @@
 
 #if USE_CUSTOM_CONVOLVER
   #include "fftconvolver/TwoStageFFTConvolver.h"
-#endif
+
+// ---------------------------------------------------------------------------
+// ThreadedConvolver — TwoStageFFTConvolver with background tail processing.
+//
+// The tail convolver works on blocks of tailBlockSize samples (typically
+// 4096+). In the base class this runs synchronously on the audio thread,
+// causing a periodic CPU spike. Here we override the two virtual hooks so
+// the tail FFT runs on a dedicated background thread, keeping the audio
+// callback short and consistent.
+// ---------------------------------------------------------------------------
+class ThreadedConvolver : public fftconvolver::TwoStageFFTConvolver,
+                          private juce::Thread
+{
+public:
+    ThreadedConvolver() : juce::Thread("ConvolverTail")
+    {
+        // Pre-signal doneEvent so the first waitForBackgroundProcessing()
+        // call returns immediately (nothing has been started yet).
+        // NOTE: thread is NOT started here — FL Studio crashes if threads are
+        // spawned during plugin construction. Thread starts on first init() call.
+        doneEvent.signal();
+    }
+
+    ~ThreadedConvolver() override
+    {
+        stopBackgroundThread();
+    }
+
+    // Wraps base class init() to start the background thread on first call.
+    // Always called from the main/message thread (not the audio thread).
+    bool init(size_t headBlockSize, size_t tailBlockSize,
+              const fftconvolver::Sample* ir, size_t irLen)
+    {
+        if (!isThreadRunning())
+            juce::Thread::startThread();
+        return TwoStageFFTConvolver::init(headBlockSize, tailBlockSize, ir, irLen);
+    }
+
+    // Explicitly stops the background thread. Safe to call multiple times.
+    // Call this before destroying any state the background thread may access.
+    void stopBackgroundThread()
+    {
+        signalThreadShouldExit();
+        startEvent.signal(); // break out of wait(100) immediately
+        waitForThreadToExit(500);
+        doneEvent.signal(); // unblock any waitForCompletion() that's still waiting
+    }
+
+    // Call before init() / reset() to ensure in-flight tail work has finished.
+    void waitForCompletion() { waitForBackgroundProcessing(); }
+
+private:
+    void run() override
+    {
+        while (!threadShouldExit())
+        {
+            // Poll with 100ms timeout so signalThreadShouldExit() is always
+            // noticed within 100ms even if startEvent.signal() is missed.
+            if (startEvent.wait(100) && !threadShouldExit())
+            {
+                doBackgroundProcessing();
+                doneEvent.signal();
+            }
+        }
+    }
+
+    void startBackgroundProcessing() override
+    {
+        // Clear done state BEFORE waking the thread so waitForBackgroundProcessing()
+        // can't miss the completion signal (manual-reset: stays clear until we signal).
+        doneEvent.reset();
+        startEvent.signal();
+    }
+
+    void waitForBackgroundProcessing() override
+    {
+        // Manual-reset doneEvent stays signaled between work cycles, so this is
+        // always safe: if no work is in flight it returns immediately; if work is
+        // in flight it blocks until the thread calls doneEvent.signal().
+        doneEvent.wait(-1);
+    }
+
+    // auto-reset: wakes one wait() then clears automatically
+    juce::WaitableEvent startEvent;
+    // manual-reset (true): stays signaled until reset() — safe to call multiple
+    // times with no work in flight, pre-signaled so first wait is a no-op.
+    juce::WaitableEvent doneEvent { true };
+};
+
+#endif // USE_CUSTOM_CONVOLVER
 
 // Forward declaration
 class IRBank;
@@ -101,8 +190,9 @@ private:
 
 #if USE_CUSTOM_CONVOLVER
     // Two mono convolvers — L and R convolved separately to preserve stereo IRs.
-    fftconvolver::TwoStageFFTConvolver convolverL;
-    fftconvolver::TwoStageFFTConvolver convolverR;
+    // ThreadedConvolver offloads the tail FFT to a background thread.
+    ThreadedConvolver convolverL;
+    ThreadedConvolver convolverR;
     size_t headBlockSize_ = 512;
     size_t tailBlockSize_ = 4096;
     // Scratch buffer: TwoStageFFTConvolver requires separate input/output pointers.
