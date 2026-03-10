@@ -15,25 +15,42 @@
 #include "DelayModule.h"
 
 DelayModule::DelayModule(const juce::String& id, juce::AudioProcessorValueTreeState& apvts)
-    : moduleID(id), state(apvts) {}
+    : moduleID(id), state(apvts)
+{
+    rebuildParamCache();
+}
 
 void DelayModule::prepare(const juce::dsp::ProcessSpec& spec)
 {
     delay.prepare(spec);
 }
 
+void DelayModule::rebuildParamCache()
+{
+    pMix         = state.getRawParameterValue(moduleID + ".mix");
+    pFeedback    = state.getRawParameterValue(moduleID + ".feedback");
+    pSyncEnabled = state.getRawParameterValue(moduleID + ".delaySyncEnabled");
+    pBpm         = state.getRawParameterValue(moduleID + ".delayBpm");
+    pNoteDiv     = state.getRawParameterValue(moduleID + ".delayNoteDiv");
+    pDelayTime   = state.getRawParameterValue(moduleID + ".delayTime");
+    pMode        = state.getRawParameterValue(moduleID + ".delayMode");
+    pPan         = state.getRawParameterValue(moduleID + ".delayPan");
+    pLowpass     = state.getRawParameterValue(moduleID + ".delayLowpass");
+    pHighpass    = state.getRawParameterValue(moduleID + ".delayHighpass");
+    pEnabled     = state.getRawParameterValue(moduleID + ".enabled");
+}
+
 void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /*midi*/)
 {
-    delay.setMix     (*state.getRawParameterValue(moduleID + ".mix"));
-    delay.setFeedback(*state.getRawParameterValue(moduleID + ".feedback"));
+    delay.setMix     (pMix->load());
+    delay.setFeedback(pFeedback->load());
 
-    const bool syncEnabled =
-        state.getRawParameterValue(moduleID + ".delaySyncEnabled")->load() > 0.5f;
+    const bool syncEnabled = pSyncEnabled->load() > 0.5f;
 
     if (syncEnabled)
     {
         // Resolve BPM: prefer host transport, fall back to manual parameter
-        float bpm = state.getRawParameterValue(moduleID + ".delayBpm")->load();
+        float bpm = pBpm->load();
         if (playHead)
         {
             if (auto posInfo = playHead->getPosition())
@@ -79,8 +96,7 @@ void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /*
             2,   // TripletSixteenth -> fallback Quarter
         };
 
-        const int rawIndex = static_cast<int>(
-            state.getRawParameterValue(moduleID + ".delayNoteDiv")->load());
+        const int rawIndex = static_cast<int>(pNoteDiv->load());
 
         const int safeIndex = (rawIndex >= 0 && rawIndex < 14) ? rawIndex : 2;
         const auto division = static_cast<BasicDelay::SyncDivision>(kDivisionMap[safeIndex]);
@@ -92,18 +108,16 @@ void DelayModule::process(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /*
     else
     {
         // Free-running ms delay -- smoother handles the glide
-        delay.setDelayTime(
-            state.getRawParameterValue(moduleID + ".delayTime")->load());
+        delay.setDelayTime(pDelayTime->load());
     }
 
-    const int modeChoice = static_cast<int>(
-        state.getRawParameterValue(moduleID + ".delayMode")->load());
+    const int modeChoice = static_cast<int>(pMode->load());
     delay.setMode(static_cast<BasicDelay::DelayMode>(modeChoice));
-    delay.setPan         (*state.getRawParameterValue(moduleID + ".delayPan"));
-    delay.setLowpassFreq (*state.getRawParameterValue(moduleID + ".delayLowpass"));
-    delay.setHighpassFreq(*state.getRawParameterValue(moduleID + ".delayHighpass"));
+    delay.setPan         (pPan->load());
+    delay.setLowpassFreq (pLowpass->load());
+    delay.setHighpassFreq(pHighpass->load());
 
-    if (*state.getRawParameterValue(moduleID + ".enabled") > 0.5f)
+    if (pEnabled->load() > 0.5f)
         delay.processBlock(buffer);
 }
 
@@ -123,7 +137,7 @@ std::vector<juce::String> DelayModule::getUsedParameters() const
     };
 }
 
-void DelayModule::setID(juce::String& newID)              { moduleID = newID; }
+void DelayModule::setID(juce::String& newID)              { moduleID = newID; rebuildParamCache(); }
 void DelayModule::setPlayHead(juce::AudioPlayHead* ph)    { playHead = ph; }
 juce::String DelayModule::getID()   const                 { return moduleID; }
 juce::String DelayModule::getType() const                 { return "Delay"; }

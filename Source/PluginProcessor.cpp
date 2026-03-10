@@ -237,10 +237,11 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         for (int ch = 0; ch < totalNumInputChannels; ++ch)
         {
             auto* wetData = chainTempBuffer.getWritePointer(ch);
-            auto* dryData = masterDryBuffer.getReadPointer(ch);
+            const auto* dryData = masterDryBuffer.getReadPointer(ch);
 
-            for (int i = 0; i < numSamples; ++i)
-                wetData[i] = dryData[i] * dry + wetData[i] * wet;
+            // SIMD: wetData = wetData*wet + dryData*dry
+            juce::FloatVectorOperations::multiply(wetData, wet, numSamples);
+            juce::FloatVectorOperations::addWithMultiply(wetData, dryData, dry, numSamples);
         }
 
         // ===== Chain gain =====

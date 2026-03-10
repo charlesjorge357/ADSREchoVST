@@ -28,9 +28,24 @@ public:
 
     void setPlayHead(juce::AudioPlayHead *playhead) override;
 
+    void rebuildParamCache();
+
 private:
     juce::String moduleID;
     juce::AudioProcessorValueTreeState& state;
     juce::AudioPlayHead *playHead = nullptr;
     BasicDelay delay;
+
+    // Cached parameter pointers — rebuilt in rebuildParamCache()
+    std::atomic<float>* pMix             = nullptr;
+    std::atomic<float>* pFeedback        = nullptr;
+    std::atomic<float>* pSyncEnabled     = nullptr;
+    std::atomic<float>* pBpm             = nullptr;
+    std::atomic<float>* pNoteDiv         = nullptr;
+    std::atomic<float>* pDelayTime       = nullptr;
+    std::atomic<float>* pMode            = nullptr;
+    std::atomic<float>* pPan             = nullptr;
+    std::atomic<float>* pLowpass         = nullptr;
+    std::atomic<float>* pHighpass        = nullptr;
+    std::atomic<float>* pEnabled         = nullptr;
 };

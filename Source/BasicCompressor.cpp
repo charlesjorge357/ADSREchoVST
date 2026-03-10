@@ -40,8 +40,22 @@ void BasicCompressor::processBlock(juce::AudioBuffer<float>& buffer)
     const float inputLinear  = juce::Decibels::decibelsToGain(inputGainDb);
     const float outputLinear = juce::Decibels::decibelsToGain(outputGainDb);
 
+    // Program-dependent attack/release coefficients — updated every 8 samples.
+    // std::exp() is expensive; updating at sub-block rate (8x reduction) is
+    // audibly transparent since time constants change on the envelope timescale.
+    double aCoeff = attackCoeff;
+    double rCoeff = releaseCoeff;
+
     for (int i = 0; i < numSamples; ++i)
     {
+        // Refresh program-dependent coefficients every 8 samples
+        if ((i & 7) == 0)
+        {
+            double envDbForCoeff = juce::Decibels::gainToDecibels((float)envelopeState);
+            aCoeff = computeAttackCoeff(envDbForCoeff);
+            rCoeff = computeReleaseCoeff(envDbForCoeff);
+        }
+
         // ---- Input gain stage ----
         float inL = leftData[i] * inputLinear;
         float inR = (rightData != nullptr) ? rightData[i] * inputLinear : inL;
@@ -57,14 +71,7 @@ void BasicCompressor::processBlock(juce::AudioBuffer<float>& buffer)
         double instantPower = 0.5 * ((double)detL * detL + (double)detR * detR);
         double instantRms   = std::sqrt(instantPower + 1e-18); // epsilon avoids log(0)
 
-        // ---- Program-dependent envelope follower ----
-        // LA-2A style: attack speeds up for louder signals,
-        // release slows down for sustained content (SSL "auto" release feel)
-        double inputDb = juce::Decibels::gainToDecibels((float)instantRms);
-
-        double aCoeff = computeAttackCoeff(inputDb);
-        double rCoeff = computeReleaseCoeff(inputDb);
-
+        // ---- Envelope follower ----
         if (instantRms > envelopeState)
             envelopeState = aCoeff * envelopeState + (1.0 - aCoeff) * instantRms;
         else
