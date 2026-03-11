@@ -8,17 +8,16 @@
 
 #include "CompressorDisplayComponent.h"
 
-CompressorDisplayComponent::CompressorDisplayComponent(CompressorModule& modRef)
-    : mod(modRef)
+CompressorDisplayComponent::CompressorDisplayComponent()
 {
-    // Repaint at 60 Hz (same rate as EQDisplayComponent)
     startTimerHz(60);
 }
 
-void CompressorDisplayComponent::pushMeterValues(float inputDb, float grDb)
+void CompressorDisplayComponent::pushMeterValues(float inputDb, float grDb, float thresholdDb)
 {
+    cachedThresholdDb = thresholdDb;
+
     // Fast-attack / slow-decay smoothing on the UI thread
-    // Attack: instant rise; Decay: ~20 dB/s at 60 Hz
     const float decayPerFrame = 20.0f / 60.0f;
 
     if (inputDb > displayInputDb)
@@ -93,8 +92,7 @@ void CompressorDisplayComponent::paint(juce::Graphics& g)
               "GR", true);
 
     // ---- Threshold line on the input meter ----
-    float thresh = mod.getThresholdDb();
-    float threshNorm = dbToNorm(thresh, meterFloor, meterCeil);
+    float threshNorm = dbToNorm(cachedThresholdDb, meterFloor, meterCeil);
 
     // inputArea has been consumed - recalculate from local bounds
     auto inputRect = getLocalBounds().reduced(4);
@@ -168,8 +166,7 @@ void CompressorDisplayComponent::drawMeter(juce::Graphics& g,
     else
     {
         // GR meter: bar grows downward from the top (value is <= 0)
-        // grFloor is the most reduction we display (e.g. -30 dB)
-        float norm  = dbToNorm(-value, 0.0f, -grFloor); // flip sign so 0 GR = empty
+        float norm  = dbToNorm(-value, 0.0f, -grFloor);
         int   barH  = (int)(norm * barRect.getHeight());
 
         g.setColour(colour);

@@ -29,7 +29,7 @@ void CompressorModuleSlotEditor::buildEditor(const SlotInfo& info)
     mod = dynamic_cast<CompressorModule*>(
         processor.slots[chainIndex][slotIndex]->get());
 
-    display = std::make_unique<CompressorDisplayComponent>(*mod);
+    display = std::make_unique<CompressorDisplayComponent>();
     addAndMakeVisible(*display);
 
     panel = std::make_unique<CompressorPanel>();
@@ -55,11 +55,20 @@ void CompressorModuleSlotEditor::layoutEditor(juce::Rectangle<int>& r)
 
 void CompressorModuleSlotEditor::timerCallback()
 {
-    if (mod && mod->meterReady.exchange(false, std::memory_order_acquire))
+    // Guard against dangling pointer: if the module in this slot was replaced
+    // (e.g. by a preset switch), null out mod and wait for rebuildModuleEditors().
+    if (mod == nullptr || processor.slots[chainIndex][slotIndex]->get() != mod)
+    {
+        mod = nullptr;
+        return;
+    }
+
+    if (mod->meterReady.exchange(false, std::memory_order_acquire))
     {
         display->pushMeterValues(
             mod->inputLevelDb.load(std::memory_order_relaxed),
-            mod->gainReductionDb.load(std::memory_order_relaxed));
+            mod->gainReductionDb.load(std::memory_order_relaxed),
+            mod->getThresholdDb());
     }
 }
 

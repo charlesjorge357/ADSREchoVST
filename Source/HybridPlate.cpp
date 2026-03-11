@@ -56,11 +56,15 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
     // -------------------------
     // FDN delay lines
     // -------------------------
+    // Delays chosen to be mutually prime in samples at 44.1kHz.
+    // Original {32, 44, 57, 70} was an arithmetic progression with two
+    // pairs sharing common factors (gcd(1940,2514)=2, gcd(2514,3087)=3),
+    // creating resonant comb overlap between FDN lines.
     const float fdnDelayMs[fdnCount] = {
-        32.0f,
-        44.0f,
-        57.0f,
-        70.0f
+        32.0f,   // 1411 samps = 17 × 83
+        45.0f,   // 1985 samps = 5  × 397  (coprime with all others)
+        59.0f,   // 2602 samps = 2  × 1301 (coprime with all others)
+        71.0f    // 3131 samps = 31 × 101  (coprime with all others)
     };
 
     for (int i = 0; i < fdnCount; ++i)
@@ -85,28 +89,23 @@ void HybridPlate::prepare(const juce::dsp::ProcessSpec& spec)
         dampingFilters[i].setType(juce::dsp::FirstOrderTPTFilterType::lowpass);
     }
 
-    for (int i = 0; i < fdnCount; ++i)
-        extraDampL[i].prepare(sampleRate, parameters.damping);
 
 
-    // high shelf for no ring
-    for (int i = 0; i < fdnCount; ++i)
+
+
+    // -------------------------
+    // Early reflections
+    // -------------------------
+    erL.prepare(spec);
+    erR.prepare(spec);
+    erL.reset();
+    erR.reset();
+
+    for (int i = 0; i < ER_count; ++i)
     {
-        juce::dsp::IIR::Coefficients<float>::Ptr coeff =
-            juce::dsp::IIR::Coefficients<float>::makeHighShelf(
-                sampleRate,
-                3000.0f,   // frequency where ringing builds
-                0.707f,     // Q
-                0.5f        // gain factor < 1.0 removes ringing
-            );
-
-        highShelfFilters[i].prepare(spec);
-
-        *highShelfFilters[i].coefficients = *coeff;
-        
-        highShelfFilters[i].reset();
+        ER_tapSamplesLeft[i]  = ER_tapTimesMsLeft[i]  * 0.001f * (float) sampleRate;
+        ER_tapSamplesRight[i] = ER_tapTimesMsRight[i] * 0.001f * (float) sampleRate;
     }
-
 
     // -------------------------
     // LFO setup (for FDN modulation)
@@ -148,6 +147,8 @@ void HybridPlate::reset()
 {
     preDelayL.reset();
     preDelayR.reset();
+    erL.reset();
+    erR.reset();
 
     for (int i = 0; i < 4; ++i)
     {
@@ -183,9 +184,6 @@ void HybridPlate::updateInternalParamsFromUserParams()
     // Damping filter cutoff
     for (int i = 0; i < fdnCount; ++i)
         dampingFilters[i].setCutoffFrequency(parameters.damping);
-    for (int i = 0; i < fdnCount; ++i)
-        extraDampL[i].setDamping(parameters.damping);
-
 
     // LFO parameters
     lfoParameters.frequency_Hz = parameters.modRate;
@@ -263,16 +261,31 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
         channelInput[1] = inR;
 
         //===========================
-        // EARLY DIFFUSION (4 APs / ch)
+        // EARLY REFLECTIONS (5-tap stereo)
         //===========================
-        float eL = channelInput[0];
+        erL.pushSample(0, inL);
+        erR.pushSample(0, inR);
+
+        float erOutL = 0.0f;
+        float erOutR = 0.0f;
+        for (int i = 0; i < ER_count; ++i)
+        {
+            erOutL += ER_gains[i] * erL.readFractional(0, ER_tapSamplesLeft[i]);
+            erOutR += ER_gains[i] * erR.readFractional(0, ER_tapSamplesRight[i]);
+        }
+
+        //===========================
+        // EARLY DIFFUSION (4 APs / ch)
+        // ER output feeds diffusion, same topology as DattoroHall
+        //===========================
+        float eL = erOutL;
         for (int i = 0; i < 4; ++i)
         {
             earlyL[i].pushSample(0, eL);
             eL = earlyL[i].popSample(0);
         }
 
-        float eR = channelInput[1];
+        float eR = erOutR;
         for (int i = 0; i < 4; ++i)
         {
             earlyR[i].pushSample(0, eR);
@@ -336,14 +349,7 @@ void HybridPlate::processBlock(juce::AudioBuffer<float>& buffer,
             // first-order lowpass damping
             float damped = dampingFilters[i].processSample(0, newSample);
 
-            float psycho = extraDampL[i].process(damped);
-
-            // high-shelf to tame metallic ringing
-            float softened = highShelfFilters[i].processSample(psycho);
-
-
-            // write into delay line
-            fdnLines[i].pushSample(0, softened);
+            fdnLines[i].pushSample(0, damped);
         }
 
 

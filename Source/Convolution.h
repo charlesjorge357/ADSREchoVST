@@ -152,6 +152,16 @@ public:
     bool hasCustomIR()          const { return customIRActive; }
     juce::String getCustomIRPath() const { return customIRPath; }
 
+    // Mark a custom IR path so prepare() will load it, without doing any I/O
+    // or starting background threads yet. Use in Phase 1 of preset loading to
+    // defer the actual load (with correct block sizes) to Phase 2's prepare().
+    void setCustomIRPathDeferred(const juce::File& file)
+    {
+        customIRActive = true;
+        customIRPath   = file.getFullPathName();
+        currentIRIndex = -1;
+    }
+
     // Force reload regardless of cached index (call after preset restore)
     void forceLoadIRAtIndex(int index);
 

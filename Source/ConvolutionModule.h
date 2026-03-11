@@ -29,6 +29,7 @@ public:
     void setIRBank(std::shared_ptr<IRBank> bank);
 
     void loadCustomIR(const juce::File& file);
+    void setCustomIRPathDeferred(const juce::File& file);
     void clearCustomIR();
     bool hasCustomIR()             const;
     juce::String getCustomIRPath() const;

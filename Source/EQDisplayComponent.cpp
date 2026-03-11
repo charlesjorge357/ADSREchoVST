@@ -10,13 +10,12 @@
 
 #include "EQDisplayComponent.h"
 
-EQDisplayComponent::EQDisplayComponent(EQModule& modRef)
-    : mod(modRef),
-    fft(fftOrder),
+EQDisplayComponent::EQDisplayComponent()
+    : fft(fftOrder),
     window(fftSize, juce::dsp::WindowingFunction<float>::hann)
 {
     startTimerHz(60);
-    smoothedFFT.resize(fftSize / 2, -100.0f); // or lowest dB value
+    smoothedFFT.resize(fftSize / 2, -100.0f);
 }
 
 void EQDisplayComponent::pushSamples(const float* samples, int numSamples)
@@ -32,6 +31,12 @@ void EQDisplayComponent::pushSamples(const float* samples, int numSamples)
             fifoIndex = 0;
         }
     }
+}
+
+void EQDisplayComponent::pushEQData(float sampleRate, std::vector<float> curveDb)
+{
+    cachedSampleRate  = sampleRate;
+    cachedEQCurveDb   = std::move(curveDb);
 }
 
 void EQDisplayComponent::timerCallback()
@@ -90,7 +95,7 @@ void EQDisplayComponent::paint(juce::Graphics& g)
 
     float minFreq = 20.0f;
     float maxFreq = 20000.0f;
-    float sampleRate = mod.getSampleRate();
+    float sampleRate = cachedSampleRate;
 
     for (int x = 0; x < width; x++)
     {
@@ -103,7 +108,6 @@ void EQDisplayComponent::paint(juce::Graphics& g)
         int center = (int)bin;
 
         float mag = 0.0f;
-        //int radius = (int) juce::jmap(freq, 20.0f, 20000.0f, 6.0f, 2.0f);
         int radius = 1;
 
         for (int k = -radius; k <= radius; k++)
@@ -160,15 +164,20 @@ void EQDisplayComponent::paint(juce::Graphics& g)
 
     juce::Path eqPath;
 
+    const int N = (int)cachedEQCurveDb.size();
+
     for (int x = 0; x < width; x++)
     {
-        float freq = juce::mapToLog10(
-            (float)x / (float)width,
-            20.0f,
-            20000.0f);
-
-        float mag = mod.getMagnitudeForFrequency(freq);
-        float db = juce::Decibels::gainToDecibels(mag);
+        float db;
+        if (N > 0)
+        {
+            int idx = juce::jlimit(0, N - 1, x * N / juce::jmax(1, width));
+            db = cachedEQCurveDb[idx];
+        }
+        else
+        {
+            db = 0.0f; // flat line until first push
+        }
 
         float y = juce::jmap(db,
             -24.0f, 24.0f,

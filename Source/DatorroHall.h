@@ -150,14 +150,16 @@ private:
     // Early Reflections (simple 6-tap stereo cluster)
     static constexpr int ER_count = 6;
 
+    // Alternating signs prevent all taps from stacking in phase (avoids
+    // over-unity summing). Values normalized so the absolute sum == 1.0.
     float ER_gains[ER_count] =
     {
-        0.60f,  // tap 1
-        0.45f,  // tap 2
-        0.32f,  // tap 3
-        0.28f,  // tap 4
-        0.22f,  // tap 5
-        0.18f   // tap 6
+        +0.29f,  // tap 1  (+)
+        -0.22f,  // tap 2  (-)
+        +0.16f,  // tap 3  (+)
+        -0.14f,  // tap 4  (-)
+        +0.11f,  // tap 5  (+)
+        -0.09f   // tap 6  (-)
     };
 
     // Times in milliseconds

@@ -310,14 +310,13 @@ juce::ValueTree ADSREchoAudioProcessor::getStateTree()
 
 void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
 {
-    // Clear Modules
-    for (auto& chain : slots)
-        for (auto& slot : chain)
-            slot->clearModule();
+    // Phase 1: Build new modules off the audio lock. For ConvolutionModules we
+    // only mark the IR path here — actual file I/O and FFT init happen inside
+    // prepare() (Phase 2) once we have the correct host block size. This avoids
+    // starting background threads with wrong block sizes and doing double I/O.
+    struct PendingSlot { int chain, slot; std::unique_ptr<EffectModule> module; };
+    std::vector<PendingSlot> incoming;
 
-    numModules = std::vector<int>(NUM_CHAINS, 0);
-
-    // Restore Topology
     auto modules = state.getChildWithName("Modules");
 
     for (auto chainState : modules)
@@ -329,13 +328,15 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
             int slotIndex = (int)slotState["index"];
             auto type = slotState["type"];
 
+            std::unique_ptr<EffectModule> newModule;
+
             if (type == "Delay")
             {
-                slots[chainIndex][slotIndex]->setModule(std::make_unique<DelayModule>("null", apvts));
+                newModule = std::make_unique<DelayModule>("null", apvts);
             }
             else if (type == "Reverb")
             {
-                slots[chainIndex][slotIndex]->setModule(std::make_unique<ReverbModule>("null", apvts));
+                newModule = std::make_unique<ReverbModule>("null", apvts);
             }
             else if (type == "Convolution")
             {
@@ -347,25 +348,70 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
                 {
                     juce::File irFile(customIRPath);
                     if (irFile.existsAsFile())
-                        module->loadCustomIR(irFile);
+                        module->setCustomIRPathDeferred(irFile); // path only; prepare() loads it
                 }
 
-                slots[chainIndex][slotIndex]->setModule(std::move(module));
+                newModule = std::move(module);
             }
             else if (type == "EQ")
             {
-                slots[chainIndex][slotIndex]->setModule(std::make_unique<EQModule>("null", apvts));
+                newModule = std::make_unique<EQModule>("null", apvts);
             }
             else if (type == "Compressor")
             {
-                slots[chainIndex][slotIndex]->setModule(std::make_unique<CompressorModule>("null", apvts));
+                newModule = std::make_unique<CompressorModule>("null", apvts);
             }
 
-            numModules[chainIndex]++;
+            if (newModule)
+                incoming.push_back({ chainIndex, slotIndex, std::move(newModule) });
         }
     }
 
-    // Restore preset name and parameters
+    // Still Phase 1: prepare() and setID() on every incoming module BEFORE
+    // acquiring the audio lock.  For ConvolutionModules this is where the IR
+    // file is loaded and the FFT convolver is initialised — both are too heavy
+    // to run while the audio callback is blocked.
+    for (auto& p : incoming)
+    {
+        p.module->setID(slots[p.chain][p.slot]->slotID);
+        if (spec.sampleRate > 0)
+            p.module->prepare(spec);
+    }
+
+    // Phase 2: Swap modules under the audio callback lock so the audio thread
+    // can never be mid-process() when we replace pointers.
+    //
+    // IMPORTANT: old modules are NOT destroyed here. We collect them into
+    // toDestroy and let them go out of scope after releasing the lock. This
+    // ensures that Convolution::~Convolution() (which calls waitForThreadToExit
+    // on the background tail FFT thread) never holds the audio callback lock,
+    // preventing the ~500 ms stall and any use-after-free if the thread takes
+    // longer than the 500 ms timeout to exit.
+    std::vector<std::unique_ptr<EffectModule>> toDestroy;
+    toDestroy.reserve(NUM_CHAINS * MAX_SLOTS * 2);
+
+    {
+        const juce::ScopedLock audioLock(getCallbackLock());
+
+        for (auto& chain : slots)
+            for (auto& slot : chain)
+                slot->extractAllModules(toDestroy);
+
+        numModules = std::vector<int>(NUM_CHAINS, 0);
+
+        for (auto& p : incoming)
+        {
+            // Module is already prepared — just do the pointer swap.
+            slots[p.chain][p.slot]->installPreparedModule(std::move(p.module));
+            numModules[p.chain]++;
+        }
+    }
+
+    // Phase 3: Destroy old modules outside the audio lock.
+    // Background convolution threads are stopped here, without blocking audio.
+    toDestroy.clear();
+
+    // Restore preset name and parameters (safe outside the audio lock)
     currentPresetName = state.getProperty("currentPresetName", "").toString();
     apvts.replaceState(state);
 
@@ -402,7 +448,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
         // Per Chain Controls (id "chain_1.gain")
         juce::String chainPrefix = "chain_" + juce::String(j);
         layout.add(std::make_unique<juce::AudioParameterFloat>(chainPrefix + ".gain", "Gain",
-            juce::NormalisableRange<float>(-6.f, 6.f, .01f, 1.f), 0.f));
+            juce::NormalisableRange<float>(-12.f, 12.f, .01f, 1.f), 0.f));
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(chainPrefix + ".masterMix", "Master Mix",
             juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet

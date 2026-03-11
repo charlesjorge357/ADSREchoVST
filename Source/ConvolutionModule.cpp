@@ -89,6 +89,11 @@ void ConvolutionModule::loadCustomIR(const juce::File& file)
     convolutionReverb.loadCustomIR(file);
 }
 
+void ConvolutionModule::setCustomIRPathDeferred(const juce::File& file)
+{
+    convolutionReverb.setCustomIRPathDeferred(file);
+}
+
 void ConvolutionModule::clearCustomIR()
 {
     convolutionReverb.clearCustomIR();

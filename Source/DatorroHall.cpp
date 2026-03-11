@@ -103,13 +103,14 @@ void DatorroHall::prepare(const juce::dsp::ProcessSpec& spec)
 
     //=====================================
     // Bright-hall base delay times (ms)
-    // Valhalla-ish spacing
+    // Chosen to be mutually prime (in samples at 44.1 kHz) to avoid
+    // resonant comb-filtering between FDN lines.
     //=====================================
     constexpr float baseMs[4] = {
-        130.0f,   // line 1
-        155.0f,   // line 2
-        177.0f,   // line 3
-        199.0f    // line 4
+        130.0f,   // line 1 — 5733 samples @ 44.1k (prime)
+        157.0f,   // line 2 — 6924 samples @ 44.1k (prime pair with others)
+        179.0f,   // line 3 — 7896 samples (was 155/177, shared factor 11)
+        199.0f    // line 4 — 8782 samples (prime)
     };
 
     // Convert to samples & clamp

@@ -27,20 +27,26 @@
     #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
-#include "EQModule.h"
-
 class EQDisplayComponent : public juce::Component,
     private juce::Timer
 {
 public:
-    EQDisplayComponent(EQModule& modRef);
+    EQDisplayComponent();
 
+    // Called by EQModuleSlotEditor's timer each tick to push spectrum samples.
     void pushSamples(const float* samples, int numSamples);
+
+    // Called by EQModuleSlotEditor's timer each tick to push pre-computed EQ
+    // curve data.  curveDb has N magnitude-in-dB values, log-spaced 20–20 kHz.
+    void pushEQData(float sampleRate, std::vector<float> curveDb);
 
     void paint(juce::Graphics&) override;
 
 private:
-    EQModule& mod;
+    // Cached display data — written only by the slot editor timer (message thread),
+    // read only by paint() (also message thread).  No module pointer held here.
+    float cachedSampleRate = 44100.0f;
+    std::vector<float> cachedEQCurveDb; // size N, index 0 = 20 Hz, N-1 = 20 kHz
 
     // ===== FFT =====
     static constexpr int fftOrder = 11;

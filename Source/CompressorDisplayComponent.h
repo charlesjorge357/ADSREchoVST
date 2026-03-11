@@ -26,21 +26,22 @@
   #include <juce_gui_basics/juce_gui_basics.h>
 #endif
 
-#include "CompressorModule.h"
-
 class CompressorDisplayComponent : public juce::Component,
                                    private juce::Timer
 {
 public:
-    explicit CompressorDisplayComponent(CompressorModule& modRef);
+    CompressorDisplayComponent();
 
-    // Called by CompressorModuleSlotEditor's timer when meterReady is true
-    void pushMeterValues(float inputDb, float grDb);
+    // Called by CompressorModuleSlotEditor's timer when meterReady is true.
+    // thresholdDb is included so paint() never needs a module pointer.
+    void pushMeterValues(float inputDb, float grDb, float thresholdDb);
 
     void paint(juce::Graphics&) override;
 
 private:
-    CompressorModule& mod;
+    // Cached display data — written only by the slot editor timer (message thread),
+    // read only by paint() (also message thread).  No module pointer held here.
+    float cachedThresholdDb = -20.0f;
 
     // Smoothed display values (UI thread only)
     float displayInputDb    = -100.0f;
@@ -59,10 +60,6 @@ private:
 
     void timerCallback() override;
 
-    // Draw a single vertical bar meter inside `area`
-    // value: current level in dB, peak: peak hold in dB
-    // colour: bar colour, label: text drawn below
-    // isGR: if true the bar grows downward from the top (reduction)
     void drawMeter(juce::Graphics& g,
                    juce::Rectangle<int> area,
                    float value,
@@ -71,7 +68,6 @@ private:
                    const juce::String& label,
                    bool isGR) const;
 
-    // Map a dB value to a normalised 0..1 position within the meter range
     float dbToNorm(float db, float floor, float ceil) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CompressorDisplayComponent)

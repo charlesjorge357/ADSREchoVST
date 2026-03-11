@@ -70,6 +70,16 @@ public:
         activeModule.store(ownedModule.get(), std::memory_order_release);
     }
 
+    // Install a module that has ALREADY been prepare()d and setID()d.
+    // Does only the pointer swap — no heavy work — so it is safe to call
+    // while holding the audio callback lock.
+    void installPreparedModule(std::unique_ptr<EffectModule> newModule)
+    {
+        pendingDeletion = std::move(ownedModule);
+        ownedModule     = std::move(newModule);
+        activeModule.store(ownedModule.get(), std::memory_order_release);
+    }
+
     void clearModule()
     {
         pendingDeletion = std::move(ownedModule);
@@ -79,6 +89,17 @@ public:
     void destroyPending()
     {
         pendingDeletion.reset();
+    }
+
+    // Extract ALL owned modules (active + any pending deletion) into dest for
+    // deferred destruction outside the audio lock. After this call the slot is
+    // completely empty: activeModule == null, ownedModule == null,
+    // pendingDeletion == null. No destructors are run inside this call.
+    void extractAllModules(std::vector<std::unique_ptr<EffectModule>>& dest)
+    {
+        activeModule.store(nullptr, std::memory_order_release);
+        if (ownedModule)     dest.push_back(std::move(ownedModule));
+        if (pendingDeletion) dest.push_back(std::move(pendingDeletion));
     }
 
     EffectModule* get() { return ownedModule.get(); }
