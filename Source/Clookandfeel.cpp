@@ -14,16 +14,41 @@
 CustomLNF::CustomLNF()
 {
     // ComboBox colours
-    setColour(juce::ComboBox::backgroundColourId,  juce::Colour(0xff2A2E35));
+   /* setColour(juce::ComboBox::backgroundColourId,  juce::Colour(0xff2A2E35));
     setColour(juce::ComboBox::outlineColourId,     juce::Colour(0xff555555));
     setColour(juce::ComboBox::textColourId,        juce::Colours::white);
-    setColour(juce::ComboBox::arrowColourId,       juce::Colours::lightgrey);
+    setColour(juce::ComboBox::arrowColourId,       juce::Colours::lightgrey);*/
 
     // PopupMenu colours (dropdown list)
-    setColour(juce::PopupMenu::backgroundColourId,            juce::Colour(0xff2A2E35));
+ /*   setColour(juce::PopupMenu::backgroundColourId,            juce::Colour(0xff2A2E35));
     setColour(juce::PopupMenu::textColourId,                  juce::Colours::white);
     setColour(juce::PopupMenu::highlightedBackgroundColourId, juce::Colour(0xff4A90D9));
-    setColour(juce::PopupMenu::highlightedTextColourId,       juce::Colours::white);
+    setColour(juce::PopupMenu::highlightedTextColourId,       juce::Colours::white);*/
+}
+
+
+void CustomLNF::drawComboBox(juce::Graphics& g, int width, int height, bool, int, int, int, int, juce::ComboBox& box) {
+
+    auto cornerSize = box.findParentComponentOfClass<juce::ChoicePropertyComponent>() != nullptr ? 0.0f : 5.0f;
+    juce::Rectangle<int> boxBounds (0, 0, width, height);
+
+    g.setColour(juce::Colour(0xff252323));
+    //g.setColour (box.findColour (juce::ComboBox::ColourIds(0xff3a86ff)));
+    g.fillRoundedRectangle (boxBounds.toFloat(), cornerSize);
+
+    g.setColour(juce::Colour(0xfff5f1ed));
+    //g.setColour (box.findColour (juce::ComboBox::outlineColourId));
+    g.drawRoundedRectangle (boxBounds.toFloat().reduced (0.5f, 0.5f), cornerSize, 1.0f);
+
+    juce::Rectangle<int> arrowZone (width - 30, 0, 20, height);
+    juce::Path path;
+    path.startNewSubPath ((float) arrowZone.getX() + 3.0f, (float) arrowZone.getCentreY() - 2.0f);
+    path.lineTo ((float) arrowZone.getCentreX(), (float) arrowZone.getCentreY() + 3.0f);
+    path.lineTo ((float) arrowZone.getRight() - 3.0f, (float) arrowZone.getCentreY() - 2.0f);
+
+    g.setColour(juce::Colour(0xfff2f4f3).withAlpha(box.isEnabled() ? 0.9f : 0.2f));
+    g.strokePath (path, juce::PathStrokeType (2.0f));
+
 }
 
 juce::Typeface::Ptr CustomLNF::getTypefaceForFont(const juce::Font& f)
