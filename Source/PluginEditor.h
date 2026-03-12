@@ -64,10 +64,21 @@ private:
        // Chain / module UI
     CustomLNF customLNF;
     juce::Viewport moduleViewport;
-    juce::Component moduleContainer;
-    
+
+    struct ModuleContainer : public juce::Component
+    {
+        int dropInsertionIndex = -1;
+        void paint(juce::Graphics&) override;
+    } moduleContainer;
+
     juce::TextButton addButton{ "+" };
     std::vector<std::unique_ptr<BaseModuleSlotEditor>> moduleEditors;
+
+    // Drag-reorder state
+    int dragSourceIndex = -1;
+    int dropInsertionIndex = -1;
+
+    int getInsertionIndex(int screenX) const;
 
     juce::ComboBox chainSelector;
     int currentlyDisplayedChain = 0;

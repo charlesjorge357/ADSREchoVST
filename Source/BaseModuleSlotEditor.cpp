@@ -85,6 +85,9 @@ BaseModuleSlotEditor::BaseModuleSlotEditor(
                 slotIndex);
         };
 
+    // Receive mouse events from all nested children so any dead-space
+    // background click can start a module drag
+    addMouseListener(this, true);
 }
 
 void BaseModuleSlotEditor::paint(juce::Graphics& g)
@@ -95,9 +98,57 @@ void BaseModuleSlotEditor::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xff222528));
     g.fillRoundedRectangle(bounds, 6.0f);
 
-    // Subtle border
-    g.setColour(juce::Colour(0xff3A3E45));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
+    if (isDragging)
+    {
+        // Drag highlight overlay
+        g.setColour(juce::Colour(0xff4A9EFF).withAlpha(0.15f));
+        g.fillRoundedRectangle(bounds, 6.0f);
+        g.setColour(juce::Colour(0xff4A9EFF));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 2.0f);
+    }
+    else
+    {
+        // Subtle border
+        g.setColour(juce::Colour(0xff3A3E45));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
+    }
+}
+
+static bool isInteractiveControl(juce::Component* c)
+{
+    return dynamic_cast<juce::Slider*>(c)   != nullptr
+        || dynamic_cast<juce::Button*>(c)   != nullptr
+        || dynamic_cast<juce::ComboBox*>(c) != nullptr;
+}
+
+void BaseModuleSlotEditor::mouseDrag(const juce::MouseEvent& e)
+{
+    if (isInteractiveControl(e.eventComponent)) return;
+
+    if (!isDragging && e.getDistanceFromDragStart() > 5)
+    {
+        isDragging = true;
+        setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+        repaint();
+    }
+
+    if (isDragging && onDrag)
+        onDrag(slotIndex, e.getScreenX());
+}
+
+void BaseModuleSlotEditor::mouseUp(const juce::MouseEvent& e)
+{
+    if (isInteractiveControl(e.eventComponent)) return;
+
+    if (isDragging)
+    {
+        if (onDrop)
+            onDrop(slotIndex, e.getScreenX());
+
+        isDragging = false;
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+        repaint();
+    }
 }
 
 void BaseModuleSlotEditor::resized()

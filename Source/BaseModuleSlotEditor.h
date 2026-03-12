@@ -42,6 +42,17 @@ public:
     void paint(juce::Graphics&) override;
     virtual void resized() override;
 
+    void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
+
+    // Set by PluginEditor after construction
+    std::function<void(int slotIndex, int screenX)> onDrag;
+    std::function<void(int slotIndex, int screenX)> onDrop;
+
+    bool isDragging = false;
+
+    int getSlotIndex() const { return slotIndex; }
+
 protected:
 
     int chainIndex;

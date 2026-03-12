@@ -241,6 +241,35 @@ void ADSREchoAudioProcessorEditor::handleAsyncUpdate()
     }
 }
 
+void ADSREchoAudioProcessorEditor::ModuleContainer::paint(juce::Graphics& g)
+{
+    if (dropInsertionIndex < 0)
+        return;
+
+    constexpr int cw = 245, cs = 6;
+    int barX = dropInsertionIndex * (cw + cs) - 2;
+    barX = juce::jmax(0, barX);
+
+    g.setColour(juce::Colour(0xff4A9EFF));
+    g.fillRect(barX, 4, 3, getHeight() - 8);
+}
+
+int ADSREchoAudioProcessorEditor::getInsertionIndex(int screenX) const
+{
+    constexpr int cw = 245, cs = 6;
+    auto local = moduleContainer.getLocalPoint(nullptr, juce::Point<int>(screenX, 0));
+    int n = (int)moduleEditors.size();
+
+    for (int i = 0; i < n; ++i)
+    {
+        int center = i * (cw + cs) + cw / 2;
+        if (local.x < center)
+            return i;
+    }
+
+    return n;
+}
+
 void ADSREchoAudioProcessorEditor::refreshPresetComboBox()
 {
     presetComboBox.clear(juce::dontSendNotification);
@@ -300,6 +329,41 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
         }
 
         moduleContainer.addAndMakeVisible(editor.get());
+
+        int editorIdx = (int)moduleEditors.size();
+        int capturedSlot = i;
+
+        editor->onDrag = [this, editorIdx](int /*slot*/, int screenX)
+        {
+            dragSourceIndex = editorIdx;
+            int insert = getInsertionIndex(screenX);
+            if (insert != dropInsertionIndex)
+            {
+                dropInsertionIndex = insert;
+                moduleContainer.dropInsertionIndex = insert;
+                moduleContainer.repaint();
+            }
+        };
+
+        editor->onDrop = [this, editorIdx, capturedSlot](int /*slot*/, int screenX)
+        {
+            int insertIdx = getInsertionIndex(screenX);
+            dragSourceIndex = -1;
+            dropInsertionIndex = -1;
+            moduleContainer.dropInsertionIndex = -1;
+            moduleContainer.repaint();
+
+            int to;
+            if (insertIdx <= editorIdx)
+                to = insertIdx;
+            else if (insertIdx > editorIdx + 1)
+                to = insertIdx - 1;
+            else
+                return; // same position
+
+            if (to != editorIdx)
+                audioProcessor.requestSlotMove(currentlyDisplayedChain, capturedSlot, to);
+        };
 
         moduleEditors.push_back(std::move(editor));
     }
