@@ -36,6 +36,9 @@ class CustomLNF : public juce::LookAndFeel_V4
         //custom slider function
         void drawRotarySlider(juce::Graphics &, int x, int y, int width, int height, float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle, juce::Slider&);
 
+        void drawComboBox(juce::Graphics& g, int width, int height, bool,
+                                   int, int, int, int, juce::ComboBox&);
+
 
         juce::Typeface::Ptr getTypefaceForFont(const juce::Font& f) override;
 };
