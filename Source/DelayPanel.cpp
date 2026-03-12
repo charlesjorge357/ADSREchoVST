@@ -57,8 +57,8 @@ DelayPanel::DelayPanel() {
         /*rotaryParams.startAngleRadians = juce::MathConstants<float>::pi * 1.5f;
         rotaryParams.endAngleRadians = juce::MathConstants<float>::pi * 3.0f;*/
         //s.setRotaryParameters(rotaryParams);
-        s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId, juce::Colour(0xff7B0B13));
-        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId, juce::Colour(0xffc1121f));
+        s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId, juce::Colour(0xffc1121f));
+        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId, juce::Colour(0xff7B0B13));
 
         /*s.setRotaryParameters(
             juce::MathConstants<float>::pi * 1.5f,
@@ -218,8 +218,15 @@ void DelayPanel::resized()
 
     auto setKnobInGrid = [&](juce::Label& label, juce::Slider& slider, int col, int row) {
         auto cell = juce::Rectangle<int>(area.getX() + col * cellWidth, area.getY() + row * cellHeight, cellWidth, cellHeight);
-        label.setBounds(cell.removeFromTop(16));
-        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
+
+        //int knobSize = 80;
+        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
+        slider.setBounds(knobArea);
+        
+        label.setBounds(knobArea.getX(), knobArea.getY() - 15, knobArea.getWidth(), 15);
+
+        /*label.setBounds(cell.removeFromTop(16));
+        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));*/
     };
 
     setKnobInGrid(feedbackLabel, feedbackSlider, 0, 0);

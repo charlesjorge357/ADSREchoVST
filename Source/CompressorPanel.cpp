@@ -32,9 +32,9 @@ CompressorPanel::CompressorPanel()
             juce::MathConstants<float>::pi * 2.75f,
             true);
         s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId,
-                    juce::Colour(0xffB0A795));
-        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId,
                     juce::Colour(0xfffdf0d5));
+        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId,
+                    juce::Colour(0xffB0A795));
         addAndMakeVisible(s);
     };
 

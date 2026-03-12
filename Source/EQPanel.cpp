@@ -28,9 +28,9 @@ EQPanel::EQPanel()
         s.setSliderStyle(juce::Slider::Rotary);
         s.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
         s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId,
-                    juce::Colour(0xff8C4800));
-        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId,
                     juce::Colour(0xfff77f00));
+        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId,
+                    juce::Colour(0xff8C4800));
         addAndMakeVisible(s);
     };
 
@@ -43,14 +43,14 @@ EQPanel::EQPanel()
         addAndMakeVisible(label);
     };
 
-    setupKnob(lowFreq);   setupLabel(lowFreqLabel,  "Low Freq");
-    setupKnob(lowGain);   setupLabel(lowGainLabel,  "Low Gain");
+    setupKnob(lowFreq);   setupLabel(lowFreqLabel,  "Low Freq ");
+    setupKnob(lowGain);   setupLabel(lowGainLabel,  " Low" "\n" "Gain");
     setupKnob(lowQ);      setupLabel(lowQLabel,     "Low Q");
     setupKnob(midFreq);   setupLabel(midFreqLabel,  "Mid Freq");
     setupKnob(midGain);   setupLabel(midGainLabel,  "Mid Gain");
     setupKnob(midQ);      setupLabel(midQLabel,     "Mid Q");
-    setupKnob(highFreq);  setupLabel(highFreqLabel, "High Freq");
-    setupKnob(highGain);  setupLabel(highGainLabel, "High Gain");
+    setupKnob(highFreq);  setupLabel(highFreqLabel, "High" "\n" "Freq");
+    setupKnob(highGain);  setupLabel(highGainLabel, " High Gain");
     setupKnob(highQ);     setupLabel(highQLabel,    "High Q");
 }
 
@@ -113,9 +113,15 @@ void EQPanel::resized()
             area.getY() + row * cellHeight,
             cellWidth,
             cellHeight);
+        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
 
-        label.setBounds(cell.removeFromTop(16));
-        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
+        slider.setBounds(knobArea);
+        
+        label.setBounds(knobArea.getX(), knobArea.getY() - 15, knobArea.getWidth(), 25);
+
+
+        /*label.setBounds(cell.removeFromTop(16));
+        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));*/
     };
 
     placeKnob(lowFreqLabel,  lowFreq,  0, 0);

@@ -44,8 +44,8 @@ ReverbPanel::ReverbPanel() {
             juce::MathConstants<float>::pi * 2.75f,
             true);
 
-        s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId, juce::Colour(0xff7B1134));
-        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId, juce::Colour(0xffd81e5b));
+        s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId, juce::Colour(0xffd81e5b));
+        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId, juce::Colour(0xff7B1134));
 
         addAndMakeVisible(s);
     };
@@ -164,12 +164,25 @@ void ReverbPanel::resized()
     const int rows = 4;
     const int cellWidth = area.getWidth() / cols;
     const int cellHeight = area.getHeight() / rows;
-    const int knobSize = 80;
+   // const int knobSize = 80;
 
     auto setupKnobInGrid = [&](juce::Label& label, juce::Slider& slider, int col, int row) {
         auto cell = juce::Rectangle<int>(area.getX() + col * cellWidth, area.getY() + row * cellHeight, cellWidth, cellHeight);
-        label.setBounds(cell.removeFromTop(16));
-        slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
+
+        int knobSize = 80;
+        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
+        slider.setBounds(knobArea);
+
+ // 3. Position the label relative to the KNOB, not the cell
+ // This ensures the gap is always the same regardless of grid height
+        label.setBounds(knobArea.getX(), knobArea.getY() - 15, knobArea.getWidth(), 15);
+
+
+     /*label.setBounds(cell.removeFromTop(16));
+     slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));*/
+
+        //label.setBounds(cell.removeFromTop(16));
+        //slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
     };
 
     setupKnobInGrid(roomSizeLabel, roomSize, 0, 0);

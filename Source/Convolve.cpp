@@ -44,9 +44,9 @@ ConvolutionPanel::ConvolutionPanel()
         s.setSliderStyle(juce::Slider::Rotary);
         s.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
         s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId,
-                    juce::Colour(0xff2C4F65));
-        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId,
                     juce::Colour(0xffC9DBE7));
+        s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId,
+                    juce::Colour(0xff2C4F65));
         addAndMakeVisible(s);
     };
 
