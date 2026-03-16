@@ -294,6 +294,11 @@ juce::ValueTree ADSREchoAudioProcessor::getStateTree()
                 {
                     if (convMod->hasCustomIR())
                         slot.setProperty("customIRPath", convMod->getCustomIRPath(), nullptr);
+
+                    // Persist bank IR index so loadFromValueTree can pre-load it
+                    // in Phase 1 (message thread) rather than lazily on the audio thread.
+                    if (auto* p = apvts.getRawParameterValue(slots[j][i]->slotID + ".convIrIndex"))
+                        slot.setProperty("irIndex", (int) p->load(), nullptr);
                 }
 
                 chain.addChild(slot, -1, nullptr);
@@ -314,7 +319,7 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
     // only mark the IR path here — actual file I/O and FFT init happen inside
     // prepare() (Phase 2) once we have the correct host block size. This avoids
     // starting background threads with wrong block sizes and doing double I/O.
-    struct PendingSlot { int chain, slot; std::unique_ptr<EffectModule> module; };
+    struct PendingSlot { int chain, slot; std::unique_ptr<EffectModule> module; int pendingIRIndex = -2; };
     std::vector<PendingSlot> incoming;
 
     auto modules = state.getChildWithName("Modules");
@@ -329,6 +334,7 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
             auto type = slotState["type"];
 
             std::unique_ptr<EffectModule> newModule;
+            int pendingIRIndex = -2; // -2 = not applicable
 
             if (type == "Delay")
             {
@@ -350,6 +356,13 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
                     if (irFile.existsAsFile())
                         module->setCustomIRPathDeferred(irFile); // path only; prepare() loads it
                 }
+                else
+                {
+                    // Bank IR: record index so Phase 1 can pre-load it on the message
+                    // thread after prepare(), preventing disk I/O on the audio thread
+                    // after apvts.replaceState() updates convIrIndex.
+                    pendingIRIndex = (int) slotState.getProperty("irIndex", 0);
+                }
 
                 newModule = std::move(module);
             }
@@ -363,7 +376,7 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
             }
 
             if (newModule)
-                incoming.push_back({ chainIndex, slotIndex, std::move(newModule) });
+                incoming.push_back({ chainIndex, slotIndex, std::move(newModule), pendingIRIndex });
         }
     }
 
@@ -375,7 +388,16 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
     {
         p.module->setID(slots[p.chain][p.slot]->slotID);
         if (spec.sampleRate > 0)
+        {
             p.module->prepare(spec);
+
+            // Bank IR: load here on the message thread (correct block sizes are
+            // now known post-prepare). This prevents setParameters() from calling
+            // loadIRAtIndex() on the audio thread after apvts.replaceState().
+            if (p.pendingIRIndex >= 0)
+                if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
+                    cm->forceReloadIR(p.pendingIRIndex);
+        }
     }
 
     // Phase 2: Swap modules under the audio callback lock so the audio thread

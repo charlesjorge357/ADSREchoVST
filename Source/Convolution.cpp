@@ -525,8 +525,9 @@ void Convolution::loadIRAtIndex(int index)
     {
         loadBypass();
         DBG("Convolution::loadIRAtIndex - Loaded BYPASS IR");
-        currentIRIndex = 0;
-        irMissingFlag  = false;
+        currentIRIndex    = 0;
+        parameters.irIndex = 0;
+        irMissingFlag     = false;
         return;
     }
 
@@ -536,8 +537,9 @@ void Convolution::loadIRAtIndex(int index)
             + " out of range (bank has " + juce::String(irBank->getNumIRs())
             + " entries). Falling back to Bypass.");
         loadBypass();
-        currentIRIndex = index;
-        irMissingFlag  = true;
+        currentIRIndex    = index;
+        parameters.irIndex = index;
+        irMissingFlag     = true;
         return;
     }
 
@@ -548,15 +550,17 @@ void Convolution::loadIRAtIndex(int index)
         DBG("Convolution::loadIRAtIndex - IR file missing for index "
             + juce::String(index) + ": " + irFile.getFullPathName());
         loadBypass();
-        currentIRIndex = index;
-        irMissingFlag  = true;
+        currentIRIndex    = index;
+        parameters.irIndex = index;
+        irMissingFlag     = true;
         return;
     }
 
     reset();
     loadIR(irFile);
-    currentIRIndex = index;
-    irMissingFlag  = false;
+    currentIRIndex    = index;
+    parameters.irIndex = index;
+    irMissingFlag     = false;
 }
 
 void Convolution::forceLoadIRAtIndex(int index)
