@@ -67,7 +67,7 @@ void EQModuleSlotEditor::timerCallback()
         for (int i = 0; i < N; i++)
         {
             float normX = (float)i / (float)(N - 1);
-            float freq  = juce::mapToLog10(normX, 20.0f, 20000.0f);
+            float freq  = juce::mapToLog10(normX, 15.0f, 25000.0f);
             curve[i]    = juce::Decibels::gainToDecibels(
                               mod->getMagnitudeForFrequency(freq));
         }
