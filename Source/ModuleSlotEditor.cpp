@@ -47,6 +47,14 @@ void ModuleSlotEditor::buildEditor(const SlotInfo& info)
                                         processor, chainIndex, slotIndex);
         addAndMakeVisible(*convolutionPanel);
     }
+
+    auto* enableParam = apvts.getRawParameterValue(slotID + ".enabled");
+    if (enableParam != nullptr)
+    {
+        bool initialState = enableParam->load() > 0.5f;
+        setEnabledRecursive(this, initialState);
+        setAlpha(initialState ? 1.0f : 0.5f);
+    }
 }
 
 void ModuleSlotEditor::layoutEditor(juce::Rectangle<int>& r)

@@ -54,19 +54,11 @@ DelayPanel::DelayPanel() {
         s.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
 
         auto rotaryParams = s.getRotaryParameters();
-        /*rotaryParams.startAngleRadians = juce::MathConstants<float>::pi * 1.5f;
-        rotaryParams.endAngleRadians = juce::MathConstants<float>::pi * 3.0f;*/
-        //s.setRotaryParameters(rotaryParams);
+        
         s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId, juce::Colour(0xffc1121f));
         s.setColour(juce::Slider::ColourIds::rotarySliderOutlineColourId, juce::Colour(0xff7B0B13));
 
-        /*s.setRotaryParameters(
-            juce::MathConstants<float>::pi * 1.5f,
-            juce::MathConstants<float>::pi * 2.75f,
-            true);*/
-
-        //s.setLookAndFeel(&svgLookAndFeel);
-       // s.setLookAndFeel(&lnk);
+      
         addAndMakeVisible(s);
     };
 
@@ -113,7 +105,6 @@ DelayPanel::DelayPanel() {
 
 
 
-    //delayBackground = juce::ImageCache::getFromMemory(BinaryData::delayBackground_png, BinaryData::delayBackground_pngSize);
 
 }
 
@@ -170,26 +161,7 @@ void DelayPanel::updateToggleState(juce::Button* button, juce::String name) {
 
 void DelayPanel::paint(juce::Graphics& g) {
 
-    //g.drawImage(delayBackground, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
-
     g.fillAll(juce::Colour(0xffc1121f));
-
-   /* auto panel = getLocalBounds().toFloat();
-
-    g.drawRoundedRectangle(panel.reduced(1.0f),10.0f,1.0f);*/
-
-    //g.fillRoundedRectangle(panel,10.0);
-   /* g.fillAll(juce::Colour(22,23,26));
-  
-   
-
-    auto panel = getLocalBounds().toFloat().reduced(6.0f);
-
-    g.setColour(juce::Colour(0xff2B2E33));
-    g.fillRoundedRectangle(panel, 5.0f);
-
-    g.setColour(juce::Colour(0xff262B31));
-    g.drawRoundedRectangle(panel, 5.0f, 1.5f);*/
 }
 
 void DelayPanel::resized()

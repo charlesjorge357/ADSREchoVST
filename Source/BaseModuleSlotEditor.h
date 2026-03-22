@@ -45,6 +45,7 @@ public:
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
 
+    void setEnabledRecursive(juce::Component* comp, bool shouldBeEnabled);
     // Set by PluginEditor after construction
     std::function<void(int slotIndex, int screenX)> onDrag;
     std::function<void(int slotIndex, int screenX)> onDrop;

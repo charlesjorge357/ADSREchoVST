@@ -57,8 +57,9 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
         };
 
     // Preset name editor
-    presetNameEditor.setTextToShowWhenEmpty("Preset name...", juce::Colours::grey);
+    presetNameEditor.setTextToShowWhenEmpty("Preset name...", juce::Colour(0xfff2f4f3));
     presetNameEditor.setMultiLine(false);
+    presetNameEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
     addAndMakeVisible(presetNameEditor);
 
     // Save button
@@ -80,6 +81,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
 
     // Preset combo box
     presetComboBox.setTextWhenNothingSelected("-- Load Preset --");
+    presetComboBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
     presetComboBox.onChange = [this]
         {
             int idx = presetComboBox.getSelectedItemIndex();

@@ -73,6 +73,19 @@ BaseModuleSlotEditor::BaseModuleSlotEditor(
             slotID + ".enabled",
             enableToggle);
 
+    enableToggle.onClick = [this]
+        {
+
+            bool isEnabled = enableToggle.getToggleState();
+
+            setEnabledRecursive(this, isEnabled);
+
+            setAlpha(isEnabled ? 1.0f : 0.5f);
+
+            repaint();
+
+
+        };
 
     // Remove button
 
@@ -88,6 +101,23 @@ BaseModuleSlotEditor::BaseModuleSlotEditor(
     // Receive mouse events from all nested children so any dead-space
     // background click can start a module drag
     addMouseListener(this, true);
+
+     
+}
+
+void BaseModuleSlotEditor::setEnabledRecursive(juce::Component* comp, bool shouldBeEnabled)
+{
+    for (auto* child : comp->getChildren())
+    {
+        // Don't disable the enable toggle itself, type selector, or remove button
+        if (child == &enableToggle || child == &typeSelector || child == &removeButton)
+            continue;
+        
+        child->setEnabled(shouldBeEnabled);
+        
+        // Recursively disable children
+        setEnabledRecursive(child, shouldBeEnabled);
+    }
 }
 
 void BaseModuleSlotEditor::paint(juce::Graphics& g)
@@ -112,6 +142,12 @@ void BaseModuleSlotEditor::paint(juce::Graphics& g)
         g.setColour(juce::Colour(0xff3A3E45));
         g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
     }
+
+    //if (!enableToggle.getToggleState())
+    //{
+    //    g.setColour(juce::Colours::black.withAlpha(0.5f));
+    //    g.fillAll();
+    //}
 }
 
 static bool isInteractiveControl(juce::Component* c)

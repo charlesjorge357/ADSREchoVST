@@ -38,6 +38,15 @@ class CustomLNF : public juce::LookAndFeel_V4
 
         void drawComboBox(juce::Graphics& g, int width, int height, bool,
                                    int, int, int, int, juce::ComboBox&);
+        void drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor &);
+
+        void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area, bool, bool, bool, bool, bool, const juce::String& text, 
+            const juce::String& shortcutKeyText, const juce::Drawable* icon, const juce::Colour* textColour) override;
+
+        void drawPopupMenuBackground(juce::Graphics& g, int width, int height);
+
+        void drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
 
 
         juce::Typeface::Ptr getTypefaceForFont(const juce::Font& f) override;

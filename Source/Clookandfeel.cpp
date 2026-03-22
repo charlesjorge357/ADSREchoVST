@@ -13,17 +13,171 @@
 
 CustomLNF::CustomLNF()
 {
-    // ComboBox colours
-   /* setColour(juce::ComboBox::backgroundColourId,  juce::Colour(0xff2A2E35));
-    setColour(juce::ComboBox::outlineColourId,     juce::Colour(0xff555555));
-    setColour(juce::ComboBox::textColourId,        juce::Colours::white);
-    setColour(juce::ComboBox::arrowColourId,       juce::Colours::lightgrey);*/
+    setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff252323));
+}
 
-    // PopupMenu colours (dropdown list)
- /*   setColour(juce::PopupMenu::backgroundColourId,            juce::Colour(0xff2A2E35));
-    setColour(juce::PopupMenu::textColourId,                  juce::Colours::white);
-    setColour(juce::PopupMenu::highlightedBackgroundColourId, juce::Colour(0xff4A90D9));
-    setColour(juce::PopupMenu::highlightedTextColourId,       juce::Colours::white);*/
+void CustomLNF::drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
+    
+    auto cornerSize = 6.0f;
+    auto bounds = button.getLocalBounds().toFloat().reduced (0.5f, 0.5f);
+
+    /*auto baseColour = backgroundColour.withMultipliedSaturation (button.hasKeyboardFocus (true) ? 1.3f : 0.9f)
+                                      .withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f);*/
+
+   /* if (shouldDrawButtonAsDown || shouldDrawButtonAsHighlighted)
+        baseColour = baseColour.contrasting (shouldDrawButtonAsDown ? 0.2f : 0.05f);*/
+
+    juce::Colour baseColour;
+
+    if (!button.isEnabled()) {
+        baseColour = juce::Colour(0xff252323).withAlpha(0.5f);
+    }
+    else if (shouldDrawButtonAsDown) {
+        baseColour = juce::Colour(0xff1A1E22);
+    }
+    else if (shouldDrawButtonAsHighlighted) {
+        baseColour = juce::Colour(0xff3A3F47);
+    }
+    else {
+        baseColour = juce::Colour(0xff252323);
+    }
+
+    g.setColour (baseColour);
+
+
+
+    auto flatOnLeft   = button.isConnectedOnLeft();
+    auto flatOnRight  = button.isConnectedOnRight();
+    auto flatOnTop    = button.isConnectedOnTop();
+    auto flatOnBottom = button.isConnectedOnBottom();
+
+    if (flatOnLeft || flatOnRight || flatOnTop || flatOnBottom)
+    {
+        juce::Path path;
+        path.addRoundedRectangle (bounds.getX(), bounds.getY(),
+                                  bounds.getWidth(), bounds.getHeight(),
+                                  cornerSize, cornerSize,
+                                  ! (flatOnLeft  || flatOnTop),
+                                  ! (flatOnRight || flatOnTop),
+                                  ! (flatOnLeft  || flatOnBottom),
+                                  ! (flatOnRight || flatOnBottom));
+
+        g.fillPath (path);
+
+        g.setColour (button.findColour (juce::ComboBox::outlineColourId));
+        g.strokePath (path, juce::PathStrokeType (1.0f));
+    }
+    else
+    {
+        g.fillRoundedRectangle (bounds, cornerSize);
+
+        g.setColour (juce::Colours::white);
+        g.drawRoundedRectangle (bounds, cornerSize, 1.0f);
+    }
+}
+
+void CustomLNF::drawPopupMenuBackground(juce::Graphics& g, int width, int height)
+{
+    // Dark background for the popup
+    g.fillAll(juce::Colour(0xff252323));
+    
+    // Border
+    g.setColour(juce::Colours::white);
+    g.drawRect(0, 0, width, height, 1);
+}
+
+void CustomLNF::drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area, bool isSeparator, bool isActive, bool isHighlighted, bool isTicked, bool hasSubMenu, const juce::String& text,
+    const juce::String& shortcutKeyText, const juce::Drawable* icon, const juce::Colour* textColourToUse) {
+
+        if (isSeparator)
+    {
+        auto r  = area.reduced (5, 0);
+        r.removeFromTop (juce::roundToInt(((float) r.getHeight() * 0.5f) - 0.5f));
+
+        g.setColour (findColour (juce::PopupMenu::textColourId).withAlpha (0.3f));
+        g.fillRect (r.removeFromTop (1));
+    }
+    else
+    {
+        auto textColour = (textColourToUse == nullptr ? findColour (juce::PopupMenu::textColourId)
+                                                      : *textColourToUse);
+
+        auto r  = area.reduced (1);
+
+        if (isHighlighted && isActive)
+        {
+            g.setColour (juce::Colours::grey);
+            g.fillRect (r);
+
+            /*g.setColour (findColour (PopupMenu::highlightedTextColourId));*/
+            g.setColour(juce::Colour(0xffF3F2EC)); 
+        }
+        else
+        {
+            g.setColour (textColour.withMultipliedAlpha (isActive ? 1.0f : 0.5f));
+        }
+
+        r.reduce (juce::jmin (5, area.getWidth() / 20), 0);
+
+        auto font = getPopupMenuFont();
+
+        auto maxFontHeight = (float) r.getHeight() / 1.3f;
+
+        if (font.getHeight() > maxFontHeight)
+            font.setHeight (maxFontHeight);
+
+        g.setFont (font);
+
+        auto iconArea = r.removeFromLeft (juce::roundToInt (maxFontHeight)).toFloat();
+
+        if (icon != nullptr)
+        {
+            icon->drawWithin (g, iconArea, juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize, 1.0f);
+            r.removeFromLeft (juce::roundToInt (maxFontHeight * 0.5f));
+        }
+        else if (isTicked)
+        {
+            auto tick = getTickShape (1.0f);
+            g.fillPath (tick, tick.getTransformToScaleToFit (iconArea.reduced (iconArea.getWidth() / 5, 0).toFloat(), true));
+        }
+
+        if (hasSubMenu)
+        {
+            auto arrowH = 0.6f * getPopupMenuFont().getAscent();
+
+            auto x = static_cast<float> (r.removeFromRight ((int) arrowH).getX());
+            auto halfH = static_cast<float> (r.getCentreY());
+
+            juce::Path path;
+            path.startNewSubPath (x, halfH - arrowH * 0.5f);
+            path.lineTo (x + arrowH * 0.6f, halfH);
+            path.lineTo (x, halfH + arrowH * 0.5f);
+
+            g.strokePath (path, juce::PathStrokeType (2.0f));
+        }
+
+        r.removeFromRight (3);
+        g.drawFittedText (text, r, juce::Justification::centredLeft, 1);
+
+        if (shortcutKeyText.isNotEmpty())
+        {
+            auto f2 = font;
+            f2.setHeight (f2.getHeight() * 0.75f);
+            f2.setHorizontalScale (0.95f);
+            g.setFont (f2);
+
+            g.drawText (shortcutKeyText, r, juce::Justification::centredRight, true);
+        }
+    }
+
+}
+
+void CustomLNF::drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor& edit) {
+
+    auto cornerSize = 5.0f;
+
+    g.setColour(juce::Colours::white);
+    g.drawRoundedRectangle(0.5f, 0.5f, width - 1.0f, height - 1.0f, cornerSize, 1.0f);
 }
 
 
