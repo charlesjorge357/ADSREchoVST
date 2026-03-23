@@ -90,7 +90,8 @@ target_sources(ADSREcho
         Source/DelayPanel.cpp
         Source/EQPanel.cpp
         Source/MasterPanel.cpp
-        Source/ReverbPanel.cpp)
+        Source/ReverbPanel.cpp
+        Source/PresetManager.cpp)
 
 # Binary resources (fonts, images)
 juce_add_binary_data(ADSREchoBinaryData
@@ -149,6 +150,72 @@ option(BUILD_TESTS "Build unit tests" OFF)
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(Tests)
+endif()
+
+# Post-build: copy IRs and Presets into the built plugin bundle(s)
+# This ensures both folders are present in the bundle for installed builds.
+# The dev fallback in IRBank/PresetManager (walking up to Source/IRs and Source/Presets)
+# still works during development without a full build.
+set(_RES "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+
+foreach(_fmt VST3 Standalone)
+    if(TARGET ADSREcho_${_fmt})
+        if(APPLE)
+            add_custom_command(TARGET ADSREcho_${_fmt} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${_RES}/IRs" "$<TARGET_BUNDLE_DIR:ADSREcho_${_fmt}>/Contents/Resources/IRs"
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${_RES}/Presets" "$<TARGET_BUNDLE_DIR:ADSREcho_${_fmt}>/Contents/Resources/Presets"
+                COMMENT "Copying IRs and Presets into ${_fmt} bundle"
+            )
+        else()
+            add_custom_command(TARGET ADSREcho_${_fmt} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${_RES}/IRs" "$<TARGET_FILE_DIR:ADSREcho_${_fmt}>/IRs"
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${_RES}/Presets" "$<TARGET_FILE_DIR:ADSREcho_${_fmt}>/Presets"
+                COMMENT "Copying IRs and Presets next to ${_fmt} binary"
+            )
+        endif()
+    endif()
+endforeach()
+
+if(APPLE AND TARGET ADSREcho_AU)
+    add_custom_command(TARGET ADSREcho_AU POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${_RES}/IRs" "$<TARGET_BUNDLE_DIR:ADSREcho_AU>/Contents/Resources/IRs"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${_RES}/Presets" "$<TARGET_BUNDLE_DIR:ADSREcho_AU>/Contents/Resources/Presets"
+        COMMENT "Copying IRs and Presets into AU bundle"
+    )
+endif()
+
+# Also copy IRs and Presets to the system install location used by COPY_PLUGIN_AFTER_BUILD,
+# so the auto-copied plugin is complete (JUCE only copies the binary itself).
+set(_PRODUCT_NAME "ADSR-Echo")
+if(WIN32)
+    set(_SYS_VST3 "$ENV{CommonProgramFiles}/VST3/${_PRODUCT_NAME}.vst3/Contents/x86_64-win")
+elseif(APPLE)
+    set(_SYS_VST3 "$ENV{HOME}/Library/Audio/Plug-Ins/VST3/${_PRODUCT_NAME}.vst3/Contents/Resources")
+    set(_SYS_AU   "$ENV{HOME}/Library/Audio/Plug-Ins/Components/${_PRODUCT_NAME}.component/Contents/Resources")
+else()
+    set(_SYS_VST3 "$ENV{HOME}/.vst3/${_PRODUCT_NAME}.vst3/Contents/x86_64-linux")
+endif()
+
+if(TARGET ADSREcho_VST3)
+    add_custom_command(TARGET ADSREcho_VST3 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${_RES}/IRs"     "${_SYS_VST3}/IRs"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${_RES}/Presets" "${_SYS_VST3}/Presets"
+        COMMENT "Copying IRs and Presets to system VST3 location"
+    )
+endif()
+
+if(APPLE AND TARGET ADSREcho_AU)
+    add_custom_command(TARGET ADSREcho_AU POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${_RES}/IRs"     "${_SYS_AU}/IRs"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${_RES}/Presets" "${_SYS_AU}/Presets"
+        COMMENT "Copying IRs and Presets to system AU location"
+    )
 endif()
 
 # Installation

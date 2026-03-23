@@ -420,6 +420,8 @@ FodyWeavers.xsd
 
 # CMake
 build/
+build-host/
+release/
 cmake-build-*/
 CMakeCache.txt
 CMakeFiles/
