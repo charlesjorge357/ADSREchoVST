@@ -101,11 +101,28 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     addAndMakeVisible(addButton);
     addButton.onClick = [this]
         {
-            audioProcessor.addModule(currentlyDisplayedChain, ModuleType::Delay);
-            attemptedChange = true;
+            juce::PopupMenu menu;
+            menu.addItem(1, "Delay");
+            menu.addItem(2, "Reverb");
+            menu.addItem(3, "Convolution");
+            menu.addItem(4, "EQ");
+            menu.addItem(5, "Compressor");
+
+            menu.showMenuAsync(juce::PopupMenu::Options()
+                .withTargetComponent(&addButton),
+                [this](int result)
+                {
+                    if (result > 0)
+                    {
+                        audioProcessor.addModule(currentlyDisplayedChain,
+                            static_cast<ModuleType>(result));
+                        attemptedChange = true;
+                    }
+                });
         };
 
     // Module viewport
+    moduleContainer.owner = this;
     addAndMakeVisible(moduleViewport);
     moduleViewport.setViewedComponent(&moduleContainer, false);
     moduleViewport.setScrollBarsShown(false, true);
@@ -201,7 +218,7 @@ void ADSREchoAudioProcessorEditor::resized()
     moduleViewport.setBounds(area);
 
     constexpr int columnWidth = 245;
-    constexpr int columnSpacing = 6;
+    constexpr int columnSpacing = 28;
     int x = 0;
     int columnHeight = moduleViewport.getHeight();
 
@@ -245,10 +262,71 @@ void ADSREchoAudioProcessorEditor::handleAsyncUpdate()
 
 void ADSREchoAudioProcessorEditor::ModuleContainer::paint(juce::Graphics& g)
 {
+    // Draw cables between adjacent pedals
+    if (owner != nullptr)
+    {
+        auto& editors = owner->moduleEditors;
+        for (int i = 0; i + 1 < (int)editors.size(); ++i)
+        {
+            auto* a = editors[i].get();
+            auto* b = editors[i + 1].get();
+
+            bool wireActive = a->isModuleEnabled() && b->isModuleEnabled();
+
+            float x0 = (float)a->getRight();
+            float x1 = (float)b->getX();
+            float y   = (float)a->getBounds().getCentreY();
+            float droop   = y + 28.0f;
+            float tension = (x1 - x0) * 0.4f;
+
+            juce::Colour jacket = wireActive ? juce::Colour(0xff151515) : juce::Colour(0xff262626);
+            juce::Colour body   = wireActive ? juce::Colour(0xff2e2e2e) : juce::Colour(0xff333333);
+            juce::Colour sheen  = wireActive ? juce::Colour(0x885a5a5a) : juce::Colour(0x33454545);
+            juce::Colour jackFill = wireActive ? juce::Colour(0xff444444) : juce::Colour(0xff2e2e2e);
+            juce::Colour jackRim  = wireActive ? juce::Colour(0xff888888) : juce::Colour(0xff505050);
+
+            juce::Path wire;
+            wire.startNewSubPath(x0, y);
+            wire.cubicTo(x0 + tension, droop,
+                         x1 - tension, droop,
+                         x1, y);
+
+            // Rubber jacket (outermost, thickest)
+            g.setColour(jacket);
+            g.strokePath(wire, juce::PathStrokeType(5.0f,
+                juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+            // Mid body
+            g.setColour(body);
+            g.strokePath(wire, juce::PathStrokeType(3.0f,
+                juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+            // Highlight sheen (offset up by 1px)
+            juce::Path shine;
+            shine.startNewSubPath(x0, y - 1.0f);
+            shine.cubicTo(x0 + tension, droop - 1.0f,
+                          x1 - tension, droop - 1.0f,
+                          x1, y - 1.0f);
+            g.setColour(sheen);
+            g.strokePath(shine, juce::PathStrokeType(1.0f,
+                juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+            // Jack sockets at each end (drawn behind the pedal edges)
+            const float jackR = 5.0f;
+            g.setColour(jackFill);
+            g.fillEllipse(x0 - jackR, y - jackR, jackR * 2.0f, jackR * 2.0f);
+            g.fillEllipse(x1 - jackR, y - jackR, jackR * 2.0f, jackR * 2.0f);
+            g.setColour(jackRim);
+            g.drawEllipse(x0 - jackR, y - jackR, jackR * 2.0f, jackR * 2.0f, 1.0f);
+            g.drawEllipse(x1 - jackR, y - jackR, jackR * 2.0f, jackR * 2.0f, 1.0f);
+        }
+    }
+
+    // Drag reorder insertion indicator
     if (dropInsertionIndex < 0)
         return;
 
-    constexpr int cw = 245, cs = 6;
+    constexpr int cw = 245, cs = 28;
     int barX = dropInsertionIndex * (cw + cs) - 2;
     barX = juce::jmax(0, barX);
 
@@ -258,7 +336,7 @@ void ADSREchoAudioProcessorEditor::ModuleContainer::paint(juce::Graphics& g)
 
 int ADSREchoAudioProcessorEditor::getInsertionIndex(int screenX) const
 {
-    constexpr int cw = 245, cs = 6;
+    constexpr int cw = 245, cs = 28;
     auto local = moduleContainer.getLocalPoint(nullptr, juce::Point<int>(screenX, 0));
     int n = (int)moduleEditors.size();
 

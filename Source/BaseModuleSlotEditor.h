@@ -53,6 +53,7 @@ public:
     bool isDragging = false;
 
     int getSlotIndex() const { return slotIndex; }
+    bool isModuleEnabled() const { return enableToggle.getToggleState(); }
 
 protected:
 

@@ -83,6 +83,8 @@ BaseModuleSlotEditor::BaseModuleSlotEditor(
             setAlpha(isEnabled ? 1.0f : 0.5f);
 
             repaint();
+            if (auto* p = getParentComponent())
+                p->repaint();
 
 
         };

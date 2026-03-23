@@ -67,6 +67,7 @@ private:
 
     struct ModuleContainer : public juce::Component
     {
+        ADSREchoAudioProcessorEditor* owner = nullptr;
         int dropInsertionIndex = -1;
         void paint(juce::Graphics&) override;
     } moduleContainer;
