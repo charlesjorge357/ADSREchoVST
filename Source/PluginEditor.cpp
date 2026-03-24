@@ -217,15 +217,15 @@ void ADSREchoAudioProcessorEditor::resized()
     // Modules on the chain are displayed as side-by-side columns
     moduleViewport.setBounds(area);
 
-    constexpr int columnWidth = 245;
     constexpr int columnSpacing = 28;
     int x = 0;
     int columnHeight = moduleViewport.getHeight();
 
     for (auto& editor : moduleEditors)
     {
-        editor->setBounds(x, 0, columnWidth, columnHeight);
-        x += columnWidth + columnSpacing;
+        int w = editor->getPreferredWidth();
+        editor->setBounds(x, 0, w, columnHeight);
+        x += w + columnSpacing;
     }
 
     moduleContainer.setSize(x, columnHeight);
@@ -326,9 +326,11 @@ void ADSREchoAudioProcessorEditor::ModuleContainer::paint(juce::Graphics& g)
     if (dropInsertionIndex < 0)
         return;
 
-    constexpr int cw = 245, cs = 28;
-    int barX = dropInsertionIndex * (cw + cs) - 2;
-    barX = juce::jmax(0, barX);
+    constexpr int cs = 28;
+    int barX = 0;
+    for (int i = 0; i < dropInsertionIndex && owner != nullptr && i < (int)owner->moduleEditors.size(); ++i)
+        barX += owner->moduleEditors[i]->getPreferredWidth() + cs;
+    barX = juce::jmax(0, barX - 2);
 
     g.setColour(juce::Colour(0xff4A9EFF));
     g.fillRect(barX, 4, 3, getHeight() - 8);
@@ -336,15 +338,17 @@ void ADSREchoAudioProcessorEditor::ModuleContainer::paint(juce::Graphics& g)
 
 int ADSREchoAudioProcessorEditor::getInsertionIndex(int screenX) const
 {
-    constexpr int cw = 245, cs = 28;
+    constexpr int cs = 28;
     auto local = moduleContainer.getLocalPoint(nullptr, juce::Point<int>(screenX, 0));
     int n = (int)moduleEditors.size();
+    int x = 0;
 
     for (int i = 0; i < n; ++i)
     {
-        int center = i * (cw + cs) + cw / 2;
-        if (local.x < center)
+        int w = moduleEditors[i]->getPreferredWidth();
+        if (local.x < x + w / 2)
             return i;
+        x += w + cs;
     }
 
     return n;
