@@ -15,6 +15,7 @@ AppName=ADSR-Echo
 AppVersion={#AppVersion}
 AppPublisher=ADSR-Echo Team
 DefaultDirName={commonpf}\Common Files\VST3
+PrivilegesRequiredOverridesAllowed=dialog
 DirExistsWarning=no
 DisableProgramGroupPage=yes
 OutputBaseFilename=ADSREcho-Windows-Installer-{#AppVersion}
