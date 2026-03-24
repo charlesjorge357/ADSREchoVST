@@ -25,7 +25,7 @@ EQPanel::EQPanel()
 
     auto setupKnob = [this](juce::Slider& s)
     {
-        s.setSliderStyle(juce::Slider::Rotary);
+        s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         s.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
         s.setColour(juce::Slider::ColourIds::rotarySliderFillColourId,
                     juce::Colour(0xfff77f00));
