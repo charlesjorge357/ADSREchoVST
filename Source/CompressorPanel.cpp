@@ -127,12 +127,17 @@ CompressorPanel::CompressorPanel()
         };
     };
 
-    bindValue(threshold, thresholdValue, 1, "dBFS");
+    bindValue(threshold, thresholdValue, 1, "dB");
     bindValue(ratio, ratioValue, 1);
+    ratioValue.setText(juce::String(ratio.getValue(), 1) + ":1", juce::dontSendNotification);
+    ratio.onValueChange = [this]()
+    {
+        ratioValue.setText(juce::String(ratio.getValue(), 1) + ":1", juce::dontSendNotification);
+    };
     bindValue(attack, attackValue, 1, "ms");
     bindValue(release, releaseValue, 0, "ms");
-    bindValue(input, inputValue, 1);
-    bindValue(output, outputValue, 1);
+    bindValue(input, inputValue, 1, "dB");
+    bindValue(output, outputValue, 1, "dB");
 }
 
 // -----------------------------------------------------------------------------

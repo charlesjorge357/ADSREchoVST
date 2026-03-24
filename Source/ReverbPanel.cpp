@@ -162,9 +162,9 @@ ReverbPanel::ReverbPanel() {
 
     bindValue(roomSize, roomSizeValue, 2);
     bindValue(decay, decayValue, 2, "s");
-    bindValue(damping, dampingValue, 0);
-    bindValue(modRate, modRateValue, 3);
-    bindValue(modDepth, modDepthValue, 3);
+    bindValue(damping, dampingValue, 0, "Hz");
+    bindValue(modRate, modRateValue, 3, "Hz");
+    bindValue(modDepth, modDepthValue, 3, "%");
     bindValue(preDelay, preDelayValue, 1, "ms");
     bindValue(Mix, mixValue, 2);
 }
