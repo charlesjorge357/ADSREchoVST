@@ -39,7 +39,7 @@ void EQModuleSlotEditor::buildEditor(const SlotInfo& info)
 
 void EQModuleSlotEditor::layoutEditor(juce::Rectangle<int>& r)
 {
-    if (display) display->setBounds(r.removeFromTop(150).reduced(4));
+    if (display) display->setBounds(r.removeFromTop(175).reduced(4));
     r.removeFromTop(4);
     if (panel)   panel->setBounds(r);
 }

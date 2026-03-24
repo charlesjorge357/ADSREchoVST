@@ -50,6 +50,38 @@ ReverbPanel::ReverbPanel() {
         addAndMakeVisible(s);
     };
 
+    // Sets up value label text box with text editor
+    auto setupValueLabel = [this](juce::Label& label)
+    {
+        label.setJustificationType(juce::Justification::centred);
+        label.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::italic)));
+        label.setColour(juce::Label::textColourId, juce::Colours::black);
+        label.setEditable(true, true, false);
+
+        label.onEditorShow = [&label]()
+            {
+
+                // Remove everything that's not part of a number
+                auto text = label.getText().retainCharacters("0123456789.-");
+                    
+                if (auto* editor = label.getCurrentTextEditor())
+                {
+                    editor->setText(text, false);
+
+                    editor->setInputRestrictions(0, "0123456789.-");
+                    editor->setColour(juce::TextEditor::textColourId, juce::Colours::black);
+                    editor->applyColourToAllText(juce::Colours::black);
+                    editor->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::black);
+                    editor->setJustification(juce::Justification::centred);
+                }
+
+            };
+
+        addAndMakeVisible(label);
+    };
+
+
+
     /*setupKnob(timeSlide);
     setupKnob(feedbackSlider);
     setupKnob(cutoffSlider);
@@ -80,9 +112,61 @@ ReverbPanel::ReverbPanel() {
     setupKnob(Mix);
     setupLabel(mixLabel, "Mix");
 
+    setupValueLabel(roomSizeValue);
+    setupValueLabel(decayValue);
+    setupValueLabel(dampingValue);
+    setupValueLabel(modRateValue);
+    setupValueLabel(modDepthValue);
+    setupValueLabel(preDelayValue);
+    setupValueLabel(mixValue);
+
     //reverbBackground = juce::ImageCache::getFromMemory(BinaryData::reverbBackground_png, BinaryData::reverbBackground_pngSize);
 
+    // Binds the slider to its label, changing the text value up to a decimal place
+    auto bindValue = [](juce::Slider& s, juce::Label& l, int decimals = 2, juce::String units = "")
+    {
+        l.setText(juce::String(s.getValue(), decimals) + " " + units,
+            juce::dontSendNotification);
+            
+        s.onValueChange = [&s, &l, decimals, units]()
+            {
+                l.setText(juce::String(s.getValue(), decimals) + " " + units,
+                    juce::dontSendNotification);
+            };
 
+        l.onEditorHide = [&s, &l, decimals, units]()
+        {
+            auto text = l.getText().retainCharacters("0123456789.-");
+
+            double value;
+
+            if (text.isEmpty())
+            {
+                value = s.getValue();
+            }
+            else
+            {
+                value = text.getDoubleValue();
+            }
+
+
+            value = juce::jlimit(s.getMinimum(), s.getMaximum(), value);
+            value = s.snapValue(value, juce::Slider::DragMode::notDragging);
+
+            s.setValue(value);
+
+            l.setText(juce::String(value, decimals) + " " + units,
+                juce::dontSendNotification);
+        };
+    };
+
+    bindValue(roomSize, roomSizeValue, 2);
+    bindValue(decay, decayValue, 2, "s");
+    bindValue(damping, dampingValue, 0);
+    bindValue(modRate, modRateValue, 3);
+    bindValue(modDepth, modDepthValue, 3);
+    bindValue(preDelay, preDelayValue, 1, "ms");
+    bindValue(Mix, mixValue, 2);
 }
 
 void ReverbPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
@@ -136,9 +220,7 @@ void ReverbPanel::resized()
     // Title
     titleLabel.setBounds(area.removeFromTop(35));
 
-    area.removeFromTop(10); // spacing
-
-    area.removeFromTop(5);
+    area.removeFromTop(5); // spacing
 
     auto comboArea = area.removeFromTop(20);
 
@@ -166,32 +248,40 @@ void ReverbPanel::resized()
     const int cellHeight = area.getHeight() / rows;
    // const int knobSize = 80;
 
-    auto setupKnobInGrid = [&](juce::Label& label, juce::Slider& slider, int col, int row) {
-        auto cell = juce::Rectangle<int>(area.getX() + col * cellWidth, area.getY() + row * cellHeight, cellWidth, cellHeight);
+    auto setupKnobInGrid = [&](juce::Label& label,
+        juce::Slider& slider,
+        juce::Label& valueLabel,
+        int col, int row)
+        {
 
-        int knobSize = 80;
-        auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
-        slider.setBounds(knobArea);
+            auto cell = juce::Rectangle<int>(
+                area.getX() + col * cellWidth,
+                area.getY() + row * cellHeight,
+                cellWidth,
+                cellHeight);
 
- // 3. Position the label relative to the KNOB, not the cell
- // This ensures the gap is always the same regardless of grid height
-        label.setBounds(knobArea.getX(), knobArea.getY() - 15, knobArea.getWidth(), 15);
+            int knobSize = 80;
 
+            auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
 
-     /*label.setBounds(cell.removeFromTop(16));
-     slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));*/
+            slider.setBounds(knobArea);
 
-        //label.setBounds(cell.removeFromTop(16));
-        //slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));
-    };
+            label.setBounds(knobArea.getX(), knobArea.getY() - 15,
+                knobArea.getWidth(), 15);
 
-    setupKnobInGrid(roomSizeLabel, roomSize, 0, 0);
-    setupKnobInGrid(decayLabel, decay, 1, 0);
-    setupKnobInGrid(dampingLabel, damping, 0, 1);
-    setupKnobInGrid(modRateLabel, modRate, 1, 1);
-    setupKnobInGrid(modDepthLabel, modDepth, 0, 2);
-    setupKnobInGrid(preDelayLabel, preDelay, 1, 2);
-    setupKnobInGrid(mixLabel, Mix, 0, 3);
+            valueLabel.setBounds(knobArea.getX(),
+                knobArea.getBottom(),
+                knobArea.getWidth(), 15);
+
+        };
+
+    setupKnobInGrid(roomSizeLabel, roomSize, roomSizeValue, 0, 0);
+    setupKnobInGrid(decayLabel, decay, decayValue, 1, 0);
+    setupKnobInGrid(dampingLabel, damping, dampingValue, 0, 1);
+    setupKnobInGrid(modRateLabel, modRate, modRateValue, 1, 1);
+    setupKnobInGrid(modDepthLabel, modDepth, modDepthValue, 0, 2);
+    setupKnobInGrid(preDelayLabel, preDelay, preDelayValue, 1, 2);
+    setupKnobInGrid(mixLabel, Mix, mixValue, 0, 3);
 
 
 

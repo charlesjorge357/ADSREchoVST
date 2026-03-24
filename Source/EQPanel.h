@@ -67,6 +67,10 @@ private:
     juce::Label highGainLabel;
     juce::Label highQLabel;
 
+    juce::Label lowFreqValue, lowGainValue, lowQValue,
+        midFreqValue, midGainValue, midQValue, 
+        highFreqValue, highGainValue, highQValue;
+
     // APVTS attachments - created in attachToAPVTS
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
         lowFreqAttach,  lowGainAttach,  lowQAttach,

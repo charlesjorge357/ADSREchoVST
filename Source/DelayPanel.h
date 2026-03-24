@@ -66,7 +66,8 @@ class DelayPanel : public juce::Component
         juce::Label highpassLabel;
         juce::Label mixLabel;
 
-
+        juce::Label feedbackValue, timeValue, bpmValue,
+            panValue, lowpassValue, highpassValue, mixValue;
 
         
         juce::Slider feedbackSlider;

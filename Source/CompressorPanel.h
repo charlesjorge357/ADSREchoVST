@@ -62,6 +62,9 @@ private:
     juce::Label inputLabel;
     juce::Label outputLabel;
 
+    juce::Label thresholdValue, ratioValue, attackValue,
+        releaseValue, inputValue, outputValue, mixValue;
+
     // APVTS attachments - created in attachToAPVTS
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
         thresholdAttach, ratioAttach, attackAttach,

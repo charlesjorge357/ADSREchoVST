@@ -86,6 +86,8 @@
                 file="Source/CompressorPanel.h"/>
           <FILE id="g0Ixvw" name="ConvolutionPanel.h" compile="0" resource="0"
                 file="Source/ConvolutionPanel.h"/>
+          <FILE id="BSqhBK" name="ConvolutionPanel.cpp" compile="1" resource="0"
+                file="Source/ConvolutionPanel.cpp"/>
           <FILE id="nJtlH4" name="EQPanel.cpp" compile="1" resource="0" file="Source/EQPanel.cpp"/>
           <FILE id="QXisuk" name="EQPanel.h" compile="0" resource="0" file="Source/EQPanel.h"/>
           <FILE id="xwowHZ" name="EQDisplayComponent.cpp" compile="1" resource="0"
@@ -186,7 +188,6 @@
       <FILE id="JfOV2E" name="BasicCompressor.h" compile="0" resource="0"
             file="Source/BasicCompressor.h"/>
     </GROUP>
-    <FILE id="BSqhBK" name="Convolve.cpp" compile="1" resource="0" file="Source/Convolve.cpp"/>
     <FILE id="ianb9y" name="MasterPanel.cpp" compile="1" resource="0" file="Source/MasterPanel.cpp"/>
     <FILE id="sjuKM1" name="MasterPanel.h" compile="0" resource="0" file="Source/MasterPanel.h"/>
     <FILE id="PsYqDQ" name="PresetManager.cpp" compile="1" resource="0"

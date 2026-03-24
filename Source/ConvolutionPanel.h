@@ -75,6 +75,9 @@ private:
     juce::Label    preDelayLabel;
     juce::Label    mixLabel;
 
+    juce::Label irGainValue, lowCutValue, highCutValue,
+        preDelayValue, mixValue;
+
     // -------------------------------------------------------------------------
     // APVTS attachments - created in attachToAPVTS
     // -------------------------------------------------------------------------

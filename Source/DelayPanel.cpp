@@ -102,11 +102,93 @@ DelayPanel::DelayPanel() {
     setupLabel(highpassLabel, "highpass");
     
     setupLabel(mixLabel, "Mix");
+    
+
+    auto setupValueLabel = [this](juce::Label& label)
+        {
+            label.setJustificationType(juce::Justification::centred);
+            label.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::italic)));
+            label.setColour(juce::Label::textColourId, juce::Colours::white);
+            label.setEditable(true, true, false);
+
+            label.onEditorShow = [&label]()
+                {
+
+                    // Remove everything that's not part of a number
+                    auto text = label.getText().retainCharacters("0123456789.-");
+
+                    if (auto* editor = label.getCurrentTextEditor())
+                    {
+                        editor->setText(text, false);
+
+                        editor->setInputRestrictions(0, "0123456789.-");
+                        editor->setColour(juce::TextEditor::textColourId, juce::Colours::white);
+                        editor->applyColourToAllText(juce::Colours::white);
+                        editor->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::black);
+                        editor->setJustification(juce::Justification::centred);
+                    }
+
+                };
+
+            addAndMakeVisible(label);
+        };
+
+    setupValueLabel(feedbackValue);
+    setupValueLabel(timeValue);
+    setupValueLabel(bpmValue);
+    setupValueLabel(panValue);
+    setupValueLabel(lowpassValue);
+    setupValueLabel(highpassValue);
+    setupValueLabel(mixValue);
 
 
+    // Binds the slider to its label, changing the text value up to a decimal place
+    auto bindValue = [](juce::Slider& s, juce::Label& l, int decimals = 2, juce::String units = "")
+        {
+            l.setText(juce::String(s.getValue(), decimals) + " " + units,
+                juce::dontSendNotification);
+
+            s.onValueChange = [&s, &l, decimals, units]()
+                {
+                    l.setText(juce::String(s.getValue(), decimals) + " " + units,
+                        juce::dontSendNotification);
+                };
+
+            l.onEditorHide = [&s, &l, decimals, units]()
+                {
+                    auto text = l.getText().retainCharacters("0123456789.-");
+
+                    double value;
+
+                    if (text.isEmpty())
+                    {
+                        value = s.getValue();
+                    }
+                    else
+                    {
+                        value = text.getDoubleValue();
+                    }
 
 
+                    value = juce::jlimit(s.getMinimum(), s.getMaximum(), value);
+                    value = s.snapValue(value, juce::Slider::DragMode::notDragging);
+
+                    s.setValue(value);
+
+                    l.setText(juce::String(value, decimals) + " " + units,
+                        juce::dontSendNotification);
+                };
+        };
+
+    bindValue(feedbackSlider, feedbackValue, 2);
+    bindValue(timeSlider, timeValue, 1, "s");
+    bindValue(bpmSlider, bpmValue, 1);
+    bindValue(panSlider, panValue, 2);
+    bindValue(lowpassSlider, lowpassValue, 0);
+    bindValue(highpassSlider, highpassValue, 0, "Hz");
+    bindValue(mixSlider, mixValue, 2);
 }
+
 
 void DelayPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
                                 const juce::String& slotID)
@@ -170,7 +252,6 @@ void DelayPanel::resized()
 
     // Title
     titleLabel.setBounds(area.removeFromTop(35));
-    area.removeFromTop(10);
     area.removeFromTop(5); // spacing
 
     auto comboArea = area.removeFromTop(20);
@@ -188,7 +269,7 @@ void DelayPanel::resized()
     const int cellHeight = area.getHeight() / rows;
     const int knobSize = 80;
 
-    auto setKnobInGrid = [&](juce::Label& label, juce::Slider& slider, int col, int row) {
+    auto setKnobInGrid = [&](juce::Label& label, juce::Slider& slider, juce::Label& valueLabel, int col, int row) {
         auto cell = juce::Rectangle<int>(area.getX() + col * cellWidth, area.getY() + row * cellHeight, cellWidth, cellHeight);
 
         //int knobSize = 80;
@@ -197,23 +278,28 @@ void DelayPanel::resized()
         
         label.setBounds(knobArea.getX(), knobArea.getY() - 15, knobArea.getWidth(), 15);
 
+        valueLabel.setBounds(knobArea.getX(),
+            knobArea.getBottom() + 0,
+            knobArea.getWidth(), 15);
+
         /*label.setBounds(cell.removeFromTop(16));
         slider.setBounds(cell.withSizeKeepingCentre(knobSize, knobSize));*/
     };
 
-    setKnobInGrid(feedbackLabel, feedbackSlider, 0, 0);
-    setKnobInGrid(timeLabel, timeSlider, 1, 0);
+    setKnobInGrid(feedbackLabel, feedbackSlider, feedbackValue, 0, 0);
+    setKnobInGrid(timeLabel, timeSlider, timeValue, 1, 0);
 
     // BPM cell: toggle at top, then knob
     auto bpmCell = juce::Rectangle<int>(area.getX() + 0 * cellWidth, area.getY() + 1 * cellHeight, cellWidth, cellHeight);
     bmpTog.setBounds(bpmCell.removeFromTop(20));
     bpmLabel.setBounds(bpmCell.removeFromTop(14));
+    bpmValue.setBounds(bpmCell.removeFromBottom(15));
     bpmSlider.setBounds(bpmCell.withSizeKeepingCentre(knobSize, knobSize));
 
-    setKnobInGrid(panLabel, panSlider, 1, 1);
-    setKnobInGrid(lowpassLabel, lowpassSlider, 0, 2);
-    setKnobInGrid(highpassLabel, highpassSlider, 1, 2);
-    setKnobInGrid(mixLabel, mixSlider, 0, 3);
+    setKnobInGrid(panLabel, panSlider, panValue, 1, 1);
+    setKnobInGrid(lowpassLabel, lowpassSlider, lowpassValue, 0, 2);
+    setKnobInGrid(highpassLabel, highpassSlider, highpassValue, 1, 2);
+    setKnobInGrid(mixLabel, mixSlider, mixValue, 0, 3);
 
 }
 

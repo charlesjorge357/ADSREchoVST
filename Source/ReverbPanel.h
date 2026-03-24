@@ -57,6 +57,8 @@ class ReverbPanel : public juce::Component
         juce::Label preDelayLabel;
         juce::Label mixLabel;
 
+        juce::Label roomSizeValue, decayValue, dampingValue,
+            modRateValue, modDepthValue, preDelayValue, mixValue;
 
         /*juce::Slider timeSlider;
         juce::Slider feedbackSlider;
