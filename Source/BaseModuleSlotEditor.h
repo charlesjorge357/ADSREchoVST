@@ -54,6 +54,7 @@ public:
 
     int getSlotIndex() const { return slotIndex; }
     bool isModuleEnabled() const { return enableToggle.getToggleState(); }
+    virtual int getPreferredWidth() const { return 245; }
 
 protected:
 

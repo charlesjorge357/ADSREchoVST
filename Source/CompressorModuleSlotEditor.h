@@ -31,6 +31,7 @@ public:
 private:
 
     // Base overrides
+    int getPreferredWidth() const override { return 350; }
     void buildEditor(const SlotInfo& info) override;
     void layoutEditor(juce::Rectangle<int>& r) override;
 
