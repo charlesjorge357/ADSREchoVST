@@ -41,6 +41,13 @@ public:
     // True when the last requested bank IR was not found (out of range or file missing).
     bool isIRMissing() const;
 
+    // True if an IR has been loaded (i.e. not a freshly-constructed module).
+    bool isIRLoaded() const;
+
+    // Signal background convolver threads to exit without waiting.
+    // Call on all modules before destruction to parallelise thread joins.
+    void signalConvolversToStop();
+
 private:
     juce::String moduleID;
     juce::AudioProcessorValueTreeState& state;

@@ -133,7 +133,22 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     for (auto& chain : slots)
     {
         for (auto& slot : chain)
+        {
             slot->prepare(spec);
+
+            // If setStateInformation was called before prepareToPlay (spec.sampleRate
+            // was 0 at restore time), the ConvolutionModule was installed without an IR
+            // loaded.  Pre-load it now on the message thread so the first processBlock
+            // call doesn't do disk I/O on the audio thread while holding the callback lock.
+            if (auto* cm = dynamic_cast<ConvolutionModule*>(slot->get()))
+            {
+                if (!cm->isIRLoaded() && !cm->hasCustomIR())
+                {
+                    if (auto* p = apvts.getRawParameterValue(slot->slotID + ".convIrIndex"))
+                        cm->forceReloadIR((int) p->load());
+                }
+            }
+        }
     }
 
 }
@@ -179,6 +194,8 @@ bool ADSREchoAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
 
 void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    const juce::ScopedLock sl (getCallbackLock());
+
     chainTempBuffer.setSize(
         chainTempBuffer.getNumChannels(),
         buffer.getNumSamples(),
@@ -429,15 +446,24 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
         }
     }
 
-    // Phase 3: Destroy old modules outside the audio lock.
-    // Background convolution threads are stopped here, without blocking audio.
-    toDestroy.clear();
-
-    // Restore preset name and parameters (safe outside the audio lock)
+    // Restore preset name and parameters BEFORE destroying old modules.
+    // This ensures apvts.replaceState() is called while setStateInformation() is
+    // still on the stack — hosts like FL Studio have a timeout on setState() and
+    // will report "state not restored" if the call blocks for too long (e.g. while
+    // joining background convolver threads below).
     currentPresetName = state.getProperty("currentPresetName", "").toString();
     apvts.replaceState(state);
-
     uiNeedsRebuild.store(true, std::memory_order_release);
+
+    // Phase 3: Destroy old modules outside the audio lock.
+    // Signal all convolver background threads to exit simultaneously BEFORE the
+    // sequential destructions below.  This parallelises the wait so the total
+    // join time is max(individual times) rather than their sum.
+    for (auto& mod : toDestroy)
+        if (auto* cm = dynamic_cast<ConvolutionModule*>(mod.get()))
+            cm->signalConvolversToStop();
+
+    toDestroy.clear();
 }
 
 void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)

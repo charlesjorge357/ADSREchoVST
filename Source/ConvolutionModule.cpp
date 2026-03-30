@@ -118,3 +118,13 @@ bool ConvolutionModule::isIRMissing() const
 {
     return convolutionReverb.isIRMissing();
 }
+
+bool ConvolutionModule::isIRLoaded() const
+{
+    return convolutionReverb.isIRLoaded();
+}
+
+void ConvolutionModule::signalConvolversToStop()
+{
+    convolutionReverb.signalThreadsToStop();
+}

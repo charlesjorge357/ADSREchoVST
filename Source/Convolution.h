@@ -63,6 +63,15 @@ public:
         doneEvent.signal(); // unblock any waitForCompletion() that's still waiting
     }
 
+    // Signal the thread to exit without waiting.  Call this on a group of
+    // convolvers before calling stopBackgroundThread() on each, so all threads
+    // start exiting in parallel instead of one-at-a-time.
+    void signalToStop()
+    {
+        signalThreadShouldExit();
+        startEvent.signal();
+    }
+
     // Call before init() / reset() to ensure in-flight tail work has finished.
     void waitForCompletion() { waitForBackgroundProcessing(); }
 
@@ -167,6 +176,20 @@ public:
 
     // True if the last requested bank IR was missing/out-of-range
     bool isIRMissing() const { return irMissingFlag; }
+
+    // True if an IR has been loaded (currentIRIndex >= 0).
+    // False for freshly-created modules that haven't been through prepare()+forceLoad.
+    bool isIRLoaded() const { return currentIRIndex >= 0; }
+
+    // Signal both convolver background threads to exit without waiting.
+    // Call this on all modules before destruction to parallelise thread joins.
+    void signalThreadsToStop()
+    {
+#if USE_CUSTOM_CONVOLVER
+        convolverL.signalToStop();
+        convolverR.signalToStop();
+#endif
+    }
 
 private:
     void updateFilters();
