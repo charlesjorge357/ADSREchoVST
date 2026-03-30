@@ -166,7 +166,7 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
     if (filtersChanged)
         updateFilters();
 
-    if (irChanged && !customIRActive)
+    if (irChanged && !customIRActive && prepared)
         loadIRAtIndex(newParams.irIndex);
 }
 

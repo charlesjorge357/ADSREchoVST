@@ -344,10 +344,15 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
     for (auto chainState : modules)
     {
         int chainIndex = (int)chainState["index"];
+        if (!juce::isPositiveAndBelow(chainIndex, NUM_CHAINS))
+            continue;
 
         for (auto slotState : chainState)
         {
             int slotIndex = (int)slotState["index"];
+            if (!juce::isPositiveAndBelow(slotIndex, MAX_SLOTS))
+                continue;
+
             auto type = slotState["type"];
 
             std::unique_ptr<EffectModule> newModule;
@@ -378,7 +383,27 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
                     // Bank IR: record index so Phase 1 can pre-load it on the message
                     // thread after prepare(), preventing disk I/O on the audio thread
                     // after apvts.replaceState() updates convIrIndex.
-                    pendingIRIndex = (int) slotState.getProperty("irIndex", 0);
+                    //
+                    // Prefer "irIndex" from the slot XML (written by current getStateTree()).
+                    // Fall back to reading convIrIndex directly from the APVTS parameter
+                    // properties in the incoming state tree for older saved states that
+                    // predate the irIndex slot property. This ensures pendingIRIndex always
+                    // matches what apvts.replaceState() will set convIrIndex to, so the
+                    // guard in loadIRAtIndex() (index == currentIRIndex → skip) fires and
+                    // the audio thread never triggers disk I/O.
+                    int irIdxFromXml = (int) slotState.getProperty("irIndex", -1);
+                    if (irIdxFromXml >= 0)
+                    {
+                        pendingIRIndex = irIdxFromXml;
+                    }
+                    else
+                    {
+                        // Old state: read the actual parameter value from the APVTS state
+                        // tree. APVTS stores unnormalised float values as direct properties
+                        // keyed by parameter ID, matching what replaceState() will restore.
+                        auto paramKey = slots[chainIndex][slotIndex]->slotID + ".convIrIndex";
+                        pendingIRIndex = (int)(float) state.getProperty(paramKey, 0.0f);
+                    }
                 }
 
                 newModule = std::move(module);
@@ -397,25 +422,17 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
         }
     }
 
-    // Still Phase 1: prepare() and setID() on every incoming module BEFORE
-    // acquiring the audio lock.  For ConvolutionModules this is where the IR
-    // file is loaded and the FFT convolver is initialised — both are too heavy
-    // to run while the audio callback is blocked.
+    // Phase 1b: setID only (fast). Do NOT call prepare() or forceReloadIR() here.
+    // Hosts like FL Studio impose a strict timeout on setStateInformation(). On
+    // project-reopen the host calls prepareToPlay() before setStateInformation(),
+    // so spec.sampleRate > 0 by the time we reach this point. If we prepared and
+    // loaded IRs synchronously here we would block for disk I/O + FFT init inside
+    // that timeout window and get "component state wasn't restored".
+    //
+    // Modules are installed with prepared=false; Convolution::processBlock guards
+    // on `prepared` so they produce silence until the async callback below fires.
     for (auto& p : incoming)
-    {
         p.module->setID(slots[p.chain][p.slot]->slotID);
-        if (spec.sampleRate > 0)
-        {
-            p.module->prepare(spec);
-
-            // Bank IR: load here on the message thread (correct block sizes are
-            // now known post-prepare). This prevents setParameters() from calling
-            // loadIRAtIndex() on the audio thread after apvts.replaceState().
-            if (p.pendingIRIndex >= 0)
-                if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
-                    cm->forceReloadIR(p.pendingIRIndex);
-        }
-    }
 
     // Phase 2: Swap modules under the audio callback lock so the audio thread
     // can never be mid-process() when we replace pointers.
@@ -440,7 +457,7 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
 
         for (auto& p : incoming)
         {
-            // Module is already prepared — just do the pointer swap.
+            // Modules have their ID set but are not yet prepared — prepare() runs async below.
             slots[p.chain][p.slot]->installPreparedModule(std::move(p.module));
             numModules[p.chain]++;
         }
@@ -464,6 +481,44 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
             cm->signalConvolversToStop();
 
     toDestroy.clear();
+
+    // Phase 4: Prepare all new modules and load IRs asynchronously so that
+    // setStateInformation() returns before any disk I/O or FFT init happens.
+    // This fires on the message thread after the current call stack unwinds,
+    // well outside FL Studio's setState timeout window.
+    // If spec.sampleRate == 0 (host calls setState before prepareToPlay),
+    // prepareToPlay() is the fallback and this lambda is a safe no-op.
+    if (spec.sampleRate > 0)
+    {
+        auto specCopy = spec;
+        // Capture a weak reference so the lambda is a no-op if FL Studio destroys
+        // and recreates this plugin instance before the callback fires (e.g. during
+        // crash recovery or plugin-scanner re-init).
+        juce::WeakReference<ADSREchoAudioProcessor> weakThis(this);
+        juce::MessageManager::callAsync([weakThis, specCopy]()
+        {
+            auto* self = weakThis.get();
+            if (self == nullptr)
+                return;
+
+            for (auto& chain : self->slots)
+            {
+                for (auto& slot : chain)
+                {
+                    slot->prepare(specCopy);
+
+                    if (auto* cm = dynamic_cast<ConvolutionModule*>(slot->get()))
+                    {
+                        if (!cm->isIRLoaded() && !cm->hasCustomIR())
+                        {
+                            if (auto* p = self->apvts.getRawParameterValue(slot->slotID + ".convIrIndex"))
+                                cm->forceReloadIR((int) p->load());
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 void ADSREchoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
