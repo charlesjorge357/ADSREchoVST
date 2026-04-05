@@ -242,6 +242,14 @@ void ADSREchoAudioProcessorEditor::handleAsyncUpdate()
 {
     rebuildModuleEditors();
 
+    // Sync parallel enable visibility — ButtonAttachment updates the toggle state
+    // but does NOT fire onClick, so masterPanels[1] visibility must be set manually.
+    {
+        auto* p = audioProcessor.apvts.getRawParameterValue("parallelEnabled");
+        bool enabled = p && p->load() > 0.5f;
+        masterPanels[1]->setVisible(enabled);
+    }
+
     // Sync preset combobox to the restored preset name (mirrors Serum behaviour)
     refreshPresetComboBox();
 

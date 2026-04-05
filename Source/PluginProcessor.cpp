@@ -8,6 +8,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <thread>
 #include "DatorroHall.h"
 
 //==============================================================================
@@ -422,102 +423,114 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
         }
     }
 
-    // Phase 1b: setID only (fast). Do NOT call prepare() or forceReloadIR() here.
-    // Hosts like FL Studio impose a strict timeout on setStateInformation(). On
-    // project-reopen the host calls prepareToPlay() before setStateInformation(),
-    // so spec.sampleRate > 0 by the time we reach this point. If we prepared and
-    // loaded IRs synchronously here we would block for disk I/O + FFT init inside
-    // that timeout window and get "component state wasn't restored".
-    //
-    // Modules are installed with prepared=false; Convolution::processBlock guards
-    // on `prepared` so they produce silence until the async callback below fires.
+    // Set IDs (fast — uses slot->slotID which is stable across calls).
     for (auto& p : incoming)
         p.module->setID(slots[p.chain][p.slot]->slotID);
 
-    // Phase 2: Swap modules under the audio callback lock so the audio thread
-    // can never be mid-process() when we replace pointers.
-    //
-    // IMPORTANT: old modules are NOT destroyed here. We collect them into
-    // toDestroy and let them go out of scope after releasing the lock. This
-    // ensures that Convolution::~Convolution() (which calls waitForThreadToExit
-    // on the background tail FFT thread) never holds the audio callback lock,
-    // preventing the ~500 ms stall and any use-after-free if the thread takes
-    // longer than the 500 ms timeout to exit.
-    std::vector<std::unique_ptr<EffectModule>> toDestroy;
-    toDestroy.reserve(NUM_CHAINS * MAX_SLOTS * 2);
-
-    {
-        const juce::ScopedLock audioLock(getCallbackLock());
-
-        for (auto& chain : slots)
-            for (auto& slot : chain)
-                slot->extractAllModules(toDestroy);
-
-        numModules = std::vector<int>(NUM_CHAINS, 0);
-
-        for (auto& p : incoming)
-        {
-            // Modules have their ID set but are not yet prepared — prepare() runs async below.
-            slots[p.chain][p.slot]->installPreparedModule(std::move(p.module));
-            numModules[p.chain]++;
-        }
-    }
-
-    // Restore preset name and parameters BEFORE destroying old modules.
-    // This ensures apvts.replaceState() is called while setStateInformation() is
-    // still on the stack — hosts like FL Studio have a timeout on setState() and
-    // will report "state not restored" if the call blocks for too long (e.g. while
-    // joining background convolver threads below).
+    // Restore APVTS state and preset name. This is the primary obligation of
+    // setStateInformation() and must complete before we return so that FL Studio
+    // does not report "component state wasn't restored".
     currentPresetName = state.getProperty("currentPresetName", "").toString();
     apvts.replaceState(state);
     uiNeedsRebuild.store(true, std::memory_order_release);
 
-    // Phase 3: Destroy old modules outside the audio lock.
-    // Signal all convolver background threads to exit simultaneously BEFORE the
-    // sequential destructions below.  This parallelises the wait so the total
-    // join time is max(individual times) rather than their sum.
-    for (auto& mod : toDestroy)
-        if (auto* cm = dynamic_cast<ConvolutionModule*>(mod.get()))
-            cm->signalConvolversToStop();
+    // Two-path swap strategy based on whether the audio engine is running:
+    //
+    // PATH A (spec.sampleRate == 0): prepareToPlay has not been called yet.
+    //   Install bare (unprepared) modules now so prepareToPlay can find and
+    //   prepare them. Old modules (if any) are destroyed here. Safe because
+    //   no audio is flowing yet.
+    //
+    // PATH B (spec.sampleRate > 0): prepareToPlay has already been called.
+    //   Old modules STAY in the slots and keep producing audio. New modules
+    //   are prepared and IR-loaded in a callAsync on the message thread
+    //   (outside setStateInformation's timeout window). Only after they are
+    //   fully ready are they swapped in under the audio lock. This prevents
+    //   the audio thread from ever seeing partially-initialised convolvers.
 
-    toDestroy.clear();
-
-    // Phase 4: Prepare all new modules and load IRs asynchronously so that
-    // setStateInformation() returns before any disk I/O or FFT init happens.
-    // This fires on the message thread after the current call stack unwinds,
-    // well outside FL Studio's setState timeout window.
-    // If spec.sampleRate == 0 (host calls setState before prepareToPlay),
-    // prepareToPlay() is the fallback and this lambda is a safe no-op.
-    if (spec.sampleRate > 0)
+    auto doSwap = [this](std::vector<PendingSlot>& pendingSlots)
     {
-        auto specCopy = spec;
-        // Capture a weak reference so the lambda is a no-op if FL Studio destroys
-        // and recreates this plugin instance before the callback fires (e.g. during
-        // crash recovery or plugin-scanner re-init).
-        juce::WeakReference<ADSREchoAudioProcessor> weakThis(this);
-        juce::MessageManager::callAsync([weakThis, specCopy]()
+        std::vector<std::unique_ptr<EffectModule>> toDestroy;
+        toDestroy.reserve(NUM_CHAINS * MAX_SLOTS * 2);
         {
-            auto* self = weakThis.get();
-            if (self == nullptr)
-                return;
-
-            for (auto& chain : self->slots)
-            {
+            const juce::ScopedLock audioLock(getCallbackLock());
+            for (auto& chain : slots)
                 for (auto& slot : chain)
-                {
-                    slot->prepare(specCopy);
+                    slot->extractAllModules(toDestroy);
+            numModules = std::vector<int>(NUM_CHAINS, 0);
+            for (auto& p : pendingSlots)
+            {
+                slots[p.chain][p.slot]->installPreparedModule(std::move(p.module));
+                numModules[p.chain]++;
+            }
+        }
+        for (auto& mod : toDestroy)
+            if (auto* cm = dynamic_cast<ConvolutionModule*>(mod.get()))
+                cm->signalConvolversToStop();
+        toDestroy.clear();
+    };
 
-                    if (auto* cm = dynamic_cast<ConvolutionModule*>(slot->get()))
+    if (spec.sampleRate == 0)
+    {
+        // PATH A: no audio engine yet — install immediately, prepare later.
+        doSwap(incoming);
+    }
+    else
+    {
+        // PATH B: audio engine running — prepare fully before swapping.
+        // New modules stay in the background thread's capture (invisible to the
+        // audio thread) until completely initialised — zero data-race risk.
+        //
+        // Heavy work (disk I/O + FFT init) runs on a detached background thread
+        // so the message thread is never blocked.  Only the fast pointer swap
+        // is posted back to the message thread via a nested callAsync.
+        const juce::dsp::ProcessSpec capturedSpec = spec;
+        juce::WeakReference<ADSREchoAudioProcessor> weakThis(this);
+        std::thread([weakThis, capturedSpec, incoming = std::move(incoming)]() mutable
+        {
+            // Prepare and load IRs off the message thread.
+            for (auto& p : incoming)
+            {
+                p.module->prepare(capturedSpec);
+
+                if (p.pendingIRIndex >= 0)
+                    if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
+                        cm->forceReloadIR(p.pendingIRIndex);
+            }
+
+            // Post only the fast pointer swap back to the message thread.
+            juce::MessageManager::callAsync([weakThis, incoming = std::move(incoming)]() mutable
+            {
+                auto* self = weakThis.get();
+                if (self == nullptr)
+                    return;
+
+                // Swap fully-prepared modules into slots under the audio lock (fast).
+                std::vector<std::unique_ptr<EffectModule>> toDestroy;
+                toDestroy.reserve(self->NUM_CHAINS * self->MAX_SLOTS * 2);
+                {
+                    const juce::ScopedLock audioLock(self->getCallbackLock());
+                    for (auto& chain : self->slots)
+                        for (auto& slot : chain)
+                            slot->extractAllModules(toDestroy);
+                    self->numModules = std::vector<int>(self->NUM_CHAINS, 0);
+                    for (auto& p : incoming)
                     {
-                        if (!cm->isIRLoaded() && !cm->hasCustomIR())
-                        {
-                            if (auto* p = self->apvts.getRawParameterValue(slot->slotID + ".convIrIndex"))
-                                cm->forceReloadIR((int) p->load());
-                        }
+                        self->slots[p.chain][p.slot]->installPreparedModule(std::move(p.module));
+                        self->numModules[p.chain]++;
                     }
                 }
-            }
-        });
+
+                self->uiNeedsRebuild.store(true, std::memory_order_release);
+
+                // Destroy old modules outside the audio lock. Signal convolver
+                // threads to exit in parallel before sequential destructions.
+                for (auto& mod : toDestroy)
+                    if (auto* cm = dynamic_cast<ConvolutionModule*>(mod.get()))
+                        cm->signalConvolversToStop();
+                toDestroy.clear();
+            });
+        }).detach();
     }
 }
 
