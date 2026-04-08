@@ -21,7 +21,7 @@ ReverbPanel::ReverbPanel() {
     
     titleLabel.setText("Reverb", juce::dontSendNotification);
 	titleLabel.setJustificationType(juce::Justification::centredTop);
-    titleLabel.setFont(juce::Font(juce::FontOptions(20.0f,juce::Font::bold | juce::Font::italic)));
+    titleLabel.setFont(juce::Font(juce::FontOptions(25.0f,juce::Font::bold | juce::Font::italic)));
 	titleLabel.setColour(juce::Label::textColourId, juce::Colour(0xffd81e5b));
 	addAndMakeVisible(titleLabel);
 
@@ -30,7 +30,7 @@ ReverbPanel::ReverbPanel() {
     {
         label.setText(name, juce::dontSendNotification);
         label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(juce::FontOptions(12.0f)));
+        label.setFont(juce::Font(juce::FontOptions(17.0f)));
         label.setColour(juce::Label::textColourId, juce::Colour(0xffd81e5b));
         addAndMakeVisible(label);
     };
@@ -54,7 +54,7 @@ ReverbPanel::ReverbPanel() {
     auto setupValueLabel = [this](juce::Label& label)
     {
         label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::italic)));
+        label.setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::italic)));
         label.setColour(juce::Label::textColourId, juce::Colours::black);
         label.setEditable(true, true, false);
 

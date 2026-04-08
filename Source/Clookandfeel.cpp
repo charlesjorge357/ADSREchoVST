@@ -205,11 +205,22 @@ void CustomLNF::drawComboBox(juce::Graphics& g, int width, int height, bool, int
 
 }
 
+static juce::Typeface::Ptr s_designer   = juce::Typeface::createSystemTypefaceFor(BinaryData::Designer_otf,               BinaryData::Designer_otfSize);
+static juce::Typeface::Ptr s_animaReg   = juce::Typeface::createSystemTypefaceFor(BinaryData::FtAnimaRegularz453_otf,      BinaryData::FtAnimaRegularz453_otfSize);
+static juce::Typeface::Ptr s_animaMed   = juce::Typeface::createSystemTypefaceFor(BinaryData::FtAnimaMediumj8yG_otf,       BinaryData::FtAnimaMediumj8yG_otfSize);
+static juce::Typeface::Ptr s_hussarBold = juce::Typeface::createSystemTypefaceFor(BinaryData::HussarBoldObliqueOneoPKq_otf, BinaryData::HussarBoldObliqueOneoPKq_otfSize);
+static juce::Typeface::Ptr s_guavine    = juce::Typeface::createSystemTypefaceFor(BinaryData::GuavineDemoRegular1jGgL_otf,  BinaryData::GuavineDemoRegular1jGgL_otfSize);
+
 juce::Typeface::Ptr CustomLNF::getTypefaceForFont(const juce::Font& f)
 {
-    static auto myFont = juce::Typeface::createSystemTypefaceFor(BinaryData::Designer_otf, BinaryData::Designer_otfSize);
-
-    return myFont;
+    switch (activeFont)
+    {
+        case AppFont::AnimaRegular: return s_animaReg;
+        case AppFont::AnimaMedium:  return s_animaMed;
+        case AppFont::HussarBold:   return s_hussarBold;
+        case AppFont::Guavine:      return s_guavine;
+        default:                    return s_designer;
+    }
 }
 
 void CustomLNF::drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos, float rotaryStartAngle, float rotaryEndAngle, juce::Slider& slider)

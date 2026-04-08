@@ -14,6 +14,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     : AudioProcessorEditor (&p), audioProcessor (p), presetManager (p)
 {
     juce::LookAndFeel::setDefaultLookAndFeel(&customLNF);
+    customLNF.setFont(AppFont::AnimaRegular);
 
     startTimerHz(30);
     currentlyDisplayedChain = 0;

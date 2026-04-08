@@ -19,7 +19,7 @@ ConvolutionPanel::ConvolutionPanel()
 
     titleLabel.setText("Convolution", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredTop);
-    titleLabel.setFont(juce::Font(juce::FontOptions(20.0f, juce::Font::bold | juce::Font::italic)));
+    titleLabel.setFont(juce::Font(juce::FontOptions(25.0f, juce::Font::bold | juce::Font::italic)));
     titleLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(titleLabel);
 
@@ -60,7 +60,7 @@ ConvolutionPanel::ConvolutionPanel()
     {
         label.setText(name, juce::dontSendNotification);
         label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(juce::FontOptions(12.0f)));
+        label.setFont(juce::Font(juce::FontOptions(17.0f)));
         label.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(label);
     };
@@ -75,7 +75,7 @@ ConvolutionPanel::ConvolutionPanel()
     auto setupValueLabel = [this](juce::Label& label)
     {
         label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::italic)));
+        label.setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::italic)));
         label.setColour(juce::Label::textColourId, juce::Colours::white);
         label.setEditable(true, true, false);
 

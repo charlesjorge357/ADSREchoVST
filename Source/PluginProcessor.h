@@ -131,6 +131,11 @@ private:
 
     std::vector<int> numModules = std::vector<int>(NUM_CHAINS, 0);
 
+    // Incremented on every PATH B loadFromValueTree() call. Captured by each
+    // background thread so stale callAsync callbacks can detect they've been
+    // superseded and abort instead of wiping the newer thread's installed modules.
+    std::atomic<uint64_t> loadGeneration { 0 };
+
     // Cached raw param pointers for processBlock hot path (avoids string allocation per block)
     std::atomic<float>* pParallelEnabled            = nullptr;
     std::atomic<float>* pChainMasterMix[NUM_CHAINS] = {};

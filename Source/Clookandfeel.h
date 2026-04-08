@@ -27,11 +27,15 @@
   #include <juce_gui_extra/juce_gui_extra.h>
 #endif
 
+enum class AppFont { Designer, AnimaRegular, AnimaMedium, HussarBold, Guavine };
+
 class CustomLNF : public juce::LookAndFeel_V4
 {
 
     public:
         CustomLNF();
+
+        void setFont(AppFont f) { activeFont = f; }
 
         //custom slider function
         void drawRotarySlider(juce::Graphics &, int x, int y, int width, int height, float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle, juce::Slider&);
@@ -50,4 +54,7 @@ class CustomLNF : public juce::LookAndFeel_V4
 
 
         juce::Typeface::Ptr getTypefaceForFont(const juce::Font& f) override;
+
+    private:
+        AppFont activeFont = AppFont::Designer;
 };

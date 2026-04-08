@@ -17,7 +17,7 @@ MasterPanel::MasterPanel(int chainIndex)
     titleLabel.setText("Chain " + juce::String(chainIndex + 1),
                        juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredTop);
-    titleLabel.setFont(juce::Font(juce::FontOptions(16.0f)));
+    titleLabel.setFont(juce::Font(juce::FontOptions(21.0f)));
     titleLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(titleLabel);
 
@@ -36,7 +36,7 @@ MasterPanel::MasterPanel(int chainIndex)
     {
         label.setText(name, juce::dontSendNotification);
         label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(juce::FontOptions(12.0f)));
+        label.setFont(juce::Font(juce::FontOptions(17.0f)));
         label.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(label);
     };

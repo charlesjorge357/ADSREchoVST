@@ -11,6 +11,18 @@ namespace BinaryData
     extern const char*   Designer_otf;
     const int            Designer_otfSize = 133824;
 
+    extern const char*   FtAnimaMediumj8yG_otf;
+    const int            FtAnimaMediumj8yG_otfSize = 23896;
+
+    extern const char*   FtAnimaRegularz453_otf;
+    const int            FtAnimaRegularz453_otfSize = 24132;
+
+    extern const char*   GuavineDemoRegular1jGgL_otf;
+    const int            GuavineDemoRegular1jGgL_otfSize = 9492;
+
+    extern const char*   HussarBoldObliqueOneoPKq_otf;
+    const int            HussarBoldObliqueOneoPKq_otfSize = 245860;
+
     extern const char*   JUCEBack_png;
     const int            JUCEBack_pngSize = 602171;
 
@@ -132,7 +144,7 @@ namespace BinaryData
     const int            Vocal_Duo_wavSize = 529124;
 
     // Number of elements in the namedResourceList and originalFileNames arrays.
-    const int namedResourceListSize = 41;
+    const int namedResourceListSize = 45;
 
     // Points to the start of a list of resource names.
     extern const char* namedResourceList[];

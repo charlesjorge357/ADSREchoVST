@@ -5,6 +5,14 @@
   <MAINGROUP id="wx1vCZ" name="ADSREcho">
     <GROUP id="{1083EC7B-2EC2-6031-0CE1-DD64BA8F67A3}" name="Resources">
       <FILE id="qk2ieD" name="Designer.otf" compile="0" resource="1" file="Resources/Designer.otf"/>
+      <FILE id="PjWxlk" name="FtAnimaMedium-j8yG.otf" compile="0" resource="1"
+            file="Resources/FtAnimaMedium-j8yG.otf"/>
+      <FILE id="y3b1uZ" name="FtAnimaRegular-z453.otf" compile="0" resource="1"
+            file="Resources/FtAnimaRegular-z453.otf"/>
+      <FILE id="C5jrlO" name="GuavineDemoRegular-1jGgL.otf" compile="0" resource="1"
+            file="Resources/GuavineDemoRegular-1jGgL.otf"/>
+      <FILE id="ArCpL0" name="HussarBoldObliqueOne-oPKq.otf" compile="0"
+            resource="1" file="Resources/HussarBoldObliqueOne-oPKq.otf"/>
       <FILE id="TiwrGm" name="JUCEBack.png" compile="0" resource="1" file="Resources/JUCEBack.png"/>
       <FILE id="AHPqvW" name="testing.png" compile="0" resource="1" file="Resources/testing.png"/>
     </GROUP>

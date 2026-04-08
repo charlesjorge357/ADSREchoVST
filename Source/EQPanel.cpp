@@ -19,7 +19,7 @@ EQPanel::EQPanel()
 
     equalizerLabel.setText("Equalizer", juce::dontSendNotification);
     equalizerLabel.setJustificationType(juce::Justification::centredTop);
-    equalizerLabel.setFont(juce::FontOptions(20.0f));
+    equalizerLabel.setFont(juce::FontOptions(25.0f));
     equalizerLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(equalizerLabel);
 
@@ -38,7 +38,7 @@ EQPanel::EQPanel()
     {
         label.setText(name, juce::dontSendNotification);
         label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(juce::FontOptions(12.0f)));
+        label.setFont(juce::Font(juce::FontOptions(17.0f)));
         label.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(label);
     };
@@ -46,7 +46,7 @@ EQPanel::EQPanel()
     auto setupValueLabel = [this](juce::Label& label)
     {
         label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::italic)));
+        label.setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::italic)));
         label.setColour(juce::Label::textColourId, juce::Colours::white);
         label.setEditable(true, true, false);
 

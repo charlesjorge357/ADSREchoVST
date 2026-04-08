@@ -485,8 +485,9 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
         // so the message thread is never blocked.  Only the fast pointer swap
         // is posted back to the message thread via a nested callAsync.
         const juce::dsp::ProcessSpec capturedSpec = spec;
+        const uint64_t myGeneration = ++loadGeneration;
         juce::WeakReference<ADSREchoAudioProcessor> weakThis(this);
-        std::thread([weakThis, capturedSpec, incoming = std::move(incoming)]() mutable
+        std::thread([weakThis, capturedSpec, incoming = std::move(incoming), myGeneration]() mutable
         {
             // Prepare and load IRs off the message thread.
             for (auto& p : incoming)
@@ -499,11 +500,21 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
             }
 
             // Post only the fast pointer swap back to the message thread.
-            juce::MessageManager::callAsync([weakThis, incoming = std::move(incoming)]() mutable
+            juce::MessageManager::callAsync([weakThis, incoming = std::move(incoming), myGeneration]() mutable
             {
                 auto* self = weakThis.get();
                 if (self == nullptr)
                     return;
+
+                // A newer loadFromValueTree() has superseded us. Discard our modules
+                // without touching the slots — the newer thread owns them now.
+                if (myGeneration != self->loadGeneration.load(std::memory_order_acquire))
+                {
+                    for (auto& p : incoming)
+                        if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
+                            cm->signalConvolversToStop();
+                    return;
+                }
 
                 // Swap fully-prepared modules into slots under the audio lock (fast).
                 std::vector<std::unique_ptr<EffectModule>> toDestroy;

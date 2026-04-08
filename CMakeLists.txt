@@ -97,6 +97,9 @@ target_sources(ADSREcho
 juce_add_binary_data(ADSREchoBinaryData
     SOURCES
         Resources/Designer.otf
+        Resources/FtAnimaRegular-z453.otf
+        Resources/HussarBoldObliqueOne-oPKq.otf
+        Resources/GuavineDemoRegular-1jGgL.otf
         Resources/JUCEBack.png
         Resources/testing.png
 )
