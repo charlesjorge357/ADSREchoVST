@@ -52,7 +52,6 @@ EQPanel::EQPanel()
 
         label.onEditorShow = [&label]()
             {
-
                 // Remove everything that's not part of a number
                 auto text = label.getText().retainCharacters("0123456789.-");
 
@@ -66,7 +65,6 @@ EQPanel::EQPanel()
                     editor->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::black);
                     editor->setJustification(juce::Justification::centred);
                 }
-
             };
 
         addAndMakeVisible(label);
@@ -118,7 +116,6 @@ EQPanel::EQPanel()
             {
                 value = text.getDoubleValue();
             }
-
 
             value = juce::jlimit(s.getMinimum(), s.getMaximum(), value);
             value = s.snapValue(value, juce::Slider::DragMode::notDragging);
@@ -184,7 +181,7 @@ void EQPanel::resized()
 {
     auto area = getLocalBounds().reduced(12);
 
-    equalizerLabel.setBounds(area.removeFromTop(35));
+    equalizerLabel.setBounds(area.removeFromTop(30));
     area.removeFromTop(5);
 
     const int cols       = 3;

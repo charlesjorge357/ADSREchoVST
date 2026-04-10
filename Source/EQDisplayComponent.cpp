@@ -79,7 +79,7 @@ void EQDisplayComponent::paint(juce::Graphics& g)
     // 1) DRAW GRID
     // ==============================
     g.setColour(juce::Colours::dimgrey);
-    g.setFont(10.0f);
+    g.setFont(12.0f);
 
     //  Frequency Grid
     for (float freq : { 20.f, 100.f, 1000.f, 10000.f})

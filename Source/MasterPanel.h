@@ -52,6 +52,8 @@ private:
     juce::Label mixLabel;
     juce::Label gainLabel;
 
+    juce::Label mixValue, gainValue;
+
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
         mixAttach, gainAttach;
 

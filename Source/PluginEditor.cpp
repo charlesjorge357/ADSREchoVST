@@ -128,7 +128,7 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     moduleViewport.setViewedComponent(&moduleContainer, false);
     moduleViewport.setScrollBarsShown(false, true);
 
-    setSize(950, 800);
+    setSize(950, 820);
     rebuildModuleEditors();
 
     // Sync preset name on construction (e.g. after FL Studio window mode switch recreates the editor)
@@ -196,13 +196,18 @@ void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 
 void ADSREchoAudioProcessorEditor::resized()
 {
-    auto area = getLocalBounds().reduced(10);
+    auto area = getLocalBounds().reduced(5);
 
-    auto top = area.removeFromTop(110);
+    auto top = area.removeFromTop(130);
 
     // Master panels per chain
-    for (int chain = 0; chain < numChains; ++chain)
+    for (int chain = 0; chain < numChains; ++chain) 
+    {
         masterPanels[chain]->setBounds(top.removeFromLeft(160));
+        top.removeFromLeft(5);
+    }
+       
+
 
     chainSelector.setBounds(top.removeFromLeft(100));
     parallelEnableToggle.setBounds(top.removeFromLeft(30));
@@ -215,6 +220,7 @@ void ADSREchoAudioProcessorEditor::resized()
 
     addButton.setBounds(area.removeFromRight(40).removeFromTop(40));
 
+    area.removeFromTop(5);
     // Modules on the chain are displayed as side-by-side columns
     moduleViewport.setBounds(area);
 
