@@ -73,12 +73,12 @@ EQPanel::EQPanel()
     };
 
     setupKnob(lowFreq);   setupLabel(lowFreqLabel,  "Low Freq ");
-    setupKnob(lowGain);   setupLabel(lowGainLabel,  " Low" "\n" "Gain");
+    setupKnob(lowGain);   setupLabel(lowGainLabel,  " Low" " " "Gain");
     setupKnob(lowQ);      setupLabel(lowQLabel,     "Low Q");
     setupKnob(midFreq);   setupLabel(midFreqLabel,  "Mid Freq");
     setupKnob(midGain);   setupLabel(midGainLabel,  "Mid Gain");
     setupKnob(midQ);      setupLabel(midQLabel,     "Mid Q");
-    setupKnob(highFreq);  setupLabel(highFreqLabel, "High" "\n" "Freq");
+    setupKnob(highFreq);  setupLabel(highFreqLabel, "High" " " "Freq");
     setupKnob(highGain);  setupLabel(highGainLabel, " High Gain");
     setupKnob(highQ);     setupLabel(highQLabel,    "High Q");
 
