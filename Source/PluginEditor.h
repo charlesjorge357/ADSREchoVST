@@ -72,7 +72,7 @@ private:
         void paint(juce::Graphics&) override;
     } moduleContainer;
 
-    juce::TextButton addButton{ "+" };
+    juce::TextButton addButton{ "Add Module +" };
     std::vector<std::unique_ptr<BaseModuleSlotEditor>> moduleEditors;
 
     // Drag-reorder state

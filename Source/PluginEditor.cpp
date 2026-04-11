@@ -200,6 +200,9 @@ void ADSREchoAudioProcessorEditor::resized()
 
     auto top = area.removeFromTop(130);
 
+   
+
+
     // Master panels per chain
     for (int chain = 0; chain < numChains; ++chain) 
     {
@@ -209,16 +212,38 @@ void ADSREchoAudioProcessorEditor::resized()
        
 
 
-    chainSelector.setBounds(top.removeFromLeft(100));
+    //chainSelector.setBounds(top.removeFromLeft(100));
     parallelEnableToggle.setBounds(top.removeFromLeft(30));
 
     top.removeFromLeft(16); // spacer
-    presetNameEditor.setBounds(top.removeFromLeft(150).withSizeKeepingCentre(150, 26));
-    savePresetButton.setBounds(top.removeFromLeft(60).withSizeKeepingCentre(56, 26));
-    top.removeFromLeft(8); // spacer
-    presetComboBox.setBounds(top.removeFromLeft(200).withSizeKeepingCentre(200, 26));
+    auto firstrow = top.removeFromTop(50);
+    top.removeFromLeft(8);
+    //top.removeFromLeft(16);
+    presetNameEditor.setBounds(firstrow.removeFromLeft(150).withSizeKeepingCentre(150, 26));
+    //firstrow.removeFromBottom(5);
+    savePresetButton.setBounds(firstrow.removeFromLeft(60).withSizeKeepingCentre(56, 26));
+    //firstrow.removeFromLeft(20); // spacer
+    
+    presetComboBox.setBounds(firstrow.removeFromLeft(200).withSizeKeepingCentre(200, 26));
 
-    addButton.setBounds(area.removeFromRight(40).removeFromTop(40));
+    //top.removeFromTop(10);  
+
+    auto secondRow = top.removeFromTop(40);
+
+    secondRow.removeFromLeft(40);
+
+    chainSelector.setBounds(secondRow.removeFromLeft(180).withSizeKeepingCentre(200,26));
+
+    secondRow.removeFromLeft(80);
+
+    addButton.setBounds(secondRow.removeFromLeft(40).withSizeKeepingCentre(110,26));
+
+    
+
+
+   // chainSelector.setBounds(top.removeFromLeft(200).withSizeKeepingCentre(200,26));
+
+    
 
     area.removeFromTop(5);
     // Modules on the chain are displayed as side-by-side columns
