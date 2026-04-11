@@ -137,7 +137,7 @@ private:
     std::atomic<uint64_t> loadGeneration { 0 };
 
     // Cached raw param pointers for processBlock hot path (avoids string allocation per block)
-    std::atomic<float>* pParallelEnabled            = nullptr;
+    std::atomic<float>* pChainEnabled[NUM_CHAINS] = {};
     std::atomic<float>* pChainMasterMix[NUM_CHAINS] = {};
     std::atomic<float>* pChainGain[NUM_CHAINS]      = {};
 

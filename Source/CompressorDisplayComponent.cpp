@@ -134,7 +134,7 @@ void CompressorDisplayComponent::drawMeter(juce::Graphics& g,
     // Label at the bottom
     auto labelRect = barRect.removeFromBottom(16);
     g.setColour(juce::Colours::lightgrey);
-    g.setFont(11.0f);
+    g.setFont(13.0f);
     g.drawText(label, labelRect, juce::Justification::centred);
 
     // Background
@@ -180,7 +180,7 @@ void CompressorDisplayComponent::drawMeter(juce::Graphics& g,
 
         // dB scale ticks on the GR meter: 0, -3, -6, -12, -20 dB
         g.setColour(juce::Colours::grey.withAlpha(0.6f));
-        g.setFont(9.0f);
+        g.setFont(12.0f);
         for (float tick : { 0.0f, -3.0f, -6.0f, -12.0f, -20.0f })
         {
             float tickNorm = dbToNorm(-tick, 0.0f, -grFloor);
@@ -189,7 +189,7 @@ void CompressorDisplayComponent::drawMeter(juce::Graphics& g,
                                  (float)barRect.getX(),
                                  (float)barRect.getRight());
             g.drawText(juce::String((int)tick) + "dB",
-                       barRect.getX(), tickY - 9, barRect.getWidth(), 9,
+                       barRect.getX(), tickY + 2, barRect.getWidth(), 9,
                        juce::Justification::centredRight);
         }
     }

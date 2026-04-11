@@ -38,10 +38,10 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
     }
 
     // Cache hot-path param pointers once — avoids String heap allocation in processBlock
-    pParallelEnabled = apvts.getRawParameterValue("parallelEnabled");
     for (int j = 0; j < NUM_CHAINS; j++)
     {
         juce::String prefix = "chain_" + juce::String(j);
+        pChainEnabled[j] = apvts.getRawParameterValue(prefix + ".enabled");
         pChainMasterMix[j] = apvts.getRawParameterValue(prefix + ".masterMix");
         pChainGain[j]      = apvts.getRawParameterValue(prefix + ".gain");
     }
@@ -231,10 +231,9 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     }
 
     buffer.clear();
-    // Process the audio through each module slot effect
-    const bool parallelEnabled = pParallelEnabled->load() > 0.5f;
 
-    for (int chainIndex = 0; chainIndex < NUM_CHAINS - !parallelEnabled; chainIndex++)
+    // Process the audio through each module slot effect
+    for (int chainIndex = 0; chainIndex < NUM_CHAINS; chainIndex++)
     {
 
         chainTempBuffer.clear();
@@ -265,6 +264,10 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         // ===== Chain gain =====
         const float gainValue = pChainGain[chainIndex]->load();
         chainTempBuffer.applyGain(juce::Decibels::decibelsToGain(gainValue));
+
+        const bool chainEnabled = pChainEnabled[chainIndex]->load() > 0.5f;
+        if (!chainEnabled)
+            continue;
 
         for (int ch = 0; ch < totalNumInputChannels; ++ch)
         {
@@ -566,9 +569,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    // Master Controls
-    layout.add(std::make_unique<juce::AudioParameterBool>("parallelEnabled", "Parallel Enabled", false));
-
     // Master controls
     for (int j = 0; j < NUM_CHAINS; j++)
     {
@@ -579,6 +579,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
 
         layout.add(std::make_unique<juce::AudioParameterFloat>(chainPrefix + ".masterMix", "Master Mix",
             juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
+
+        layout.add(std::make_unique<juce::AudioParameterBool>(chainPrefix + ".enabled", "Enabled", true));
 
         // Per Module Controls (id "chain_0.slot_1.mix")
         for (int i = 0; i < MAX_SLOTS; i++)

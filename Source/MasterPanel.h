@@ -39,6 +39,7 @@ public:
     void resized() override;
 
     void attachToAPVTS(juce::AudioProcessorValueTreeState& apvts);
+    void setEnabledRecursive(juce::Component* comp, bool shouldBeEnabled);
 
 private:
     CustomLNF lnf;
@@ -53,6 +54,12 @@ private:
     juce::Label gainLabel;
 
     juce::Label mixValue, gainValue;
+
+    juce::ToggleButton enableToggle;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ButtonAttachment>
+        enableToggleAttachment;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
         mixAttach, gainAttach;

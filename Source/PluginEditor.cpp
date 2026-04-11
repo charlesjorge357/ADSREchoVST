@@ -20,17 +20,12 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
     currentlyDisplayedChain = 0;
 
     // Per-chain master panels
-    auto* parallelParam = audioProcessor.apvts.getRawParameterValue("parallelEnabled");
-    bool parallelEnabled = parallelParam->load() > 0.5f;
 
     for (int chain = 0; chain < numChains; ++chain)
     {
         masterPanels[chain] = std::make_unique<MasterPanel>(chain);
         masterPanels[chain]->attachToAPVTS(audioProcessor.apvts);
         addAndMakeVisible(masterPanels[chain].get());
-
-        if (chain > 0 && !parallelEnabled)
-            masterPanels[chain]->setVisible(false);
     }
 
     // Chain selector
@@ -45,19 +40,9 @@ ADSREchoAudioProcessorEditor::ADSREchoAudioProcessorEditor (ADSREchoAudioProcess
             rebuildModuleEditors();
         };
 
-    // Parallel toggle
-    addAndMakeVisible(parallelEnableToggle);
-    parallelEnableToggleAttachment =
-        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-            audioProcessor.apvts, "parallelEnabled", parallelEnableToggle);
-
-    parallelEnableToggle.onClick = [this]
-        {
-            bool enabled = parallelEnableToggle.getToggleState();
-            masterPanels[1]->setVisible(enabled);
-        };
 
     // Preset name editor
+    presetNameEditor.setFont(juce::Font(15.0f));
     presetNameEditor.setTextToShowWhenEmpty("Preset name...", juce::Colour(0xfff2f4f3));
     presetNameEditor.setMultiLine(false);
     presetNameEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
@@ -196,53 +181,41 @@ void ADSREchoAudioProcessorEditor::paint (juce::Graphics& g)
 
 void ADSREchoAudioProcessorEditor::resized()
 {
-    auto area = getLocalBounds().reduced(5);
+    auto area = getLocalBounds();
+    area.removeFromLeft(5);
+    area.removeFromTop(5);
+    area.removeFromBottom(5);
 
     auto top = area.removeFromTop(130);
-
-   
 
 
     // Master panels per chain
     for (int chain = 0; chain < numChains; ++chain) 
     {
-        masterPanels[chain]->setBounds(top.removeFromLeft(160));
+        masterPanels[chain]->setBounds(top.removeFromLeft(220));
         top.removeFromLeft(5);
     }
        
 
 
-    //chainSelector.setBounds(top.removeFromLeft(100));
-    parallelEnableToggle.setBounds(top.removeFromLeft(30));
-
     top.removeFromLeft(16); // spacer
-    auto firstrow = top.removeFromTop(50);
-    top.removeFromLeft(8);
-    //top.removeFromLeft(16);
-    presetNameEditor.setBounds(firstrow.removeFromLeft(150).withSizeKeepingCentre(150, 26));
-    //firstrow.removeFromBottom(5);
-    savePresetButton.setBounds(firstrow.removeFromLeft(60).withSizeKeepingCentre(56, 26));
-    //firstrow.removeFromLeft(20); // spacer
-    
-    presetComboBox.setBounds(firstrow.removeFromLeft(200).withSizeKeepingCentre(200, 26));
+    auto firstrowContent = top.removeFromTop(50);
+    auto firstrow = firstrowContent.withSizeKeepingCentre(410, 26);
 
-    //top.removeFromTop(10);  
+    presetNameEditor.setBounds(firstrow.removeFromLeft(150));
+    firstrow.removeFromLeft(5);
+    savePresetButton.setBounds(firstrow.removeFromLeft(60));
+    firstrow.removeFromLeft(5);
+    presetComboBox.setBounds(firstrow.removeFromLeft(200));
 
-    auto secondRow = top.removeFromTop(40);
 
+    auto secondRowContent = top.removeFromTop(40);
+    auto secondRow = secondRowContent.withSizeKeepingCentre(350, 26);
+
+
+    chainSelector.setBounds(secondRow.removeFromLeft(200));
     secondRow.removeFromLeft(40);
-
-    chainSelector.setBounds(secondRow.removeFromLeft(180).withSizeKeepingCentre(200,26));
-
-    secondRow.removeFromLeft(80);
-
-    addButton.setBounds(secondRow.removeFromLeft(40).withSizeKeepingCentre(110,26));
-
-    
-
-
-   // chainSelector.setBounds(top.removeFromLeft(200).withSizeKeepingCentre(200,26));
-
+    addButton.setBounds(secondRow.removeFromLeft(110));
     
 
     area.removeFromTop(5);
@@ -273,14 +246,6 @@ void ADSREchoAudioProcessorEditor::timerCallback()
 void ADSREchoAudioProcessorEditor::handleAsyncUpdate()
 {
     rebuildModuleEditors();
-
-    // Sync parallel enable visibility — ButtonAttachment updates the toggle state
-    // but does NOT fire onClick, so masterPanels[1] visibility must be set manually.
-    {
-        auto* p = audioProcessor.apvts.getRawParameterValue("parallelEnabled");
-        bool enabled = p && p->load() > 0.5f;
-        masterPanels[1]->setVisible(enabled);
-    }
 
     // Sync preset combobox to the restored preset name (mirrors Serum behaviour)
     refreshPresetComboBox();

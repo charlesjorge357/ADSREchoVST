@@ -35,6 +35,14 @@ void EQModuleSlotEditor::buildEditor(const SlotInfo& info)
     panel = std::make_unique<EQPanel>();
     panel->attachToAPVTS(processor.apvts, slotID);
     addAndMakeVisible(*panel);
+
+    auto* enableParam = apvts.getRawParameterValue(slotID + ".enabled");
+    if (enableParam != nullptr)
+    {
+        bool initialState = enableParam->load() > 0.5f;
+        setEnabledRecursive(this, initialState);
+        setAlpha(initialState ? 1.0f : 0.5f);
+    }
 }
 
 void EQModuleSlotEditor::layoutEditor(juce::Rectangle<int>& r)

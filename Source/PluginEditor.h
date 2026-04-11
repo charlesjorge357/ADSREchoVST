@@ -99,13 +99,6 @@ private:
     std::array<std::unique_ptr<MasterPanel>, numChains> masterPanels;
 
     //==============================================================================
-    // Parallel enable
-    juce::ToggleButton parallelEnableToggle{ "Enabled" };
-    std::unique_ptr<
-        juce::AudioProcessorValueTreeState::ButtonAttachment>
-        parallelEnableToggleAttachment;
-
-    //==============================================================================
     // Refactored helpers
     void rebuildModuleEditors();
 

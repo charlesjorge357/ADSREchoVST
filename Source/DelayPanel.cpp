@@ -254,12 +254,12 @@ void DelayPanel::resized()
     titleLabel.setBounds(area.removeFromTop(35));
     area.removeFromTop(5); // spacing
 
-    auto comboArea = area.removeFromTop(20);
+    auto comboArea = area.removeFromTop(23);
     noteDivsion.setBounds(comboArea.reduced(30,0));
 
     area.removeFromTop(5);
 
-    auto modeArea = area.removeFromTop(20); // Grab another 30px slice from what's left
+    auto modeArea = area.removeFromTop(23); // Grab another 30px slice from what's left
     mode.setBounds(modeArea.reduced(30, 0));
  
 
@@ -289,17 +289,20 @@ void DelayPanel::resized()
     setKnobInGrid(feedbackLabel, feedbackSlider, feedbackValue, 0, 0);
     setKnobInGrid(timeLabel, timeSlider, timeValue, 1, 0);
 
-    // BPM cell: toggle at top, then knob
-    auto bpmCell = juce::Rectangle<int>(area.getX() + 0 * cellWidth, area.getY() + 1 * cellHeight, cellWidth, cellHeight);
-    bmpTog.setBounds(bpmCell.removeFromTop(20));
-    bpmLabel.setBounds(bpmCell.removeFromTop(14));
-    bpmValue.setBounds(bpmCell.removeFromBottom(15));
-    bpmSlider.setBounds(bpmCell.withSizeKeepingCentre(knobSize, knobSize));
+    setKnobInGrid(bpmLabel, bpmSlider, bpmValue, 0, 1);
 
-    setKnobInGrid(panLabel, panSlider, panValue, 1, 1);
+    // BPM cell: toggle at top, then knob
+    auto bpmCell = juce::Rectangle<int>(area.getX() + 1 * cellWidth, area.getY() + 1 * cellHeight, cellWidth, cellHeight);
+    bpmCell.removeFromTop(cellHeight / 2 - 15);
+    bmpTog.setBounds(bpmCell.removeFromTop(30));
+    //bpmLabel.setBounds(bpmCell.removeFromTop(14));
+    //bpmValue.setBounds(bpmCell.removeFromBottom(15));
+    //bpmSlider.setBounds(bpmCell.withSizeKeepingCentre(knobSize, knobSize));
+
+    setKnobInGrid(panLabel, panSlider, panValue, 0, 3);
     setKnobInGrid(lowpassLabel, lowpassSlider, lowpassValue, 0, 2);
     setKnobInGrid(highpassLabel, highpassSlider, highpassValue, 1, 2);
-    setKnobInGrid(mixLabel, mixSlider, mixValue, 0, 3);
+    setKnobInGrid(mixLabel, mixSlider, mixValue, 1, 3);
 
 }
 

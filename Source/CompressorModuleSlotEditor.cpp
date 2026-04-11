@@ -35,6 +35,14 @@ void CompressorModuleSlotEditor::buildEditor(const SlotInfo& info)
     panel = std::make_unique<CompressorPanel>();
     panel->attachToAPVTS(processor.apvts, slotID);
     addAndMakeVisible(*panel);
+
+    auto* enableParam = apvts.getRawParameterValue(slotID + ".enabled");
+    if (enableParam != nullptr)
+    {
+        bool initialState = enableParam->load() > 0.5f;
+        setEnabledRecursive(this, initialState);
+        setAlpha(initialState ? 1.0f : 0.5f);
+    }
 }
 
 // ---------------------------------------------------------------------------

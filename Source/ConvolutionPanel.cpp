@@ -26,7 +26,7 @@ ConvolutionPanel::ConvolutionPanel()
     // IR selector - items populated in attachToAPVTS once IRBank is available
     dropDownLabel.setText("IR", juce::dontSendNotification);
     dropDownLabel.setJustificationType(juce::Justification::centred);
-    dropDownLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
+    dropDownLabel.setFont(juce::Font(juce::FontOptions(17.0f)));
     dropDownLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(dropDownLabel);
     addAndMakeVisible(dropDown);
@@ -282,7 +282,7 @@ void ConvolutionPanel::resized()
     area.removeFromTop(5);
 
     // IR selector row: label on left, dropdown fills centre, browse on right
-    auto irRow = area.removeFromTop(20);
+    auto irRow = area.removeFromTop(23);
     dropDownLabel.setBounds(irRow.removeFromLeft(30));
     browseButton.setBounds(irRow.removeFromRight(55));
     dropDown.setBounds(irRow.reduced(4, 0));
@@ -306,8 +306,6 @@ void ConvolutionPanel::resized()
                 cellWidth,
                 cellHeight);
 
-            int knobSize = 80;
-
             auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
 
             slider.setBounds(knobArea);
@@ -324,7 +322,25 @@ void ConvolutionPanel::resized()
     placeKnob(lowCutLabel,   lowCutSlider, lowCutValue,   1, 0);
     placeKnob(highCutLabel,  highCutSlider, highCutValue,  0, 1);
     placeKnob(preDelayLabel, preDelaySlider, preDelayValue, 1, 1);
-    placeKnob(mixLabel,      mixSlider, mixValue,      0, 2);
+
+    // Center the bottom mix knob
+    auto cell = juce::Rectangle<int>(
+        (area.getX() + 1 * cellWidth)/2,
+        area.getY() + 2 * cellHeight,
+        cellWidth,
+        cellHeight);
+
+    auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
+
+    mixSlider.setBounds(knobArea);
+
+    mixLabel.setBounds(knobArea.getX(), knobArea.getY() - 15,
+        knobArea.getWidth(), 15);
+
+    mixValue.setBounds(knobArea.getX(),
+        knobArea.getBottom(),
+        knobArea.getWidth(), 15);
+
 }
 
 ConvolutionPanel::~ConvolutionPanel() {

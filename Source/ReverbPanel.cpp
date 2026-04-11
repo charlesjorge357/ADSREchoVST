@@ -222,7 +222,7 @@ void ReverbPanel::resized()
 
     area.removeFromTop(5); // spacing
 
-    auto comboArea = area.removeFromTop(20);
+    auto comboArea = area.removeFromTop(23);
 
     typeDrop.setBounds(comboArea.reduced(30,0));
 
@@ -281,9 +281,26 @@ void ReverbPanel::resized()
     setupKnobInGrid(modRateLabel, modRate, modRateValue, 1, 1);
     setupKnobInGrid(modDepthLabel, modDepth, modDepthValue, 0, 2);
     setupKnobInGrid(preDelayLabel, preDelay, preDelayValue, 1, 2);
-    setupKnobInGrid(mixLabel, Mix, mixValue, 0, 3);
 
+    // Center the bottom mix knob
+    auto cell = juce::Rectangle<int>(
+        (area.getX() + 1 * cellWidth) / 2,
+        area.getY() + 3 * cellHeight,
+        cellWidth,
+        cellHeight);
 
+    int knobSize = 80;
+
+    auto knobArea = cell.withSizeKeepingCentre(knobSize, knobSize);
+
+    Mix.setBounds(knobArea);
+
+    mixLabel.setBounds(knobArea.getX(), knobArea.getY() - 15,
+        knobArea.getWidth(), 15);
+
+    mixValue.setBounds(knobArea.getX(),
+        knobArea.getBottom(),
+        knobArea.getWidth(), 15);
 
 
 

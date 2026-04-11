@@ -110,10 +110,28 @@ MasterPanel::MasterPanel(int chainIndex)
             l.setText(juce::String(value, decimals) + " " + units,
                 juce::dontSendNotification);
         };
-};
+    };
 
     bindValue(mixSlider, mixValue, 2);
     bindValue(gainSlider, gainValue, 2, "dB");
+
+
+    addAndMakeVisible(enableToggle);
+
+    enableToggle.onClick = [this]
+        {
+            bool isEnabled = enableToggle.getToggleState();
+
+            setEnabledRecursive(this, isEnabled);
+
+            setAlpha(isEnabled ? 1.0f : 0.5f);
+
+            repaint();
+            if (auto* p = getParentComponent())
+                p->repaint();
+        };
+
+
 }
 
 MasterPanel::~MasterPanel()
@@ -130,6 +148,21 @@ void MasterPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts)
 
     gainAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         apvts, prefix + ".gain", gainSlider);
+
+    enableToggleAttachment =
+        std::make_unique<
+        juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            apvts,
+            prefix + ".enabled",
+            enableToggle);
+
+    auto* enableParam = apvts.getRawParameterValue(prefix + ".enabled");
+    if (enableParam != nullptr)
+    {
+        bool initialState = enableParam->load() > 0.5f;
+        setEnabledRecursive(this, initialState);
+        setAlpha(initialState ? 1.0f : 0.5f);
+    }
 }
 
 void MasterPanel::paint(juce::Graphics& g)
@@ -162,6 +195,7 @@ void MasterPanel::resized()
     auto area = getLocalBounds().reduced(6);
 
     titleLabel.setBounds(area.removeFromTop(20));
+    enableToggle.setBounds(titleLabel.getRight()-22, titleLabel.getY(), 22, 20);
     area.removeFromTop(7);
 
     const int cols = 2;
@@ -188,4 +222,19 @@ void MasterPanel::resized()
 
     placeKnob(mixLabel, mixSlider, mixValue, 0);
     placeKnob(gainLabel, gainSlider, gainValue, 1);
+}
+
+void MasterPanel::setEnabledRecursive(juce::Component* comp, bool shouldBeEnabled)
+{
+    for (auto* child : comp->getChildren())
+    {
+        // Don't disable the enable toggle itself, type selector, or remove button
+        if (child == &enableToggle)
+            continue;
+
+        child->setEnabled(shouldBeEnabled);
+
+        // Recursively disable children
+        setEnabledRecursive(child, shouldBeEnabled);
+    }
 }
