@@ -35,7 +35,7 @@ private:
 
     void layoutEditor(juce::Rectangle<int>& r) override;
 
-    EQModule* mod;
+    EQModule* mod = nullptr;
     std::unique_ptr<EQDisplayComponent> display;
     std::unique_ptr<EQPanel> panel;
 

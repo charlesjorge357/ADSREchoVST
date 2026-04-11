@@ -393,6 +393,9 @@ void ADSREchoAudioProcessorEditor::rebuildModuleEditors()
             audioProcessor.getSlotInfo(
                 currentlyDisplayedChain, i);
 
+        if (info.slotID.isEmpty())
+            continue;
+
         std::unique_ptr<BaseModuleSlotEditor> editor;
 
         if (info.moduleType == "EQ") {

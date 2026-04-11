@@ -722,6 +722,8 @@ SlotInfo ADSREchoAudioProcessor::getSlotInfo(int chainIndex, int slotIndex)
 {
     auto& slot = slots[chainIndex][slotIndex];
     auto effectModule = slot->get();
+    if (effectModule == nullptr)
+        return {};
     return { effectModule->getID(), effectModule->getType(), effectModule->getUsedParameters() };
 }
 
