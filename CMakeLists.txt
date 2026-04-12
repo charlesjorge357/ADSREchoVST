@@ -83,7 +83,7 @@ target_sources(ADSREcho
 	Source/HybridPlate.cpp
 	Source/LFO.cpp
 	Source/MasterPanel.cpp
-	Source/ModuleSlot.cpp
+
 	Source/ModuleSlotEditor.cpp
 	Source/NonUniformConvolver.cpp
 	Source/PluginEditor.cpp
