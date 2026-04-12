@@ -64,7 +64,7 @@ target_sources(ADSREcho
         Source/BasicCompressor.cpp
 	Source/BasicDelay.cpp
 	Source/BasicEQ.cpp
-	Source/Cloakandfeel.cpp
+	Source/Clookandfeel.cpp
 	Source/CompressorDisplayComponent.cpp
 	Source/CompressorModule.cpp
 	Source/CompressorModuleSlotEditor.cpp
