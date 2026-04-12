@@ -239,7 +239,24 @@ void ADSREchoAudioProcessorEditor::resized()
 // On a constant timer, checks if the ui needs to be rebuild, then calls for a rebuild asynchronously
 void ADSREchoAudioProcessorEditor::timerCallback()
 {
-    if (audioProcessor.uiNeedsRebuild.exchange(false, std::memory_order_acquire))
+    bool needRebuild = audioProcessor.uiNeedsRebuild.exchange(false, std::memory_order_acquire);
+
+    // Safety net: if the number of live module editors doesn't match the
+    // number of filled slots in the current chain, the editor is stale.
+    // This catches cases where Path B's callAsync fires but the second
+    // uiNeedsRebuild was consumed before handleAsyncUpdate ran.
+    if (!needRebuild)
+    {
+        int nonEmpty = 0;
+        for (int i = 0; i < audioProcessor.getNumSlots(); ++i)
+            if (!audioProcessor.slotIsEmpty(currentlyDisplayedChain, i))
+                ++nonEmpty;
+
+        if (nonEmpty != static_cast<int>(moduleEditors.size()))
+            needRebuild = true;
+    }
+
+    if (needRebuild)
         triggerAsyncUpdate();
 }
 

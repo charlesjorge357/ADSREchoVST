@@ -488,14 +488,24 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
         // so the message thread is never blocked.  Only the fast pointer swap
         // is posted back to the message thread via a nested callAsync.
         const juce::dsp::ProcessSpec capturedSpec = spec;
-        const uint64_t myGeneration = ++loadGeneration;
+        const uint64_t myGeneration = ++(*loadGeneration);
+        auto genPtr = loadGeneration;   // shared_ptr keeps the atomic alive past processor dtor
         juce::WeakReference<ADSREchoAudioProcessor> weakThis(this);
-        std::thread([weakThis, capturedSpec, incoming = std::move(incoming), myGeneration]() mutable
+        std::thread([weakThis, genPtr, capturedSpec, incoming = std::move(incoming), myGeneration]() mutable
         {
             // Prepare and load IRs off the message thread.
+            // Check loadGeneration between each module so a newer loadFromValueTree()
+            // call (preset switch during loading) causes this thread to exit early
+            // instead of spending seconds doing FFT for results that will be discarded.
             for (auto& p : incoming)
             {
+                if (genPtr->load(std::memory_order_acquire) != myGeneration)
+                    break;
+
                 p.module->prepare(capturedSpec);
+
+                if (genPtr->load(std::memory_order_acquire) != myGeneration)
+                    break;
 
                 if (p.pendingIRIndex >= 0)
                     if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
@@ -511,7 +521,7 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
 
                 // A newer loadFromValueTree() has superseded us. Discard our modules
                 // without touching the slots — the newer thread owns them now.
-                if (myGeneration != self->loadGeneration.load(std::memory_order_acquire))
+                if (myGeneration != self->loadGeneration->load(std::memory_order_acquire))
                 {
                     for (auto& p : incoming)
                         if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))

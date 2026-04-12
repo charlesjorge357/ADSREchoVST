@@ -134,7 +134,10 @@ private:
     // Incremented on every PATH B loadFromValueTree() call. Captured by each
     // background thread so stale callAsync callbacks can detect they've been
     // superseded and abort instead of wiping the newer thread's installed modules.
-    std::atomic<uint64_t> loadGeneration { 0 };
+    // Stored as shared_ptr so background threads can safely read it even after
+    // the processor is destroyed (avoids UB from detached thread lifetime).
+    std::shared_ptr<std::atomic<uint64_t>> loadGeneration {
+        std::make_shared<std::atomic<uint64_t>>(0) };
 
     // Cached raw param pointers for processBlock hot path (avoids string allocation per block)
     std::atomic<float>* pChainEnabled[NUM_CHAINS] = {};
