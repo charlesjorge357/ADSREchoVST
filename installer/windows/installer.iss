@@ -24,6 +24,8 @@ Compression=lzma2
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
+WizardImageFile=..\..\Resources\installer-logo.bmp
+WizardSmallImageFile=..\..\Resources\installer-logo.bmp
 Uninstallable=yes
 UninstallDisplayName=ADSR-Echo VST3 Plugin
 
