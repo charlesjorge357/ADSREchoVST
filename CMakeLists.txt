@@ -57,41 +57,41 @@ juce_add_plugin(ADSREcho
 # Source files
 target_sources(ADSREcho
     PRIVATE
-        Source/PluginEditor.cpp
-        Source/PluginProcessor.cpp
-        Source/BasicCompressor.cpp
-        Source/BasicDelay.cpp
-        Source/BasicEQ.cpp
-        Source/CompressorModule.cpp
-        Source/Convolution.cpp
-        Source/NonUniformConvolver.cpp
         Source/fftconvolver/AudioFFT.cpp
         Source/fftconvolver/FFTConvolver.cpp
         Source/fftconvolver/TwoStageFFTConvolver.cpp
         Source/fftconvolver/Utilities.cpp
-        Source/ConvolutionModule.cpp
-        Source/CustomDelays.cpp
-        Source/DatorroHall.cpp
-        Source/DelayModule.cpp
-        Source/EQModule.cpp
-        Source/HybridPlate.cpp
-        Source/LFO.cpp
-        Source/BaseModuleSlotEditor.cpp
-        Source/CompressorDisplayComponent.cpp
-        Source/CompressorModuleSlotEditor.cpp
-        Source/EQDisplayComponent.cpp
-        Source/EQModuleSlotEditor.cpp
-        Source/ModuleSlotEditor.cpp
-        Source/PsychoDamping.cpp
-        Source/ReverbModule.cpp
-        Source/Clookandfeel.cpp
-        Source/CompressorPanel.cpp
-        Source/Convolve.cpp
-        Source/DelayPanel.cpp
-        Source/EQPanel.cpp
-        Source/MasterPanel.cpp
-        Source/ReverbPanel.cpp
-        Source/PresetManager.cpp)
+        Source/BasicCompressor.cpp
+	Source/BasicDelay.cpp
+	Source/BasicEQ.cpp
+	Source/Cloakandfeel.cpp
+	Source/CompressorDisplayComponent.cpp
+	Source/CompressorModule.cpp
+	Source/CompressorModuleSlotEditor.cpp
+	Source/CompressorPanel.cpp
+	Source/Convolution.cpp
+	Source/ConvolutionModule.cpp
+	Source/ConvolutionPanel.cpp
+	Source/CustomDelays.cpp
+	Source/DatorroHall.cpp
+	Source/DelayModule.cpp
+	Source/DelayPanel.cpp
+	Source/EQDisplayComponent.cpp
+	Source/EQModule.cpp
+	Source/EQModuleSlotEditor.cpp
+	Source/EQPanel.cpp
+	Source/HybridPlate.cpp
+	Source/LFO.cpp
+	Source/MasterPanel.cpp
+	Source/ModuleSlot.cpp
+	Source/ModuleSlotEditor.cpp
+	Source/NonUniformConvolver.cpp
+	Source/PluginEditor.cpp
+	Source/PluginProcessor.cpp
+	Source/PresetManager.cpp
+	Source/PsychoDamping.cpp
+	Source/ReverbModule.cpp
+	Source/ReverbPanel.cpp)
 
 # Binary resources (fonts, images)
 juce_add_binary_data(ADSREchoBinaryData
