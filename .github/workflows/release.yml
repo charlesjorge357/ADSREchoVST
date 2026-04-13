@@ -65,10 +65,10 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Configure CMake
-        run: cmake -B build ${{ matrix.cmake_args }}
+        run: cmake -B build-host ${{ matrix.cmake_args }}
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build-host --config Release --parallel
 
       # ===== Windows Installer (Inno Setup) =====
       - name: Build Windows Installer
@@ -85,14 +85,13 @@ jobs:
           cd installer/macos
           ./build_pkg.sh "${{ steps.version.outputs.VERSION }}"
 
-      # ===== Linux (tar.gz — no installer standard) =====
-      - name: Package Linux
+      # ===== Linux Installer (.deb) =====
+      - name: Build Linux Installer
         if: runner.os == 'Linux'
         run: |
-          mkdir -p release
-          cp -r build/*_artefacts/Release/VST3/* release/
-          cd release
-          tar -czf ../ADSREcho-Linux-${{ steps.version.outputs.VERSION }}.tar.gz *
+          chmod +x installer/linux/build_deb.sh
+          cd installer/linux
+          ./build_deb.sh "${{ steps.version.outputs.VERSION }}"
 
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
@@ -101,7 +100,7 @@ jobs:
           path: |
             release/*.exe
             release/*.pkg
-            *.tar.gz
+            release/*.deb
 
   create-release:
     name: Create GitHub Release
@@ -137,7 +136,7 @@ jobs:
             ### Downloads
             - **Windows**: Run the `.exe` installer — places VST3 in the standard plugin directory
             - **macOS**: Run the `.pkg` installer — installs VST3 and AU to system plugin directories
-            - **Linux**: Extract `.tar.gz` and copy VST3 to `~/.vst3/`
+            - **Linux**: Install the `.deb` with `sudo dpkg -i adsr-echo_*.deb`
 
             ### Supported DAWs
             - FL Studio (VST3)
@@ -151,6 +150,6 @@ jobs:
           files: |
             artifacts/**/*.exe
             artifacts/**/*.pkg
-            artifacts/**/*.tar.gz
+            artifacts/**/*.deb
           draft: false
           prerelease: false
