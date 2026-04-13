@@ -18,7 +18,7 @@ jobs:
             cmake_args: -DCMAKE_BUILD_TYPE=Release
 
           - name: macOS-Universal-VST3-AU
-            os: macos-13
+            os: macos-14
             artifact_name: ADSREcho-macOS
             cmake_args: -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
 
