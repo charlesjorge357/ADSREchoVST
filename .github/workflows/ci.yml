@@ -173,7 +173,9 @@ jobs:
         run: cmake -B build ${{ matrix.cmake_args }}
 
       - name: Build
-        run: cmake --build build --config Release --parallel $(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 2)
+        run: cmake --build build --config Release --parallel
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 2
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
