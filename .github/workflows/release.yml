@@ -10,6 +10,7 @@ jobs:
     name: Build Release ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: Windows-VST3
@@ -38,6 +39,46 @@ jobs:
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         shell: bash
+
+      - name: Apply JUCE patches
+        shell: bash
+        run: |
+          cd JUCE
+          if ! grep -q "iterator_category" modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp; then
+            echo "Applying JUCE Xcode 15 iterator fix..."
+            python3 << 'EOF'
+          import re
+          file_path = 'modules/juce_audio_devices/native/juce_CoreAudio_mac.cpp'
+          with open(file_path, 'r') as f:
+              content = f.read()
+          pattern = r'(struct StrideIterator\s*\{)'
+          replacement = r'''\1
+                  using iterator_category = std::random_access_iterator_tag;
+                  using value_type = typename std::iterator_traits<Iterator>::value_type;
+                  using difference_type = ptrdiff_t;
+                  using pointer = typename std::iterator_traits<Iterator>::pointer;
+                  using reference = typename std::iterator_traits<Iterator>::reference;
+          '''
+          new_content = re.sub(pattern, replacement, content)
+          if new_content != content:
+              with open(file_path, 'w') as f:
+                  f.write(new_content)
+              print("Iterator traits added successfully")
+          else:
+              print("ERROR: Could not find StrideIterator struct")
+              exit(1)
+          EOF
+          else
+            echo "Patch already applied"
+          fi
+
+      - name: Setup swap space (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo fallocate -l 8G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -69,6 +110,8 @@ jobs:
 
       - name: Build
         run: cmake --build build-host --config Release --parallel
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 2
 
       # ===== Windows Installer (Inno Setup) =====
       - name: Build Windows Installer
