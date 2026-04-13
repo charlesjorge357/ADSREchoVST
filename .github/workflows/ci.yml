@@ -136,10 +136,10 @@ jobs:
       - name: Setup swap space (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo fallocate -l 8G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          sudo fallocate -l 8G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
