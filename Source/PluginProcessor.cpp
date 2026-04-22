@@ -430,6 +430,19 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
     for (auto& p : incoming)
         p.module->setID(slots[p.chain][p.slot]->slotID);
 
+    // In PATH B the old modules remain active until the new ones are ready.
+    // apvts.replaceState() below immediately changes convIrIndex, which would
+    // cause setParameters() to call loadIRAtIndex() on the audio thread —
+    // disk I/O + FFT on the callback → FL Studio watchdog crash.
+    // Suppress that path now; the modules are going to be destroyed anyway.
+    if (spec.sampleRate > 0)
+    {
+        for (auto& chain : slots)
+            for (auto& slot : chain)
+                if (auto* cm = dynamic_cast<ConvolutionModule*>(slot->get()))
+                    cm->suppressIRLoad(true);
+    }
+
     // Restore APVTS state and preset name. This is the primary obligation of
     // setStateInformation() and must complete before we return so that FL Studio
     // does not report "component state wasn't restored".

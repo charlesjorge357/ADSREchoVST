@@ -181,6 +181,12 @@ public:
     // False for freshly-created modules that haven't been through prepare()+forceLoad.
     bool isIRLoaded() const { return currentIRIndex >= 0; }
 
+    // Prevent setParameters() from triggering loadIRAtIndex() on the audio thread.
+    // Set before apvts.replaceState() in PATH B so the about-to-be-replaced module
+    // doesn't do disk I/O / FFT on the audio callback while the new module is being
+    // prepared in the background. Never needs to be cleared — the module is destroyed.
+    void suppressIRLoad(bool b) { irLoadSuppressed.store(b, std::memory_order_relaxed); }
+
     // Signal both convolver background threads to exit without waiting.
     // Call this on all modules before destruction to parallelise thread joins.
     void signalThreadsToStop()
@@ -214,6 +220,7 @@ private:
     bool   customIRActive    = false;
     juce::String customIRPath;
     bool   irMissingFlag     = false;
+    std::atomic<bool> irLoadSuppressed { false };
 
     // Cached filter frequencies - avoids recomputing coefficients when unchanged
     float lastLowCutHz  = -1.0f;

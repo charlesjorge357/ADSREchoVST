@@ -166,7 +166,7 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
     if (filtersChanged)
         updateFilters();
 
-    if (irChanged && !customIRActive && prepared)
+    if (irChanged && !customIRActive && prepared && !irLoadSuppressed.load(std::memory_order_relaxed))
         loadIRAtIndex(newParams.irIndex);
 }
 

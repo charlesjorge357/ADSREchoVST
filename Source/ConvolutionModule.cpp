@@ -128,3 +128,8 @@ void ConvolutionModule::signalConvolversToStop()
 {
     convolutionReverb.signalThreadsToStop();
 }
+
+void ConvolutionModule::suppressIRLoad(bool b)
+{
+    convolutionReverb.suppressIRLoad(b);
+}

@@ -48,6 +48,9 @@ public:
     // Call on all modules before destruction to parallelise thread joins.
     void signalConvolversToStop();
 
+    // Suppress audio-thread IR loading (see Convolution::suppressIRLoad).
+    void suppressIRLoad(bool b);
+
 private:
     juce::String moduleID;
     juce::AudioProcessorValueTreeState& state;
