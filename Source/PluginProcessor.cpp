@@ -49,6 +49,15 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
 
 ADSREchoAudioProcessor::~ADSREchoAudioProcessor()
 {
+    // Pre-signal all convolver threads to exit in parallel before member destructors
+    // call stopBackgroundThread() sequentially (each joins up to 500 ms).
+    // Without this, N modules x 2 convolvers x 500 ms = multi-second block on
+    // whichever thread calls the destructor (the message thread on FL Studio reload).
+    ++(*loadGeneration); // abort any in-flight PATH B background thread early
+    for (auto& chain : slots)
+        for (auto& slot : chain)
+            if (auto* cm = dynamic_cast<ConvolutionModule*>(slot->get()))
+                cm->signalConvolversToStop();
 }
 
 //==============================================================================
@@ -345,6 +354,21 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
 
     auto modules = state.getChildWithName("Modules");
 
+    // Guard: VST3 hosts call setComponentState on BOTH the audio component AND the
+    // edit controller. The controller call may arrive after prepareToPlay with a
+    // state that has no Modules subtree (parameter values only). Without this guard
+    // that second call would clear all installed modules (doSwap with empty incoming).
+    // Preserve existing slots when the Modules child is absent; still sync APVTS
+    // and preset name so parameter values stay correct.
+    if (!modules.isValid())
+    {
+        DBG("loadFromValueTree: no Modules child — APVTS-only update, slots preserved");
+        currentPresetName = state.getProperty("currentPresetName", "").toString();
+        apvts.replaceState(state);
+        uiNeedsRebuild.store(true, std::memory_order_release);
+        return;
+    }
+
     for (auto chainState : modules)
     {
         int chainIndex = (int)chainState["index"];
@@ -530,7 +554,16 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
             {
                 auto* self = weakThis.get();
                 if (self == nullptr)
+                {
+                    // Processor was destroyed before this callAsync fired. Signal all
+                    // convolver threads to exit in parallel before the serial destructions
+                    // below (each stopBackgroundThread() joins at up to 500 ms — doing
+                    // them without pre-signaling serialises the waits).
+                    for (auto& p : incoming)
+                        if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
+                            cm->signalConvolversToStop();
                     return;
+                }
 
                 // A newer loadFromValueTree() has superseded us. Discard our modules
                 // without touching the slots — the newer thread owns them now.
