@@ -119,6 +119,9 @@ public:
     static constexpr int MAX_SLOTS = 8;
     static constexpr int NUM_CHAINS = 2;
 
+    void checkForUpdates();
+    const juce::String currentVersion = "1.0";
+
 private:
     juce::dsp::ProcessSpec spec;
 

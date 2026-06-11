@@ -24,6 +24,9 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
                        )
 #endif
 {
+    
+    checkForUpdates();
+    
     irBank = std::make_shared<IRBank>();
 
     slots.resize(NUM_CHAINS);
@@ -1058,4 +1061,50 @@ void ADSREchoAudioProcessor::timerCallback()
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new ADSREchoAudioProcessor();
+}
+
+
+void ADSREchoAudioProcessor::checkForUpdates()
+{
+    juce::URL versionUrl("https://raw.githubusercontent.com/charlesjorge357/ADSREchoVST/Release/version.json");
+
+    std::thread([this, versionUrl]()
+        {
+            DBG("Thread started");
+
+            juce::String jsonString = versionUrl.readEntireTextStream();
+
+            DBG("Downloaded JSON:");
+            DBG(jsonString);
+
+            if (jsonString.isNotEmpty())
+            {
+                auto json = juce::JSON::parse(jsonString);
+
+                DBG("Parsed JSON");
+
+                juce::String latestVersion = json["latest_version"].toString();
+                juce::String webUrl = json["download_url"].toString();
+
+                DBG("Latest version: " + latestVersion);
+                DBG("Current version: " + currentVersion);
+
+                if (latestVersion != currentVersion)
+                {
+                    DBG("version not matching");
+
+                    // MAKE UI POPUP HERE
+                    // webUrl is the link the popup should go to
+                }
+                else
+                {
+                    DBG("version matching");
+                }
+            }
+            else
+            {
+                DBG("JSON string was empty");
+            }
+
+        }).detach();
 }
