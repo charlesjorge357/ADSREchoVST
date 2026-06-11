@@ -41,6 +41,13 @@ public:
     juce::String getID() const override;
     void setID(const juce::String& newID) override;
     juce::String getType() const override;
+
+    // IIR biquad ring-out: worst case (20 Hz bell, Q=10) decays below -120 dB
+    // in ~2.2 s; 3 s is a safe constant.
+    int getTailLengthSamples(double sampleRate) const override
+    {
+        return (int)(sampleRate * 3.0);
+    }
     float getMagnitudeForFrequency(float freq);
     float getSampleRate();
 

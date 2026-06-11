@@ -558,19 +558,33 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
             loaderThread = std::thread([weakThis, genPtr, capturedSpec,
                                         incoming = std::move(incoming), myGeneration]() mutable
             {
-                for (auto& p : incoming)
+                // Any exception escaping a std::thread body calls std::terminate()
+                // (0xc0000409 abort in the host). On failure: discard the new
+                // modules; the old ones stay installed and keep producing audio.
+                try
                 {
-                    if (genPtr->load(std::memory_order_acquire) != myGeneration)
-                        break;
+                    for (auto& p : incoming)
+                    {
+                        if (genPtr->load(std::memory_order_acquire) != myGeneration)
+                            break;
 
-                    p.module->prepare(capturedSpec);
+                        p.module->prepare(capturedSpec);
 
-                    if (genPtr->load(std::memory_order_acquire) != myGeneration)
-                        break;
+                        if (genPtr->load(std::memory_order_acquire) != myGeneration)
+                            break;
 
-                    if (p.pendingIRIndex >= 0)
+                        if (p.pendingIRIndex >= 0)
+                            if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
+                                cm->forceReloadIR(p.pendingIRIndex);
+                    }
+                }
+                catch (...)
+                {
+                    DBG("PATH B loader: exception during prepare/IR load — swap aborted");
+                    for (auto& p : incoming)
                         if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
-                            cm->forceReloadIR(p.pendingIRIndex);
+                            cm->signalConvolversToStop();
+                    return;
                 }
 
                 juce::MessageManager::callAsync([weakThis, incoming = std::move(incoming), myGeneration]() mutable
@@ -1011,11 +1025,22 @@ void ADSREchoAudioProcessor::requestIRChange(const juce::String& slotID,
              chainIndex, slotIndex, bankIndex,
              mod = std::move(replacement)]() mutable
         {
-            if (capturedSpec.sampleRate > 0)
-                mod->prepare(capturedSpec);
+            // Exception escaping a std::thread → std::terminate. On failure the
+            // slot keeps its current module; the replacement is discarded.
+            try
+            {
+                if (capturedSpec.sampleRate > 0)
+                    mod->prepare(capturedSpec);
 
-            if (genPtr->load(std::memory_order_acquire) == myGeneration && bankIndex >= 0)
-                mod->forceReloadIR(bankIndex);
+                if (genPtr->load(std::memory_order_acquire) == myGeneration && bankIndex >= 0)
+                    mod->forceReloadIR(bankIndex);
+            }
+            catch (...)
+            {
+                DBG("requestIRChange loader: exception during prepare/IR load — swap aborted");
+                mod->signalConvolversToStop();
+                return;
+            }
 
             juce::MessageManager::callAsync(
                 [weakThis, genPtr, myGeneration,

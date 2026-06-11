@@ -75,5 +75,15 @@ std::vector<juce::String> ReverbModule::getUsedParameters() const
 
 void ReverbModule::setID(const juce::String& newID) { moduleID = newID; rebuildParamIDs(); }
 
+int ReverbModule::getTailLengthSamples(double sampleRate) const
+{
+    // decayTime is T60 (-60 dB). The silence gate skips only below ~-120 dB,
+    // so flush 2x T60, with a 25% margin for the modal deviations of the
+    // FDN/allpass networks (roomSize stretches loop delays). Plus pre-delay.
+    const float t60   = pDecayTime ? pDecayTime->load() : 10.0f;
+    const float preMs = pPreDelay  ? pPreDelay->load()  : 200.0f;
+    return (int)(sampleRate * (2.5 * (double) t60 + (double) preMs * 0.001));
+}
+
 juce::String ReverbModule::getID() const { return moduleID; }
 juce::String ReverbModule::getType() const { return "Reverb"; }

@@ -30,6 +30,8 @@ public:
     bool hasPendingIRRequest() const;
     bool isIRLoadSuppressed()  const;
 
+    int getTailLengthSamples(double sampleRate) const override;
+
     void setIRBank(std::shared_ptr<IRBank> bank);
 
     void loadCustomIR(const juce::File& file);

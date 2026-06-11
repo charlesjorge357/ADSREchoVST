@@ -48,6 +48,31 @@ public:
     {
         if (auto* m = activeModule.load(std::memory_order_acquire))
         {
+            // ---- Per-module silence gate --------------------------------
+            // While input is silent, keep processing until the module's tail
+            // (reported via getTailLengthSamples, sized to ~-120 dB ring-out)
+            // plus a 1/4 s pad has flushed through. After that the module's
+            // state is inaudible silence and process() can be skipped at zero
+            // cost. Any non-silent block re-arms the countdown and resumes
+            // processing instantly — the flushed state guarantees no click.
+            // The pad keeps rapid pause/play cycles away from the gate edge.
+            const int numSamples = buffer.getNumSamples();
+            float mag = 0.0f;
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+                mag = std::max(mag, buffer.getMagnitude(ch, 0, numSamples));
+
+            if (mag < kGateSilenceThreshold)
+            {
+                if (gateCountdown <= 0)
+                    return;                      // fully rung out — skip
+                gateCountdown -= numSamples;     // still flushing the tail
+            }
+            else
+            {
+                gateCountdown = m->getTailLengthSamples(currentSpec.sampleRate)
+                              + (int)(currentSpec.sampleRate * 0.25);
+            }
+
             m->setPlayHead(playHead);
             m->process(buffer, midi);
         }
@@ -129,6 +154,12 @@ public:
 
 private:
     juce::dsp::ProcessSpec currentSpec{};
+
+    // Silence-gate state (audio thread only). 0 = safe to skip on silent
+    // input (a freshly installed module has all-zero state, so 0 is also the
+    // correct value after a swap). Re-armed on every non-silent block.
+    static constexpr float kGateSilenceThreshold = 1.0e-6f;   // ~ -120 dBFS
+    int gateCountdown = 0;
 
     std::unique_ptr<EffectModule> ownedModule;
     std::unique_ptr<EffectModule> pendingDeletion;

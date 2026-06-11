@@ -144,6 +144,35 @@ private:
 
 #endif // USE_CUSTOM_CONVOLVER
 
+// ---------------------------------------------------------------------------
+// Optional convolution profiler — define ADSRECHO_PROFILE_CONV=1 in the build
+// (Release or Debug-with-optimizations) to print per-stage timing every ~5 s
+// of audio via DBG/OutputDebugString. Compiles out entirely when 0.
+// ---------------------------------------------------------------------------
+#ifndef ADSRECHO_PROFILE_CONV
+ #define ADSRECHO_PROFILE_CONV 0
+#endif
+
+#if ADSRECHO_PROFILE_CONV
+struct ConvProfiler
+{
+    double accumMs = 0.0; int blocks = 0; int samples = 0; double sr = 44100.0;
+    void add (double ms, int numSamples) noexcept
+    {
+        accumMs += ms; ++blocks; samples += numSamples;
+        if (samples >= (int) (sr * 5.0))
+        {
+            const double audioMs = 1000.0 * samples / sr;
+            DBG ("conv: " << juce::String (accumMs, 2) << " ms CPU for "
+                 << juce::String (audioMs, 0) << " ms audio  ("
+                 << juce::String (100.0 * accumMs / audioMs, 2) << "% of one core, "
+                 << blocks << " blocks)");
+            accumMs = 0; blocks = 0; samples = 0;
+        }
+    }
+};
+#endif
+
 // Forward declaration
 class IRBank;
 
@@ -210,6 +239,10 @@ public:
     // False for freshly-created modules that haven't been through prepare()+forceLoad.
     bool isIRLoaded() const { return currentIRIndex >= 0; }
 
+    // Ring-out length of the loaded IR plus pre-delay, in samples (for the
+    // ModuleSlot silence gate).
+    int getTailLengthSamples() const { return irTailSamples + (int) preDelaySamples; }
+
     // Prevent setParameters() from triggering loadIRAtIndex() on the audio thread.
     // Set before apvts.replaceState() in PATH B so the about-to-be-replaced module
     // doesn't do disk I/O / FFT on the audio callback while the new module is being
@@ -258,6 +291,17 @@ private:
     bool   irMissingFlag     = false;
     std::atomic<bool> irLoadSuppressed { false };
     std::atomic<int>  requestedIRIndex { -1 };   // audio thread writes, message thread reads
+
+    // Silence gate: number of samples of silent input still required before the
+    // convolver state is guaranteed all-zero and processing can be skipped.
+    // Reset to irTailSamples (+ pre-delay) whenever non-silent input arrives.
+    int irTailSamples    = 0;   // IR length in samples, set on IR load
+    int silenceCountdown = 0;   // remaining silent samples until skip is safe
+    static constexpr float kSilenceThreshold = 1.0e-6f;  // ≈ −120 dBFS
+
+#if ADSRECHO_PROFILE_CONV
+    ConvProfiler convProfiler;
+#endif
 
     // Cached filter frequencies - avoids recomputing coefficients when unchanged
     float lastLowCutHz  = -1.0f;

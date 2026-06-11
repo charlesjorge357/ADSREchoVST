@@ -1,3 +1,21 @@
+// ===========================================================================
+// CPU profile log (Release, ADSRECHO_PROFILE_CONV=1, % of one core for the
+// convolution section only). Update after each optimization task:
+//
+//   config                     | host 128 | host 512 |
+//   ---------------------------+----------+----------+ IR ~10-20 s
+//   baseline (scalar, Ooura)   |   TBD    |   TBD    |
+//   + SSE CMAC (Task 1)        |   TBD    |   TBD    |
+//   + silence gate idle (T2)   |   ~0     |   ~0     |
+//   + pffft backend (Task 3)   |   TBD    |   TBD    |
+//
+//   Head-size matrix (Task 5): head ∈ {128, 256, auto} × host ∈ {128, 512}
+//   × IR ∈ {2 s, 20 s} — measure with ADSRECHO_CONV_HEAD_BLOCK before
+//   changing the default. Current default: auto (track host block size).
+//
+// Measure in FL Studio with Sysinternals DebugView (admin) capturing DBG().
+// ===========================================================================
+
 #include "Convolution.h"
 #include "IRBank.h"
 
@@ -23,6 +41,10 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
     currentSampleRate = spec.sampleRate;
     prepared = true;
 
+#if ADSRECHO_PROFILE_CONV
+    convProfiler.sr = spec.sampleRate;
+#endif
+
     // This module is being replaced by PATH B. Skip reset() and all
     // re-initialisation: reset() calls TwoStageFFTConvolver::reset() which
     // clears _backgroundProcessingInput while the background thread may still
@@ -37,7 +59,22 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
 #if USE_CUSTOM_CONVOLVER
     // Choose head/tail partition sizes based on the host block size.
     // The TwoStageFFTConvolver handles arbitrary-length process() calls internally.
+    //
+    // ADSRECHO_CONV_HEAD_BLOCK: 0 = auto (track host block size, current
+    // behavior). Non-zero pins the head partition size for experimentation:
+    // smaller heads mean cheaper per-call FFTs when the host delivers
+    // small/variable blocks (FL Studio), at the cost of more CMAC segments.
+    // Re-measure with ADSRECHO_PROFILE_CONV at host blocks 128 and 512
+    // before changing the default.
+#ifndef ADSRECHO_CONV_HEAD_BLOCK
+ #define ADSRECHO_CONV_HEAD_BLOCK 0
+#endif
+
+#if ADSRECHO_CONV_HEAD_BLOCK > 0
+    headBlockSize_ = (size_t) ADSRECHO_CONV_HEAD_BLOCK;
+#else
     headBlockSize_ = std::max((size_t)spec.maximumBlockSize, (size_t)128);
+#endif
     // tailBlockSize must be large enough that the background tail thread always
     // finishes within one tail cycle. JUCE's FL Studio workaround holds a mutex
     // (flStudioDIYSpecificationEnforcementMutex) for the entire process() call;
@@ -128,6 +165,11 @@ void Convolution::updatePreDelay()
         preDelayL.setDelay(preDelaySamples);
         preDelayR.setDelay(preDelaySamples);
         isPreDelayActive  = (preDelaySamples > 0.1f);
+
+        // Silence gate: the pre-delay line lengthens the effective tail.
+        // Never shorten an in-flight countdown.
+        silenceCountdown = std::max(silenceCountdown,
+                                    irTailSamples + (int) preDelaySamples);
     }
 }
 
@@ -210,6 +252,42 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
     const int numSamples  = buffer.getNumSamples();
     const int numChannels = buffer.getNumChannels();
 
+    // ---- Silence gate ------------------------------------------------------
+    // While input is silent we keep processing until the convolver has flushed
+    // one full IR length (+ pre-delay) of silence through itself (countdown).
+    // After that, all internal state (segment spectra, overlaps, pre-delay,
+    // filters) is zeros, so skipping is exactly equivalent to processing — and
+    // since the input is silent, dry == wet == 0 and the buffer passes through
+    // untouched at any mix setting. Resume instantly on the first non-silent
+    // block. The skip happens BEFORE pushDrySamples so the DryWetMixer
+    // push/mix pair stays balanced. Do not "optimize" by skipping immediately:
+    // the countdown is what flushes the convolver state to zero, which is what
+    // makes the eventual skip artifact-free.
+    {
+        float mag = 0.0f;
+        for (int ch = 0; ch < numChannels; ++ch)
+            mag = std::max(mag, buffer.getMagnitude(ch, 0, numSamples));
+
+        if (mag < kSilenceThreshold)
+        {
+            if (silenceCountdown <= 0)
+            {
+#if ADSRECHO_PROFILE_CONV
+                convProfiler.add(0.0, numSamples);   // count skipped blocks as free
+#endif
+                return;                      // fully decayed — free
+            }
+            silenceCountdown -= numSamples;  // still flushing the tail
+        }
+        else
+        {
+            // Re-arm with a 1/4 s pad so rapid pause/play cycling never lands
+            // on the gate boundary (matches the ModuleSlot gate behaviour).
+            silenceCountdown = irTailSamples + (int) preDelaySamples
+                             + (int)(currentSampleRate * 0.25);
+        }
+    }
+
     // Push dry samples before any wet processing
     dryWetMixer.pushDrySamples(juce::dsp::AudioBlock<float>(buffer));
 
@@ -234,6 +312,9 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
     }
 
     // 2) Convolution
+#if ADSRECHO_PROFILE_CONV
+    const double profT0 = juce::Time::getMillisecondCounterHiRes();
+#endif
 #if USE_CUSTOM_CONVOLVER
     {
         // TwoStageFFTConvolver REQUIRES separate input/output buffers.
@@ -258,6 +339,9 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
         juce::dsp::ProcessContextReplacing<float> context(block);
         convolver.process(context);
     }
+#endif
+#if ADSRECHO_PROFILE_CONV
+    convProfiler.add(juce::Time::getMillisecondCounterHiRes() - profT0, numSamples);
 #endif
 
     // 3) Tone shaping
@@ -448,6 +532,12 @@ void Convolution::loadCustomEngineIR(const std::vector<float>& irL, const std::v
         convolverL.init(headBlockSize_, tailBlockSize_, impulse.data(), 1);
         convolverR.init(headBlockSize_, tailBlockSize_, impulse.data(), 1);
     }
+
+    // Silence gate: the wet tail rings for the IR length (plus pre-delay)
+    // after input goes silent; processing must continue that long before
+    // skipping is equivalent to processing.
+    irTailSamples    = (okL && okR) ? (int) std::max(lenL, lenR) : 1;
+    silenceCountdown = irTailSamples + (int) preDelaySamples;
 }
 
 #endif // USE_CUSTOM_CONVOLVER
@@ -481,6 +571,9 @@ void Convolution::loadIR(const juce::File& file)
                                       juce::dsp::Convolution::Trim::no,
                                       0);
         DBG("Convolution::loadIR - Loaded: " + file.getFullPathName());
+        // Silence gate: JUCE engine doesn't expose the loaded length — be conservative.
+        irTailSamples    = (int)(currentSampleRate * (double) kMaxIRSeconds);
+        silenceCountdown = irTailSamples + (int) preDelaySamples;
     }
     catch (const std::exception& e)
     {
@@ -520,6 +613,9 @@ void Convolution::loadIRFromMemory(const void* data,
                                       juce::dsp::Convolution::Trim::no,
                                       0);
         DBG("Convolution::loadIRFromMemory - Loaded IR from memory");
+        // Silence gate: JUCE engine doesn't expose the loaded length — be conservative.
+        irTailSamples    = (int)(currentSampleRate * (double) kMaxIRSeconds);
+        silenceCountdown = irTailSamples + (int) preDelaySamples;
     }
     catch (const std::exception& e)
     {
@@ -576,6 +672,8 @@ void Convolution::loadIRAtIndex(int index)
                 juce::dsp::Convolution::Stereo::no,
                 juce::dsp::Convolution::Trim::no,
                 1);
+            irTailSamples    = 1;   // unit impulse — no tail
+            silenceCountdown = 1 + (int) preDelaySamples;
         }
         catch (const std::exception& e)
         {

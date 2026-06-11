@@ -26,10 +26,18 @@
 #include <cstring>
 
 
+// Backend priority: Apple Accelerate > pffft > FFTW3 > Ooura (scalar fallback).
 #if defined(AUDIOFFT_APPLE_ACCELERATE)
   #define AUDIOFFT_APPLE_ACCELERATE_USED
   #include <Accelerate/Accelerate.h>
   #include <vector>
+#elif defined(AUDIOFFT_PFFFT)
+  #define AUDIOFFT_PFFFT_USED
+  // pffft is statically vendored — suppress its dllimport declarations.
+  #ifndef PFFFT_STATIC_DEFINE
+    #define PFFFT_STATIC_DEFINE 1
+  #endif
+  #include "pffft/pffft.h"
 #elif defined (AUDIOFFT_FFTW3)
   #define AUDIOFFT_FFTW3_USED
   #include <fftw3.h>
@@ -857,6 +865,114 @@ namespace audiofft
 
 
 #endif // AUDIOFFT_APPLE_ACCELERATE_USED
+
+
+    // ================================================================
+
+
+#ifdef AUDIOFFT_PFFFT_USED
+
+    /**
+     * @internal
+     * @class PffftFFT
+     * @brief FFT implementation using pffft (Julien Pommier / marton78 mirror, BSD-like license)
+     *
+     * pffft's ordered real transform packs the spectrum as:
+     *   out[0] = Re(DC), out[1] = Re(Nyquist), out[2k], out[2k+1] = Re/Im of bin k.
+     * AudioFFT's contract is split-complex arrays of (size/2 + 1) bins with
+     * standard e^{-i} DFT convention and ifft(fft(x)) == x; the deinterleave
+     * and 1/N scaling below provide exactly that.
+     */
+    class PffftFFT : public AudioFFTImpl
+    {
+    public:
+      PffftFFT() = default;
+
+      virtual ~PffftFFT() override
+      {
+        destroy();
+      }
+
+      virtual void init(size_t size) override
+      {
+        destroy();
+        _size = size;
+        if (_size == 0)
+        {
+          return;            // FFTConvolver::reset() calls init(0)
+        }
+
+        // pffft real transforms require N to be a multiple of 32 (with SIMD).
+        // Our sizes are segSize = 2*blockSize, blockSize >= 128 → always OK,
+        // but assert to catch config changes:
+        assert(_size % 32 == 0);
+
+        _setup  = pffft_new_setup(static_cast<int>(_size), PFFFT_REAL);
+        assert(_setup);
+        _work   = static_cast<float*>(pffft_aligned_malloc(_size * sizeof(float)));
+        _interl = static_cast<float*>(pffft_aligned_malloc(_size * sizeof(float)));
+        _scale  = 1.0f / static_cast<float>(_size);
+      }
+
+      virtual void fft(const float* data, float* re, float* im) override
+      {
+        pffft_transform_ordered(_setup, data, _interl, _work, PFFFT_FORWARD);
+        const size_t half = _size / 2;
+        re[0]    = _interl[0];
+        im[0]    = 0.0f;
+        re[half] = _interl[1];
+        im[half] = 0.0f;
+        for (size_t i = 1; i < half; ++i)
+        {
+          re[i] = _interl[2*i];
+          im[i] = _interl[2*i+1];
+        }
+      }
+
+      virtual void ifft(float* data, const float* re, const float* im) override
+      {
+        const size_t half = _size / 2;
+        _interl[0] = re[0];
+        _interl[1] = re[half];
+        for (size_t i = 1; i < half; ++i)
+        {
+          _interl[2*i]   = re[i];
+          _interl[2*i+1] = im[i];
+        }
+        pffft_transform_ordered(_setup, _interl, data, _work, PFFFT_BACKWARD);
+        // pffft is unscaled; AudioFFT contract: ifft(fft(x)) == x.
+        for (size_t i = 0; i < _size; ++i)
+        {
+          data[i] *= _scale;
+        }
+      }
+
+    private:
+      void destroy()
+      {
+        if (_setup)  { pffft_destroy_setup(_setup); _setup = nullptr; }
+        if (_work)   { pffft_aligned_free(_work);   _work = nullptr; }
+        if (_interl) { pffft_aligned_free(_interl); _interl = nullptr; }
+      }
+
+      PFFFT_Setup* _setup  = nullptr;
+      float*       _work   = nullptr;
+      float*       _interl = nullptr;
+      size_t       _size   = 0;
+      float        _scale  = 1.0f;
+
+      PffftFFT(const PffftFFT&) = delete;
+      PffftFFT& operator=(const PffftFFT&) = delete;
+    };
+
+
+    std::unique_ptr<AudioFFTImpl> MakeAudioFFTImpl()
+    {
+      return std::unique_ptr<PffftFFT>(new PffftFFT());
+    }
+
+
+#endif // AUDIOFFT_PFFFT_USED
 
 
     // ================================================================

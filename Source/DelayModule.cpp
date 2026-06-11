@@ -138,6 +138,28 @@ std::vector<juce::String> DelayModule::getUsedParameters() const
 }
 
 void DelayModule::setID(const juce::String& newID)        { moduleID = newID; rebuildParamCache(); }
+
+int DelayModule::getTailLengthSamples(double sampleRate) const
+{
+    // Feedback tail: each repeat is attenuated by `fb`, so reaching -120 dB
+    // takes 120 / (-20*log10(fb)) repeats. High feedback (0.95 -> ~270
+    // repeats) yields a genuinely long countdown and the gate simply never
+    // engages — correct, since the tail really is audible that long.
+    const float fb = juce::jlimit(0.0f, 0.97f,
+                                  pFeedback ? pFeedback->load() : 0.95f);
+    const double dbPerRepeat = (fb > 0.001f) ? -20.0 * std::log10((double) fb) : 120.0;
+    const int repeats = (int) std::ceil(120.0 / dbPerRepeat) + 1;
+
+    // Repeat period: free-run uses the delayTime param; BPM sync can stretch
+    // up to the delay line capacity (192001 samples) — assume worst case.
+    const bool syncOn = pSyncEnabled && pSyncEnabled->load() > 0.5f;
+    const double periodSamples = syncOn
+        ? 192001.0
+        : (double)(pDelayTime ? pDelayTime->load() : 2000.0f) * 0.001 * sampleRate;
+
+    return (int) juce::jmin((double) std::numeric_limits<int>::max() / 2,
+                            periodSamples * repeats);
+}
 void DelayModule::setPlayHead(juce::AudioPlayHead* ph)    { playHead = ph; }
 juce::String DelayModule::getID()   const                 { return moduleID; }
 juce::String DelayModule::getType() const                 { return "Delay"; }

@@ -40,4 +40,14 @@ public:
     virtual void setPlayHead(juce::AudioPlayHead* playhead) {}
 
     virtual std::vector<juce::String> getUsedParameters() const = 0;
+
+    // Ring-out tail length at the given sample rate, in samples. Used by
+    // ModuleSlot's silence gate: after this many samples of silent input the
+    // module's output is guaranteed below audibility (~-120 dB) and process()
+    // can be skipped until signal returns. Overestimating is safe (the gate
+    // just engages later); underestimating truncates audible tails.
+    virtual int getTailLengthSamples(double sampleRate) const
+    {
+        return (int)(sampleRate * 30.0);   // conservative default
+    }
 };

@@ -26,6 +26,8 @@ public:
     void setID(const juce::String& newID) override;
     juce::String getType() const override;
 
+    int getTailLengthSamples(double sampleRate) const override;
+
     void setPlayHead(juce::AudioPlayHead *playhead) override;
 
     void rebuildParamCache();

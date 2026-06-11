@@ -84,6 +84,12 @@ bool ConvolutionModule::isIRLoadSuppressed() const
     return convolutionReverb.isIRLoadSuppressed();
 }
 
+int ConvolutionModule::getTailLengthSamples(double) const
+{
+    // Exact: IR length + pre-delay, tracked by the engine on each IR load.
+    return convolutionReverb.getTailLengthSamples();
+}
+
 juce::String ConvolutionModule::getID() const
 {
     return moduleID;

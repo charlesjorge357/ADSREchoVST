@@ -61,6 +61,8 @@ target_sources(ADSREcho
         Source/fftconvolver/FFTConvolver.cpp
         Source/fftconvolver/TwoStageFFTConvolver.cpp
         Source/fftconvolver/Utilities.cpp
+        Source/fftconvolver/pffft/pffft.c
+        Source/fftconvolver/pffft/pffft_common.c
         Source/BasicCompressor.cpp
 	Source/BasicDelay.cpp
 	Source/BasicEQ.cpp
@@ -119,7 +121,17 @@ target_compile_definitions(ADSREcho
 # Pin FFTCONVOLVER_USE_SSE globally. Buffer<T> switches between _mm_malloc and
 # new[] depending on this flag; mixing defined/undefined across TUs is an ODR
 # hazard. Define it unconditionally so every translation unit agrees.
-target_compile_definitions(ADSREcho PRIVATE FFTCONVOLVER_USE_SSE)
+target_compile_definitions(ADSREcho PRIVATE FFTCONVOLVER_USE_SSE=1)
+
+# FFT backend for AudioFFT: Apple Accelerate on macOS (vDSP, links the
+# framework), pffft everywhere else (vendored in Source/fftconvolver/pffft,
+# BSD-like license). Without either define AudioFFT falls back to scalar Ooura.
+if(APPLE)
+    target_compile_definitions(ADSREcho PRIVATE AUDIOFFT_APPLE_ACCELERATE=1)
+    target_link_libraries(ADSREcho PRIVATE "-framework Accelerate")
+else()
+    target_compile_definitions(ADSREcho PRIVATE AUDIOFFT_PFFFT=1)
+endif()
 
 # Link JUCE modules
 target_link_libraries(ADSREcho

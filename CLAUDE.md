@@ -279,6 +279,50 @@ With tailBlockSize ≥ 8192 at 44100Hz, `waitForBackgroundProcessing()` is calle
 - Energy normalization: `scale = 1/sqrt(sum of squared samples L+R)`
 - `TwoStageFFTConvolver::process()` requires separate input/output pointers — copy channel to `monoInBuf` first
 
+## Convolution CPU Optimizations (June 2026)
+
+All audio-equivalent — FFT backends verified bin-for-bin against a reference
+DFT (`Source/fftconvolver/pffft/pffft_audiofft_test.cpp`, PASS on pffft and
+Ooura; build command in the file header).
+
+- **Profiler**: build with `ADSRECHO_PROFILE_CONV=1` → DBG prints
+  `conv: X ms CPU (Y% of one core)` every 5 s of audio. Baseline table at top
+  of `Convolution.cpp` (TBD — measure in FL with DebugView). Compiles out.
+- **SSE CMAC**: `FFTCONVOLVER_USE_SSE=1` pinned project-wide (CMake + .jucer
+  project-level defines). Never define per-config — `Buffer<T>` switches
+  `_mm_malloc`/`new[]` inline per TU; a mismatch is an ODR/heap hazard.
+- **Silence gate** (`Convolution::processBlock`): skips convolution after
+  `irTailSamples + preDelay` samples of silent input flush the state to zero.
+  Sits BEFORE `pushDrySamples` so the DryWetMixer push/mix pair stays
+  balanced. `irTailSamples` set in `loadCustomEngineIR` / JUCE-engine paths.
+- **Per-module silence gates** (`ModuleSlot::process` + virtual
+  `EffectModule::getTailLengthSamples(sr)`): generic gate — while input is
+  silent, keep processing until the module's reported tail (sized to ~-120 dB
+  ring-out, NOT -60, so nothing audible is truncated) plus a 1/4 s re-arm pad
+  has flushed; then skip process() entirely. Resume is instant and click-free
+  (state is flushed to ~zero). Tail per module: Convolution = exact IR len +
+  preDelay; Reverb = 2.5×T60 + preDelay; Delay = repeats-to-−120dB from
+  feedback (0.95 fb → gate never engages, correct); EQ = 3 s const;
+  Compressor = 4 s const (envelope must fully release before freezing, also
+  lets meters settle). Base-class default 30 s for future modules.
+  gateCountdown starts at 0 (fresh modules have zero state).
+- **pffft FFT backend** (`Source/fftconvolver/pffft/`, vendored marton78
+  mirror, BSD-like license): selected via `AUDIOFFT_PFFFT=1`; priority chain
+  in `AudioFFT.cpp` is Accelerate > pffft > FFTW3 > Ooura. `pffft.c` +
+  `pffft_common.c` compile as C; `PFFFT_STATIC_DEFINE` patched into vendored
+  files (statically linked). `simd/*.h` must stay on disk (resolved via
+  relative includes; not registered in build). macOS uses Accelerate.
+- **Head block tuning hook**: `ADSRECHO_CONV_HEAD_BLOCK` (0 = auto). Pins the
+  head partition size for profiling. Do NOT touch the tailBlockSize 8192
+  floor (Issue #5 FL disable deadlock).
+- **AVX2 CMAC (Task 4) skipped intentionally** — gated on profiler evidence
+  that CMAC still dominates after SSE + pffft.
+- **Loader-thread exception guards** (`PluginProcessor.cpp`): both
+  `std::thread` bodies (PATH B and `requestIRChange`) wrap their work in
+  try/catch — an exception escaping a `std::thread` calls `std::terminate()`
+  (= the 0xc0000409 ucrtbase abort signature seen in FL crash events).
+  On failure the replacement modules are discarded and old modules stay.
+
 ## Debug Output
 
 JUCE `DBG()` → `OutputDebugString()` on Windows → **NOT in FL Studio's log folder**.  

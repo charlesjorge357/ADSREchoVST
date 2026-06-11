@@ -25,6 +25,15 @@ public:
     void setID(const juce::String& newID) override;
     juce::String getType() const override;
 
+    // Envelope follower must fully release before the gate freezes it, or a
+    // stale gain reduction would apply on resume. Release param max is 2 s;
+    // 4 s flush covers it twice over. (Also lets the meters settle to silence
+    // before they stop updating.)
+    int getTailLengthSamples(double sampleRate) const override
+    {
+        return (int)(sampleRate * 4.0);
+    }
+
     // -----------------------------------------------------------------------
     // Meter data - written by audio thread, read by UI thread (same pattern
     // as EQModule::fftReady / fftBuffer).
