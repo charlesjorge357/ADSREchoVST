@@ -26,6 +26,7 @@
 #endif
 
 #include "EffectModule.h"
+#include "ConvolutionModule.h"
 
 class ModuleSlot
 {
@@ -88,6 +89,25 @@ public:
 
     void destroyPending()
     {
+        pendingDeletion.reset();
+    }
+
+    // Signal convolver threads in every module this slot owns (active + pending).
+    // Used by the processor destructor to parallelise thread joins before the
+    // sequential TwoStageFFTConvolver destructors run (each waits up to 500 ms).
+    template <typename Fn>
+    void forEachOwnedModule(Fn&& fn)
+    {
+        if (ownedModule)     fn(ownedModule.get());
+        if (pendingDeletion) fn(pendingDeletion.get());
+    }
+
+    // Destroy pendingDeletion on the calling (message) thread, pre-signalling its
+    // convolver threads so the join is fast. Never call under the audio lock.
+    void retirePending()
+    {
+        if (auto* cm = dynamic_cast<ConvolutionModule*>(pendingDeletion.get()))
+            cm->signalConvolversToStop();
         pendingDeletion.reset();
     }
 

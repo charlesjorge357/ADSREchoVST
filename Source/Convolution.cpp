@@ -23,13 +23,29 @@ void Convolution::prepare(const juce::dsp::ProcessSpec& spec)
     currentSampleRate = spec.sampleRate;
     prepared = true;
 
+    // This module is being replaced by PATH B. Skip reset() and all
+    // re-initialisation: reset() calls TwoStageFFTConvolver::reset() which
+    // clears _backgroundProcessingInput while the background thread may still
+    // be reading it in doBackgroundProcessing() — a data race that crashes.
+    // The module keeps its existing configuration and continues producing audio
+    // correctly until doSwap() atomically installs the replacement.
+    if (irLoadSuppressed.load(std::memory_order_relaxed))
+        return;
+
     reset();
 
 #if USE_CUSTOM_CONVOLVER
     // Choose head/tail partition sizes based on the host block size.
     // The TwoStageFFTConvolver handles arbitrary-length process() calls internally.
     headBlockSize_ = std::max((size_t)spec.maximumBlockSize, (size_t)128);
-    tailBlockSize_ = headBlockSize_ * 8;
+    // tailBlockSize must be large enough that the background tail thread always
+    // finishes within one tail cycle. JUCE's FL Studio workaround holds a mutex
+    // (flStudioDIYSpecificationEnforcementMutex) for the entire process() call;
+    // setActive(false) acquires the same mutex, so if waitForBackgroundProcessing()
+    // blocks while the mutex is held → deadlock → FL Studio freezes on disable.
+    // Floor of 8192 (~186ms at 44100Hz) matches KlangFalter and ensures the
+    // FFT computation always completes before the next waitForBackgroundProcessing().
+    tailBlockSize_ = std::max((size_t)8192, headBlockSize_ * 8);
     monoInBuf.resize(spec.maximumBlockSize);
 #else
     convolver.prepare(spec);
@@ -166,8 +182,14 @@ void Convolution::setParameters(const ConvolutionParameters& newParams)
     if (filtersChanged)
         updateFilters();
 
-    if (irChanged && !customIRActive && prepared && !irLoadSuppressed.load(std::memory_order_relaxed))
-        loadIRAtIndex(newParams.irIndex);
+    if (irChanged && !customIRActive && prepared
+        && !irLoadSuppressed.load(std::memory_order_relaxed))
+    {
+        // NEVER load on the audio thread: disk I/O + FFT + thread start here is
+        // what trips FL Studio's watchdog. Post a request; the processor's 10 Hz
+        // timer picks it up and builds a prepared replacement module off-thread.
+        requestedIRIndex.store(newParams.irIndex, std::memory_order_release);
+    }
 }
 
 // ===========================================================================
@@ -302,9 +324,20 @@ Convolution::StereoIR Convolution::readStereoIR(const juce::File& file, double t
     if (!reader)
         return {};
 
-    const int    numSamples     = (int)reader->lengthInSamples;
-    const double fileSampleRate = reader->sampleRate;
-    const int    numCh          = (int)reader->numChannels;
+    const juce::int64 rawLen       = reader->lengthInSamples;
+    const double      fileSampleRate = reader->sampleRate;
+    if (rawLen <= 0 || fileSampleRate <= 0)
+        return {};
+
+    const juce::int64 maxLen    = (juce::int64)(fileSampleRate * (double)kMaxIRSeconds);
+    const int         numSamples = (int)std::min(rawLen, maxLen);
+    const int         numCh      = (int)reader->numChannels;
+    if (numCh <= 0)
+        return {};
+
+    if (rawLen > maxLen)
+        DBG("Convolution: IR truncated to " + juce::String((int)kMaxIRSeconds) + " s (file was "
+            + juce::String((double)rawLen / fileSampleRate, 1) + " s)");
 
     juce::AudioBuffer<float> buf(numCh, numSamples);
     reader->read(&buf, 0, numSamples, 0, true, true);
@@ -331,9 +364,19 @@ Convolution::StereoIR Convolution::readStereoIRFromMemory(const void* data, size
     if (!reader)
         return {};
 
-    const int    numSamples     = (int)reader->lengthInSamples;
-    const double fileSampleRate = reader->sampleRate;
-    const int    numCh          = (int)reader->numChannels;
+    const juce::int64 rawLen        = reader->lengthInSamples;
+    const double      fileSampleRate = reader->sampleRate;
+    if (rawLen <= 0 || fileSampleRate <= 0)
+        return {};
+
+    const juce::int64 maxLen     = (juce::int64)(fileSampleRate * (double)kMaxIRSeconds);
+    const int         numSamples  = (int)std::min(rawLen, maxLen);
+    const int         numCh       = (int)reader->numChannels;
+    if (numCh <= 0)
+        return {};
+
+    if (rawLen > maxLen)
+        DBG("Convolution: IR (memory) truncated to " + juce::String((int)kMaxIRSeconds) + " s");
 
     juce::AudioBuffer<float> buf(numCh, numSamples);
     reader->read(&buf, 0, numSamples, 0, true, true);
@@ -370,20 +413,40 @@ void Convolution::loadCustomEngineIR(const std::vector<float>& irL, const std::v
     convolverL.waitForCompletion();
     convolverR.waitForCompletion();
 
+    // Normalise, then init both convolvers. Guard against OOM on very long IRs:
+    // FFTConvolver::init() allocates O(irLen/blockSize) segments; bad_alloc mid-
+    // loop left _segCount set but vectors only partially filled — corrupted state.
+    // The Task 5d fix to reset() iterates vector.size() instead, so cleanup is
+    // safe, but we still need to fall back to bypass so audio continues.
+    const float* dataL = irL.data();
+    const float* dataR = useR.data();
+    size_t lenL = irL.size(), lenR = useR.size();
+    std::vector<float> normL, normR;
     if (energy > 1e-6f)
     {
         const float scale = 1.0f / energy;
-        std::vector<float> normL(irL.size());
-        std::vector<float> normR(useR.size());
+        normL.resize(irL.size());
+        normR.resize(useR.size());
         for (size_t i = 0; i < irL.size();  ++i) normL[i] = irL[i]  * scale;
         for (size_t i = 0; i < useR.size(); ++i) normR[i] = useR[i] * scale;
-        convolverL.init(headBlockSize_, tailBlockSize_, normL.data(), normL.size());
-        convolverR.init(headBlockSize_, tailBlockSize_, normR.data(), normR.size());
+        dataL = normL.data(); dataR = normR.data();
     }
-    else
+
+    bool okL = false, okR = false;
+    try
     {
-        convolverL.init(headBlockSize_, tailBlockSize_, irL.data(), irL.size());
-        convolverR.init(headBlockSize_, tailBlockSize_, useR.data(), useR.size());
+        okL = convolverL.init(headBlockSize_, tailBlockSize_, dataL, lenL);
+        okR = convolverR.init(headBlockSize_, tailBlockSize_, dataR, lenR);
+    }
+    catch (const std::bad_alloc&)
+    {
+        DBG("Convolution: IR too large to allocate — falling back to bypass");
+    }
+    if (!okL || !okR)
+    {
+        std::vector<float> impulse(1, 1.0f);
+        convolverL.init(headBlockSize_, tailBlockSize_, impulse.data(), 1);
+        convolverR.init(headBlockSize_, tailBlockSize_, impulse.data(), 1);
     }
 }
 

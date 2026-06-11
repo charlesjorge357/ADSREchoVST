@@ -36,7 +36,7 @@ public:
 
     virtual juce::String getType() const = 0;
     virtual juce::String getID() const = 0;
-    virtual void setID(juce::String& newID) = 0;
+    virtual void setID(const juce::String& newID) = 0;
     virtual void setPlayHead(juce::AudioPlayHead* playhead) {}
 
     virtual std::vector<juce::String> getUsedParameters() const = 0;

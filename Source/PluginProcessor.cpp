@@ -45,19 +45,31 @@ ADSREchoAudioProcessor::ADSREchoAudioProcessor()
         pChainMasterMix[j] = apvts.getRawParameterValue(prefix + ".masterMix");
         pChainGain[j]      = apvts.getRawParameterValue(prefix + ".gain");
     }
+
+    // Poll for audio-thread IR change requests at 10 Hz. This must start in the
+    // constructor, not createEditor(), so IR changes work with the editor closed.
+    startTimerHz(10);
 }
 
 ADSREchoAudioProcessor::~ADSREchoAudioProcessor()
 {
-    // Pre-signal all convolver threads to exit in parallel before member destructors
-    // call stopBackgroundThread() sequentially (each joins up to 500 ms).
-    // Without this, N modules x 2 convolvers x 500 ms = multi-second block on
-    // whichever thread calls the destructor (the message thread on FL Studio reload).
-    ++(*loadGeneration); // abort any in-flight PATH B background thread early
+    // 1. Abort any in-flight loader thread early (generation check causes it to skip
+    //    forceReloadIR), then join it so we never outlive the thread.
+    ++(*loadGeneration);
+    joinLoaderThread();
+
+    // 2. Stop the 10 Hz IR-request poller before slots are destroyed.
+    stopTimer();
+
+    // 3. Pre-signal ALL convolver threads (active + pendingDeletion) to exit in
+    //    parallel so the sequential TwoStageFFTConvolver destructor joins are fast.
     for (auto& chain : slots)
         for (auto& slot : chain)
-            if (auto* cm = dynamic_cast<ConvolutionModule*>(slot->get()))
-                cm->signalConvolversToStop();
+            slot->forEachOwnedModule([](EffectModule* m)
+            {
+                if (auto* cm = dynamic_cast<ConvolutionModule*>(m))
+                    cm->signalConvolversToStop();
+            });
 }
 
 //==============================================================================
@@ -95,7 +107,9 @@ bool ADSREchoAudioProcessor::isMidiEffect() const
 
 double ADSREchoAudioProcessor::getTailLengthSeconds() const
 {
-    return 0.0;
+    // Convolution + delay feedback tails. A precise per-IR value would need
+    // plumbing; a generous constant stops hosts truncating bounced renders.
+    return 25.0;   // >= kMaxIRSeconds (20 s) + max preDelay (2 s) + headroom
 }
 
 int ADSREchoAudioProcessor::getNumPrograms()
@@ -152,7 +166,9 @@ void ADSREchoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
             // call doesn't do disk I/O on the audio thread while holding the callback lock.
             if (auto* cm = dynamic_cast<ConvolutionModule*>(slot->get()))
             {
-                if (!cm->isIRLoaded() && !cm->hasCustomIR())
+                // Skip modules being replaced by PATH B (irLoadSuppressed = true);
+                // they keep producing audio until the new module swaps in.
+                if (!cm->isIRLoaded() && !cm->hasCustomIR() && !cm->isIRLoadSuppressed())
                 {
                     if (auto* p = apvts.getRawParameterValue(slot->slotID + ".convIrIndex"))
                         cm->forceReloadIR((int) p->load());
@@ -349,7 +365,6 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
     // only mark the IR path here — actual file I/O and FFT init happen inside
     // prepare() (Phase 2) once we have the correct host block size. This avoids
     // starting background threads with wrong block sizes and doing double I/O.
-    struct PendingSlot { int chain, slot; std::unique_ptr<EffectModule> module; int pendingIRIndex = -2; };
     std::vector<PendingSlot> incoming;
 
     auto modules = state.getChildWithName("Modules");
@@ -426,11 +441,21 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
                     }
                     else
                     {
-                        // Old state: read the actual parameter value from the APVTS state
-                        // tree. APVTS stores unnormalised float values as direct properties
-                        // keyed by parameter ID, matching what replaceState() will restore.
+                        // APVTS serialises parameter values as <PARAM id="..." value="..."/>
+                        // children of the root tree — NOT as root properties.
+                        // state.getProperty(paramKey) always returned the default (0) here,
+                        // which caused PATH B to pre-load the wrong IR and pushed the real
+                        // load onto the audio thread after the swap.
                         auto paramKey = slots[chainIndex][slotIndex]->slotID + ".convIrIndex";
-                        pendingIRIndex = (int)(float) state.getProperty(paramKey, 0.0f);
+                        pendingIRIndex = 0;
+                        for (const auto& child : state)
+                        {
+                            if (child.hasType("PARAM") && child["id"].toString() == paramKey)
+                            {
+                                pendingIRIndex = (int)(float)child.getProperty("value", 0.0f);
+                                break;
+                            }
+                        }
                     }
                 }
 
@@ -488,119 +513,84 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
     //   fully ready are they swapped in under the audio lock. This prevents
     //   the audio thread from ever seeing partially-initialised convolvers.
 
-    auto doSwap = [this](std::vector<PendingSlot>& pendingSlots)
-    {
-        std::vector<std::unique_ptr<EffectModule>> toDestroy;
-        toDestroy.reserve(NUM_CHAINS * MAX_SLOTS * 2);
-        {
-            const juce::ScopedLock audioLock(getCallbackLock());
-            for (auto& chain : slots)
-                for (auto& slot : chain)
-                    slot->extractAllModules(toDestroy);
-            numModules = std::vector<int>(NUM_CHAINS, 0);
-            for (auto& p : pendingSlots)
-            {
-                slots[p.chain][p.slot]->installPreparedModule(std::move(p.module));
-                numModules[p.chain]++;
-            }
-        }
-        for (auto& mod : toDestroy)
-            if (auto* cm = dynamic_cast<ConvolutionModule*>(mod.get()))
-                cm->signalConvolversToStop();
-        toDestroy.clear();
-    };
-
     if (spec.sampleRate == 0)
     {
         // PATH A: no audio engine yet — install immediately, prepare later.
-        doSwap(incoming);
+        // setStateInformation may arrive on a non-message thread; PATH A mutates
+        // ownedModule which the editor's 30 Hz timer reads on the message thread,
+        // so marshal the swap onto the message thread if we're not already there.
+        if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+        {
+            doSwapImpl(incoming);
+        }
+        else
+        {
+            auto shared = std::make_shared<std::vector<PendingSlot>>(std::move(incoming));
+            juce::WeakReference<ADSREchoAudioProcessor> weakThis(this);
+            const auto myGeneration = loadGeneration->load(std::memory_order_acquire);
+            auto genPtr = loadGeneration;
+            juce::MessageManager::callAsync([weakThis, shared, genPtr, myGeneration]
+            {
+                if (auto* self = weakThis.get())
+                    if (myGeneration == genPtr->load(std::memory_order_acquire))
+                        self->doSwapImpl(*shared);
+            });
+        }
     }
     else
     {
         // PATH B: audio engine running — prepare fully before swapping.
         // New modules stay in the background thread's capture (invisible to the
         // audio thread) until completely initialised — zero data-race risk.
-        //
-        // Heavy work (disk I/O + FFT init) runs on a detached background thread
-        // so the message thread is never blocked.  Only the fast pointer swap
-        // is posted back to the message thread via a nested callAsync.
+        // Heavy work (disk I/O + FFT init) runs on the owned loader thread.
+        // Only the fast pointer swap is posted back via a nested callAsync.
         const juce::dsp::ProcessSpec capturedSpec = spec;
         const uint64_t myGeneration = ++(*loadGeneration);
-        auto genPtr = loadGeneration;   // shared_ptr keeps the atomic alive past processor dtor
+        auto genPtr = loadGeneration;
         juce::WeakReference<ADSREchoAudioProcessor> weakThis(this);
-        std::thread([weakThis, genPtr, capturedSpec, incoming = std::move(incoming), myGeneration]() mutable
         {
-            // Prepare and load IRs off the message thread.
-            // Check loadGeneration between each module so a newer loadFromValueTree()
-            // call (preset switch during loading) causes this thread to exit early
-            // instead of spending seconds doing FFT for results that will be discarded.
-            for (auto& p : incoming)
+            std::lock_guard<std::mutex> lg(loaderMutex);
+            if (loaderThread.joinable())
+                loaderThread.join();   // fast: generation bump makes the old one abort
+            loaderThread = std::thread([weakThis, genPtr, capturedSpec,
+                                        incoming = std::move(incoming), myGeneration]() mutable
             {
-                if (genPtr->load(std::memory_order_acquire) != myGeneration)
-                    break;
-
-                p.module->prepare(capturedSpec);
-
-                if (genPtr->load(std::memory_order_acquire) != myGeneration)
-                    break;
-
-                if (p.pendingIRIndex >= 0)
-                    if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
-                        cm->forceReloadIR(p.pendingIRIndex);
-            }
-
-            // Post only the fast pointer swap back to the message thread.
-            juce::MessageManager::callAsync([weakThis, incoming = std::move(incoming), myGeneration]() mutable
-            {
-                auto* self = weakThis.get();
-                if (self == nullptr)
+                for (auto& p : incoming)
                 {
-                    // Processor was destroyed before this callAsync fired. Signal all
-                    // convolver threads to exit in parallel before the serial destructions
-                    // below (each stopBackgroundThread() joins at up to 500 ms — doing
-                    // them without pre-signaling serialises the waits).
-                    for (auto& p : incoming)
+                    if (genPtr->load(std::memory_order_acquire) != myGeneration)
+                        break;
+
+                    p.module->prepare(capturedSpec);
+
+                    if (genPtr->load(std::memory_order_acquire) != myGeneration)
+                        break;
+
+                    if (p.pendingIRIndex >= 0)
                         if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
-                            cm->signalConvolversToStop();
-                    return;
+                            cm->forceReloadIR(p.pendingIRIndex);
                 }
 
-                // A newer loadFromValueTree() has superseded us. Discard our modules
-                // without touching the slots — the newer thread owns them now.
-                if (myGeneration != self->loadGeneration->load(std::memory_order_acquire))
+                juce::MessageManager::callAsync([weakThis, incoming = std::move(incoming), myGeneration]() mutable
                 {
-                    for (auto& p : incoming)
-                        if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
-                            cm->signalConvolversToStop();
-                    return;
-                }
-
-                // Swap fully-prepared modules into slots under the audio lock (fast).
-                std::vector<std::unique_ptr<EffectModule>> toDestroy;
-                toDestroy.reserve(self->NUM_CHAINS * self->MAX_SLOTS * 2);
-                {
-                    const juce::ScopedLock audioLock(self->getCallbackLock());
-                    for (auto& chain : self->slots)
-                        for (auto& slot : chain)
-                            slot->extractAllModules(toDestroy);
-                    self->numModules = std::vector<int>(self->NUM_CHAINS, 0);
-                    for (auto& p : incoming)
+                    auto* self = weakThis.get();
+                    if (self == nullptr)
                     {
-                        self->slots[p.chain][p.slot]->installPreparedModule(std::move(p.module));
-                        self->numModules[p.chain]++;
+                        for (auto& p : incoming)
+                            if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
+                                cm->signalConvolversToStop();
+                        return;
                     }
-                }
-
-                self->uiNeedsRebuild.store(true, std::memory_order_release);
-
-                // Destroy old modules outside the audio lock. Signal convolver
-                // threads to exit in parallel before sequential destructions.
-                for (auto& mod : toDestroy)
-                    if (auto* cm = dynamic_cast<ConvolutionModule*>(mod.get()))
-                        cm->signalConvolversToStop();
-                toDestroy.clear();
+                    if (myGeneration != self->loadGeneration->load(std::memory_order_acquire))
+                    {
+                        for (auto& p : incoming)
+                            if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
+                                cm->signalConvolversToStop();
+                        return;
+                    }
+                    self->doSwapImpl(incoming);
+                });
             });
-        }).detach();
+        }
     }
 }
 
@@ -952,6 +942,116 @@ void ADSREchoAudioProcessor::setSlotDefaults(juce::String slotID)
     }
 }
 
+
+// Swap fully-prepared modules into slots under the audio lock, destroy old ones off it.
+// Must be called from the message thread (asserted in debug).
+void ADSREchoAudioProcessor::doSwapImpl(std::vector<PendingSlot>& pendingSlots)
+{
+    jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+
+    std::vector<std::unique_ptr<EffectModule>> toDestroy;
+    toDestroy.reserve(NUM_CHAINS * MAX_SLOTS * 2);
+    {
+        const juce::ScopedLock audioLock(getCallbackLock());
+        for (auto& chain : slots)
+            for (auto& slot : chain)
+                slot->extractAllModules(toDestroy);
+        numModules = std::vector<int>(NUM_CHAINS, 0);
+        for (auto& p : pendingSlots)
+        {
+            slots[p.chain][p.slot]->installPreparedModule(std::move(p.module));
+            numModules[p.chain]++;
+        }
+    }
+    for (auto& mod : toDestroy)
+        if (auto* cm = dynamic_cast<ConvolutionModule*>(mod.get()))
+            cm->signalConvolversToStop();
+    toDestroy.clear();
+    uiNeedsRebuild.store(true, std::memory_order_release);
+}
+
+// Build a fully prepared ConvolutionModule replacement on the loader thread,
+// then do a targeted single-slot swap under the callback lock.
+void ADSREchoAudioProcessor::requestIRChange(const juce::String& slotID,
+                                             int bankIndex,
+                                             const juce::File& customFile)
+{
+    jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+
+    // Resolve slot by ID — numeric indices go stale across slot reorders.
+    int chainIndex = -1, slotIndex = -1;
+    for (int c = 0; c < NUM_CHAINS && chainIndex < 0; ++c)
+        for (int s = 0; s < MAX_SLOTS; ++s)
+            if (slots[c][s]->slotID == slotID)
+                { chainIndex = c; slotIndex = s; break; }
+    if (chainIndex < 0) return;
+    if (dynamic_cast<ConvolutionModule*>(slots[chainIndex][slotIndex]->get()) == nullptr)
+        return;
+
+    auto replacement = std::make_unique<ConvolutionModule>("null", apvts);
+    replacement->setIRBank(irBank);
+    replacement->setID(slots[chainIndex][slotIndex]->slotID);
+    if (customFile.existsAsFile())
+        replacement->setCustomIRPathDeferred(customFile);
+
+    const auto capturedSpec = spec;
+    const auto myGeneration = ++(*loadGeneration);
+    auto genPtr             = loadGeneration;
+    juce::WeakReference<ADSREchoAudioProcessor> weakThis(this);
+
+    {
+        std::lock_guard<std::mutex> lg(loaderMutex);
+        if (loaderThread.joinable())
+            loaderThread.join();   // fast: generation bump makes old thread skip forceReloadIR
+        loaderThread = std::thread(
+            [weakThis, genPtr, capturedSpec, myGeneration,
+             chainIndex, slotIndex, bankIndex,
+             mod = std::move(replacement)]() mutable
+        {
+            if (capturedSpec.sampleRate > 0)
+                mod->prepare(capturedSpec);
+
+            if (genPtr->load(std::memory_order_acquire) == myGeneration && bankIndex >= 0)
+                mod->forceReloadIR(bankIndex);
+
+            juce::MessageManager::callAsync(
+                [weakThis, genPtr, myGeneration,
+                 chainIndex, slotIndex, mod = std::move(mod)]() mutable
+            {
+                auto* self = weakThis.get();
+                if (self == nullptr
+                    || myGeneration != genPtr->load(std::memory_order_acquire))
+                {
+                    mod->signalConvolversToStop();
+                    return;
+                }
+                {
+                    const juce::ScopedLock sl(self->getCallbackLock());
+                    self->slots[chainIndex][slotIndex]->installPreparedModule(std::move(mod));
+                }
+                // Old module now in pendingDeletion. Retire off-lock so its
+                // convolver thread-join never stalls the audio callback.
+                self->slots[chainIndex][slotIndex]->retirePending();
+                self->uiNeedsRebuild.store(true, std::memory_order_release);
+            });
+        });
+    }
+}
+
+// 10 Hz poller: picks up IR index changes written by the audio thread in
+// Convolution::setParameters() and dispatches requestIRChange() safely.
+void ADSREchoAudioProcessor::timerCallback()
+{
+    for (auto& chain : slots)
+        for (auto& slot : chain)
+            if (auto* cm = dynamic_cast<ConvolutionModule*>(slot->get()))
+                if (cm->hasPendingIRRequest())
+                {
+                    const int idx = cm->consumeIRRequest();
+                    if (idx >= 0)
+                        requestIRChange(slot->slotID, idx);
+                }
+}
 
 //==============================================================================
 // This creates new instances of the plugin..

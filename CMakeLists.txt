@@ -116,11 +116,10 @@ target_compile_definitions(ADSREcho
         JUCE_REPORT_APP_USAGE=0
 )
 
-# MSVC x64 doesn't define __SSE__ even though SSE is always available on x64.
-# Enable it explicitly so fftconvolver uses aligned allocation + vectorised multiply-accumulate.
-if(MSVC)
-    target_compile_definitions(ADSREcho PRIVATE FFTCONVOLVER_USE_SSE)
-endif()
+# Pin FFTCONVOLVER_USE_SSE globally. Buffer<T> switches between _mm_malloc and
+# new[] depending on this flag; mixing defined/undefined across TUs is an ODR
+# hazard. Define it unconditionally so every translation unit agrees.
+target_compile_definitions(ADSREcho PRIVATE FFTCONVOLVER_USE_SSE)
 
 # Link JUCE modules
 target_link_libraries(ADSREcho

@@ -22,9 +22,13 @@ public:
 
     std::vector<juce::String> getUsedParameters() const override;
 
-    void setID(juce::String& newID) override;
+    void setID(const juce::String& newID) override;
     juce::String getID()   const override;
     juce::String getType() const override;
+
+    int  consumeIRRequest();
+    bool hasPendingIRRequest() const;
+    bool isIRLoadSuppressed()  const;
 
     void setIRBank(std::shared_ptr<IRBank> bank);
 

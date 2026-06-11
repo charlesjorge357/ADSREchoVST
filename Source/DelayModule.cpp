@@ -137,7 +137,7 @@ std::vector<juce::String> DelayModule::getUsedParameters() const
     };
 }
 
-void DelayModule::setID(juce::String& newID)              { moduleID = newID; rebuildParamCache(); }
+void DelayModule::setID(const juce::String& newID)        { moduleID = newID; rebuildParamCache(); }
 void DelayModule::setPlayHead(juce::AudioPlayHead* ph)    { playHead = ph; }
 juce::String DelayModule::getID()   const                 { return moduleID; }
 juce::String DelayModule::getType() const                 { return "Delay"; }

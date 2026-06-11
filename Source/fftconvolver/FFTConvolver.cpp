@@ -54,13 +54,12 @@ FFTConvolver::~FFTConvolver()
 
   
 void FFTConvolver::reset()
-{  
-  for (size_t i=0; i<_segCount; ++i)
-  {
+{
+  for (size_t i=0; i<_segments.size(); ++i)
     delete _segments[i];
+  for (size_t i=0; i<_segmentsIR.size(); ++i)
     delete _segmentsIR[i];
-  }
-  
+
   _blockSize = 0;
   _segSize = 0;
   _segCount = 0;

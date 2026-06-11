@@ -163,9 +163,8 @@ void ConvolutionPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
                                      int chainIndex,
                                      int slotIndex)
 {
-    proc     = &processor;
-    chainIdx = chainIndex;
-    slotIdx  = slotIndex;
+    proc        = &processor;
+    boundSlotID = slotID;
 
     // Sliders - straightforward attachments
     auto attach = [&](juce::Slider& s, const juce::String& suffix)
@@ -205,24 +204,24 @@ void ConvolutionPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
         }
     }
 
-    // onChange - manual gesture because convIrIndex is a float param
-    // driven by a ComboBox rather than a SliderAttachment
+    // onChange - manual gesture because convIrIndex is a float param driven by a
+    // ComboBox rather than a SliderAttachment. Never touch the live module directly;
+    // requestIRChange() builds a prepared replacement and swaps it in safely.
     dropDown.onChange = [this, &apvts, slotID]
     {
-        const int idx = dropDown.getSelectedId() - 1; // 0-based index
-        auto* p = apvts.getParameter(slotID + ".convIrIndex");
-        if (p)
+        const int idx = dropDown.getSelectedId() - 1;
+        if (idx < 0) return;   // setText() or custom-IR display, not a real selection
+
+        if (auto* p = apvts.getParameter(slotID + ".convIrIndex"))
         {
             p->beginChangeGesture();
             p->setValueNotifyingHost(p->convertTo0to1((float)idx));
             p->endChangeGesture();
         }
 
-        // Selecting a bank IR clears any custom IR and dismisses the missing-IR warning
-        if (proc)
-            if (auto* mod = dynamic_cast<ConvolutionModule*>(
-                    proc->slots[chainIdx][slotIdx]->get()))
-                mod->clearCustomIR();
+        // Replacement module has no custom IR — clearCustomIR is implicit.
+        if (proc != nullptr)
+            proc->requestIRChange(boundSlotID, idx);
 
         irMissingLabel.setVisible(false);
     };
@@ -241,19 +240,14 @@ void ConvolutionPanel::attachToAPVTS(juce::AudioProcessorValueTreeState& apvts,
         fileChooser->launchAsync(flags, [this](const juce::FileChooser& fc)
         {
             const auto file = fc.getResult();
-            if (!file.existsAsFile())
+            if (!file.existsAsFile() || proc == nullptr)
                 return;
 
-            if (!proc) return;
+            // Build a prepared replacement off-thread and swap it in safely.
+            // Never call loadCustomIR on the live module — FFTConvolver::reset()
+            // deletes segments the audio thread is still reading (UAF).
+            proc->requestIRChange(boundSlotID, /*bankIndex=*/-1, file);
 
-            auto* mod = dynamic_cast<ConvolutionModule*>(
-                proc->slots[chainIdx][slotIdx]->get());
-
-            if (!mod) return;
-
-            mod->loadCustomIR(file);
-
-            // Show filename in dropdown without triggering onChange
             dropDown.setSelectedId(0, juce::dontSendNotification);
             dropDown.setText(file.getFileNameWithoutExtension(),
                              juce::dontSendNotification);

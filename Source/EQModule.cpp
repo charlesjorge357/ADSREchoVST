@@ -64,7 +64,7 @@ std::vector<juce::String> EQModule::getUsedParameters() const
     };
 }
 
-void EQModule::setID(juce::String& newID) { moduleID = newID; }
+void EQModule::setID(const juce::String& newID) { moduleID = newID; }
 
 float EQModule::getMagnitudeForFrequency(float freq) {
     return eq.getMagnitudeForFrequency(freq);

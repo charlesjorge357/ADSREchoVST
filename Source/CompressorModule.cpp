@@ -54,7 +54,7 @@ std::vector<juce::String> CompressorModule::getUsedParameters() const
     };
 }
 
-void CompressorModule::setID(juce::String& newID) { moduleID = newID; }
+void CompressorModule::setID(const juce::String& newID) { moduleID = newID; }
 
 juce::String CompressorModule::getID()   const { return moduleID; }
 juce::String CompressorModule::getType() const { return "Compressor"; }

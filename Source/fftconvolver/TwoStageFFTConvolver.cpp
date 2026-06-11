@@ -61,7 +61,6 @@ void TwoStageFFTConvolver::reset()
   _tailPrecalculated.clear();
   _tailInput.clear();
   _tailInputFill = 0;
-  _tailInputFill = 0;
   _precalculatedPos = 0;
   _backgroundProcessingInput.clear();
 }

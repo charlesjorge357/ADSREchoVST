@@ -66,10 +66,17 @@ public:
     // Signal the thread to exit without waiting.  Call this on a group of
     // convolvers before calling stopBackgroundThread() on each, so all threads
     // start exiting in parallel instead of one-at-a-time.
+    //
+    // doneEvent is signaled here so that any audio-thread waitForBackgroundProcessing()
+    // call that fires AFTER the thread exits (but before stopBackgroundThread() joins)
+    // returns immediately instead of blocking forever.  Without this, the audio callback
+    // holds the callback lock while blocked, preventing doSwap() from acquiring it →
+    // deadlock → FL Studio watchdog → "cooked state" / crash.
     void signalToStop()
     {
         signalThreadShouldExit();
-        startEvent.signal();
+        doneEvent.signal(); // unblock any in-flight or future waitForBackgroundProcessing()
+        startEvent.signal(); // break out of wait(100) so the thread exits promptly
     }
 
     // Call before init() / reset() to ensure in-flight tail work has finished.
@@ -88,13 +95,35 @@ private:
                 doneEvent.signal();
             }
         }
+        // Always signal on exit so any waitForBackgroundProcessing() that is
+        // already blocked (or races to block after signalToStop()) is unblocked.
+        // Without this, a blocked audio-thread wait holds the callback lock and
+        // deadlocks doSwap() → "cooked state" / hang on close.
+        doneEvent.signal();
     }
 
     void startBackgroundProcessing() override
     {
+        // If the thread has been told to exit, do not reset doneEvent — that would
+        // re-arm the deadlock that signalToStop() just cleared.  The audio thread
+        // must be able to return from waitForBackgroundProcessing() promptly even
+        // after the background thread has exited.
+        if (threadShouldExit())
+            return;
+
         // Clear done state BEFORE waking the thread so waitForBackgroundProcessing()
         // can't miss the completion signal (manual-reset: stays clear until we signal).
         doneEvent.reset();
+
+        // TOCTOU guard: signalToStop() may have fired between the check above and
+        // doneEvent.reset(), undoing signalToStop()'s doneEvent.signal().  Re-arm
+        // doneEvent so waitForBackgroundProcessing() is never stranded on a dead thread.
+        if (threadShouldExit())
+        {
+            doneEvent.signal();
+            return;
+        }
+
         startEvent.signal();
     }
 
@@ -186,6 +215,13 @@ public:
     // doesn't do disk I/O / FFT on the audio callback while the new module is being
     // prepared in the background. Never needs to be cleared — the module is destroyed.
     void suppressIRLoad(bool b) { irLoadSuppressed.store(b, std::memory_order_relaxed); }
+    bool isIRLoadSuppressed() const { return irLoadSuppressed.load(std::memory_order_relaxed); }
+
+    // Set by the audio thread when convIrIndex changes; consumed by the message thread.
+    // Eliminates all audio-thread disk I/O and FFT: setParameters() stores the request;
+    // the processor's 10 Hz timer picks it up and builds a prepared replacement module.
+    int  consumeIRRequest()          { return requestedIRIndex.exchange(-1, std::memory_order_acq_rel); }
+    bool hasPendingIRRequest() const { return requestedIRIndex.load(std::memory_order_acquire) >= 0; }
 
     // Signal both convolver background threads to exit without waiting.
     // Call this on all modules before destruction to parallelise thread joins.
@@ -221,6 +257,7 @@ private:
     juce::String customIRPath;
     bool   irMissingFlag     = false;
     std::atomic<bool> irLoadSuppressed { false };
+    std::atomic<int>  requestedIRIndex { -1 };   // audio thread writes, message thread reads
 
     // Cached filter frequencies - avoids recomputing coefficients when unchanged
     float lastLowCutHz  = -1.0f;
@@ -244,7 +281,8 @@ private:
     juce::dsp::Convolution convolver { juce::dsp::Convolution::NonUniform { 8192 } };
 #endif
 
-    static constexpr int kMaxPreDelaySeconds = 2;
+    static constexpr juce::int64 kMaxIRSeconds       = 20;   // generous for concert halls
+    static constexpr int         kMaxPreDelaySeconds = 2;
     static constexpr int kMaxSampleRate      = 192000;
     static constexpr int kMaxDelaySamples    = kMaxPreDelaySeconds * kMaxSampleRate;
 

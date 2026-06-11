@@ -63,10 +63,25 @@ std::vector<juce::String> ConvolutionModule::getUsedParameters() const
     };
 }
 
-void ConvolutionModule::setID(juce::String& newID)
+void ConvolutionModule::setID(const juce::String& newID)
 {
     moduleID = newID;
-    rebuildParamIDs(); // Keep cached IDs in sync
+    rebuildParamIDs();
+}
+
+int ConvolutionModule::consumeIRRequest()
+{
+    return convolutionReverb.consumeIRRequest();
+}
+
+bool ConvolutionModule::hasPendingIRRequest() const
+{
+    return convolutionReverb.hasPendingIRRequest();
+}
+
+bool ConvolutionModule::isIRLoadSuppressed() const
+{
+    return convolutionReverb.isIRLoadSuppressed();
 }
 
 juce::String ConvolutionModule::getID() const

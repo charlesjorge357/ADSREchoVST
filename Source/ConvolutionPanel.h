@@ -88,10 +88,11 @@ private:
     // param but needs custom gesture handling and custom IR support)
     std::unique_ptr<juce::FileChooser> fileChooser;
 
-    // Stored so onChange lambda and browse callback can reach the module
-    ADSREchoAudioProcessor* proc      = nullptr;
-    int                     chainIdx  = -1;
-    int                     slotIdx   = -1;
+    // Stored so onChange lambda and browse callback can reach the processor.
+    // boundSlotID (not chain/slot indices) is used because indices go stale
+    // across slot reorders; requestIRChange() resolves by ID.
+    ADSREchoAudioProcessor* proc        = nullptr;
+    juce::String            boundSlotID;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ConvolutionPanel)
 };

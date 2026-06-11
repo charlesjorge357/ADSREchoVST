@@ -73,7 +73,7 @@ std::vector<juce::String> ReverbModule::getUsedParameters() const
     };
 }
 
-void ReverbModule::setID(juce::String& newID) { moduleID = newID; rebuildParamIDs(); }
+void ReverbModule::setID(const juce::String& newID) { moduleID = newID; rebuildParamIDs(); }
 
 juce::String ReverbModule::getID() const { return moduleID; }
 juce::String ReverbModule::getType() const { return "Reverb"; }

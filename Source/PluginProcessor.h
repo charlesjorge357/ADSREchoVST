@@ -31,13 +31,17 @@
 #include "ConvolutionModule.h"
 #include "EQModule.h"
 #include "CompressorModule.h"
+#include <mutex>
+#include <thread>
 
 //==============================================================================
 /**
 */
 
 
-class ADSREchoAudioProcessor  : public juce::AudioProcessor, public juce::ChangeBroadcaster
+class ADSREchoAudioProcessor  : public juce::AudioProcessor,
+                               public juce::ChangeBroadcaster,
+                               private juce::Timer
 {
 public:
     //==============================================================================
@@ -104,6 +108,14 @@ public:
     // IR Bank accessor for UI
     std::shared_ptr<IRBank> getIRBank() const { return irBank; }
 
+    // The ONLY safe way to change a convolution IR at runtime. Builds a fully
+    // prepared replacement module on the loader thread, then swaps it in under
+    // the callback lock. Must be called from the message thread only.
+    // bankIndex >= 0 → bank IR; customFile valid → custom IR file.
+    void requestIRChange(const juce::String& slotID,
+                         int bankIndex,
+                         const juce::File& customFile = {});
+
     static constexpr int MAX_SLOTS = 8;
     static constexpr int NUM_CHAINS = 2;
 
@@ -143,6 +155,36 @@ private:
     std::atomic<float>* pChainEnabled[NUM_CHAINS] = {};
     std::atomic<float>* pChainMasterMix[NUM_CHAINS] = {};
     std::atomic<float>* pChainGain[NUM_CHAINS]      = {};
+
+    // Pending module swap — used by loadFromValueTree (PATH A/B) and doSwapImpl.
+    // Hoisted to class scope so doSwapImpl, requestIRChange, and the PATH A
+    // callAsync lambda can all name the type without a local struct definition.
+    struct PendingSlot
+    {
+        int chain = 0, slot = 0;
+        std::unique_ptr<EffectModule> module;
+        int pendingIRIndex = -2;   // -2 = not applicable; >= 0 = bank index to pre-load
+    };
+
+    // Performs the full slot-swap under the audio lock and destroys old modules
+    // off the lock. Must be called from the message thread.
+    void doSwapImpl(std::vector<PendingSlot>& pendingSlots);
+
+    // 10 Hz poller: picks up requestedIRIndex flags set by the audio thread
+    // (from setParameters when convIrIndex changes) and dispatches requestIRChange.
+    void timerCallback() override;
+
+    // Owned background loader — replaces the old detached std::thread in PATH B.
+    // A detached thread can outlive the processor and even the plugin binary.
+    std::thread loaderThread;
+    std::mutex  loaderMutex;   // guards loaderThread join/replace
+
+    void joinLoaderThread()
+    {
+        std::lock_guard<std::mutex> lg(loaderMutex);
+        if (loaderThread.joinable())
+            loaderThread.join();
+    }
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ADSREchoAudioProcessor)
