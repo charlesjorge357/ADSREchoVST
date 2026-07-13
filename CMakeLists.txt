@@ -11,6 +11,48 @@ if(APPLE)
     add_compile_definitions(_LIBCPP_ENABLE_CXX17_REMOVED_ITERATOR_BASE=1)
 endif()
 
+# Apply local JUCE patches (see patches/README.md).
+# The JUCE submodule tracks a pristine upstream commit; these patches are our
+# local fixes that must be re-applied after a fresh clone or a JUCE upgrade.
+# Idempotent: each patch is skipped if already applied.
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/patches")
+    file(GLOB _juce_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/*.patch")
+    foreach(_patch ${_juce_patches})
+        # Already applied? (patch reverses cleanly)
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" apply --reverse --check "${_patch}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/JUCE"
+            RESULT_VARIABLE _already_applied
+            OUTPUT_QUIET ERROR_QUIET)
+        if(_already_applied EQUAL 0)
+            message(STATUS "JUCE patch already applied: ${_patch}")
+            continue()
+        endif()
+        # Applies cleanly to pristine tree?
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" apply --check "${_patch}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/JUCE"
+            RESULT_VARIABLE _can_apply
+            OUTPUT_QUIET ERROR_QUIET)
+        if(_can_apply EQUAL 0)
+            execute_process(
+                COMMAND "${GIT_EXECUTABLE}" apply "${_patch}"
+                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/JUCE"
+                RESULT_VARIABLE _apply_result)
+            if(_apply_result EQUAL 0)
+                message(STATUS "Applied JUCE patch: ${_patch}")
+            else()
+                message(FATAL_ERROR "Failed to apply JUCE patch: ${_patch}")
+            endif()
+        else()
+            message(WARNING
+                "JUCE patch does not apply cleanly (JUCE version changed?): ${_patch}\n"
+                "Re-generate it against the current JUCE. See patches/README.md.")
+        endif()
+    endforeach()
+endif()
+
 # Add JUCE
 add_subdirectory(JUCE)
 

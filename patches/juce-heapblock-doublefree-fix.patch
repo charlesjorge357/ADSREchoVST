@@ -1,0 +1,39 @@
+diff --git a/modules/juce_core/memory/juce_HeapBlock.h b/modules/juce_core/memory/juce_HeapBlock.h
+index 4a157178ed..61ee5ac068 100644
+--- a/modules/juce_core/memory/juce_HeapBlock.h
++++ b/modules/juce_core/memory/juce_HeapBlock.h
+@@ -262,7 +262,14 @@ public:
+     template <typename SizeType>
+     void malloc (SizeType newNumElements, size_t elementSize = sizeof (ElementType))
+     {
++        // ADSREcho patch (re-apply on JUCE upgrade): null `data` before the
++        // allocation. The wrapper throws std::bad_alloc on failure when
++        // throwOnFailure=true; without the null, `data` keeps pointing at the
++        // block freed on the line above and the destructor frees it a second
++        // time — 0xc0000374 BlockNotBusy DOUBLE_FREE under memory pressure
++        // (confirmed via FL64 crash dump, July 2026).
+         std::free (data);
++        data = nullptr;
+         data = mallocWrapper (static_cast<size_t> (newNumElements) * elementSize);
+     }
+ 
+@@ -272,7 +279,9 @@ public:
+     template <typename SizeType>
+     void calloc (SizeType newNumElements, const size_t elementSize = sizeof (ElementType))
+     {
++        // ADSREcho patch: see malloc() above.
+         std::free (data);
++        data = nullptr;
+         data = callocWrapper (static_cast<size_t> (newNumElements), elementSize);
+     }
+ 
+@@ -283,7 +292,9 @@ public:
+     template <typename SizeType>
+     void allocate (SizeType newNumElements, bool initialiseToZero)
+     {
++        // ADSREcho patch: see malloc() above.
+         std::free (data);
++        data = nullptr;
+         data = initialiseToZero ? callocWrapper (static_cast<size_t> (newNumElements), sizeof (ElementType))
+                                 : mallocWrapper (static_cast<size_t> (newNumElements) * sizeof (ElementType));
+     }
