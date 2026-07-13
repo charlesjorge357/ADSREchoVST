@@ -7,10 +7,33 @@ re-applied on top of the pristine tree at build time.
 
 ## How they get applied
 
-The top-level `CMakeLists.txt` applies every `*.patch` in this directory at
-configure time, before `add_subdirectory(JUCE)`. It is idempotent — a patch
-that is already applied is skipped, so re-running CMake is safe. CI applies
-patches the same way (it runs CMake).
+**CMake builds (and CI):** the top-level `CMakeLists.txt` applies every
+`*.patch` in this directory at configure time, before `add_subdirectory(JUCE)`.
+It is idempotent — a patch already applied is skipped, so re-running CMake is
+safe. CI applies patches the same way (it runs CMake). Nothing to do by hand.
+
+**Projucer builds:** Projucer / the generated Visual Studio / Xcode projects do
+**not** run CMake, so the patches are *not* applied automatically. After a fresh
+clone or after updating the JUCE submodule, run the apply script once before
+building:
+
+```sh
+# macOS / Linux / Git Bash on Windows
+sh patches/apply-juce-patches.sh
+```
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File patches\apply-juce-patches.ps1
+```
+
+Both scripts are idempotent (a patch already present is detected and skipped)
+and use `git apply`, so they need nothing beyond git. You only need to re-run
+them after the JUCE submodule is reset or updated — once applied, the change
+stays on disk in your working tree.
+
+> Without this, a Projucer build compiles JUCE **without** the HeapBlock
+> double-free fix and the 0xc0000374 heap-corruption crash (CLAUDE.md Issue #6)
+> comes back silently. When in doubt, just re-run the script — it's safe.
 
 ## Current patches
 
