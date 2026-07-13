@@ -317,6 +317,20 @@ void Convolution::processBlock(juce::AudioBuffer<float>& buffer,
 #endif
 #if USE_CUSTOM_CONVOLVER
     {
+        // FL can deliver blocks LARGER than prepareToPlay's maximumBlockSize
+        // (variable-size blocks around smart-disable transitions). monoInBuf
+        // is sized in prepare(); without this guard the memcpy below writes
+        // past the heap allocation → 0xc0000374 heap corruption. The rare
+        // one-off grow allocates on the audio thread, which is far preferable
+        // to corrupting the host's heap.
+        if ((size_t) numSamples > monoInBuf.size())
+        {
+            DBG("Convolution: host block " + juce::String(numSamples)
+                + " exceeds prepared max " + juce::String((int) monoInBuf.size())
+                + " — growing monoInBuf");
+            monoInBuf.resize((size_t) numSamples);
+        }
+
         // TwoStageFFTConvolver REQUIRES separate input/output buffers.
         // After the head convolver writes to output, the tail reads from input
         // to fill its delay line. If input==output the tail receives the

@@ -269,6 +269,62 @@ With tailBlockSize ≥ 8192 at 44100Hz, `waitForBackgroundProcessing()` is calle
 
 ---
 
+## Issue #6: Heap-Corruption Crash on Project Load / During Playback (July 2026)
+
+### Symptom
+FL64.exe crash 0xc0000374 (heap corruption, ntdll RtlFreeHeap) after playing
+audio or while opening the test project. Distinct from Issue #1/#2's
+0xc0000409 aborts. Windows activated FaultTolerantHeap for FL64 after
+repeated occurrences.
+
+### Root Cause (confirmed via full crash dump FL64.exe.8572.dmp)
+Crash stack: `RtlFreeHeap ← ~AudioBuffer<float> ← ~Convolution ←
+~ConvolutionModule ← ~vector<PendingSlot> ← PATH B loader thread lambda`.
+The free detected pre-existing corruption. **FL Studio delivers processBlock
+buffers LARGER than prepareToPlay's maximumBlockSize** (variable-size blocks
+around smart-disable/tempo transitions — same FL behavior already documented
+for chainTempBuffer setSize). Every prepared-size buffer in the audio path
+overruns silently: Convolution::monoInBuf memcpy and DryWetMixer's internal
+AudioBuffer were the writers; corruption was detected later at an unrelated
+free on the loader thread (whose try/catch guard also fired — the corrupted
+heap threw during IR load).
+
+### ACTUAL Root Cause (dump FL64.exe.13192.dmp, !analyze bucket:
+`HEAP_CORRUPTION_ACTIONABLE_BlockNotBusy_DOUBLE_FREE`)
+
+**JUCE bug: `HeapBlock::malloc/calloc/allocate` are not exception-safe.**
+They `std::free(data)` and THEN assign the new allocation; the wrapper throws
+`std::bad_alloc` on failure (`throwOnFailure=true` — `HeapBlock<char,1>`, the
+variant `AudioBuffer` uses), leaving `data` dangling at the freed block. The
+destructor then frees it a second time → 0xc0000374.
+
+Trigger chain: FL process near memory limits (16 GB machine, FL at ~10 GB) →
+allocation inside `AudioBuffer::setSize` (DryWetMixer/DelayLine::prepare on
+the PATH B loader thread) fails → bad_alloc → loader catch discards modules →
+`~Convolution` → double free. The June 0xc0000409 crashes were the same
+bad_alloc escaping the then-detached loader thread (std::terminate).
+The convolution engine itself was exonerated by an offline harness
+(32 configs × HeapValidate after every op, all clean).
+
+### Fixes Applied
+1. **`JUCE/modules/juce_core/memory/juce_HeapBlock.h` — PATCHED** (null
+   `data` before reallocating in malloc/calloc/allocate; realloc was already
+   safe). **RE-APPLY THIS PATCH WHENEVER JUCE IS UPGRADED** — grep for
+   "ADSREcho patch". Without it, any bad_alloc in any JUCE buffer resize
+   corrupts the host heap.
+2. `PluginProcessor::processBlock` — oversized blocks split into
+   `maximumBlockSize` chunks (FL delivers variable-size blocks; keeps every
+   module's prepared-size contract).
+3. `Convolution::processBlock` — monoInBuf grows if a block exceeds its size
+   (belt-and-braces; DBG-logs when it fires).
+4. Loader-thread catches log unconditionally via
+   `juce::Logger::outputDebugString` (visible in DebugView in Release).
+
+Debug tooling (set up July 2026): WER LocalDumps for FL64.exe (full dumps in
+%LOCALAPPDATA%\CrashDumps), page heap standard mode + alloc stacks via IFEO
+GlobalFlag 0x02001000 / PageHeapFlags 0x2 (REMOVE when done — perf cost),
+cdb from the WinDbg store package (copy amd64 folder out of WindowsApps).
+
 ## Convolution Engine Notes
 
 - `USE_CUSTOM_CONVOLVER 1` → KlangFalter `TwoStageFFTConvolver` (in `Source/fftconvolver/`)

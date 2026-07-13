@@ -225,6 +225,33 @@ void ADSREchoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 {
     const juce::ScopedLock sl (getCallbackLock());
 
+    // FL Studio can deliver blocks LARGER than prepareToPlay's maximumBlockSize
+    // (variable-size blocks around smart-disable / tempo transitions). Every
+    // module's DSP state (DryWetMixer internals, monoInBuf, etc.) is sized to
+    // that maximum; an oversized block overruns those heap buffers silently
+    // → 0xc0000374 heap-corruption crash (confirmed by dump FL64.exe.8572.dmp:
+    // corrupted AudioBuffer free inside ~Convolution). Split oversized blocks
+    // into prepared-size chunks so every downstream size contract holds.
+    {
+        const int totalSamples = buffer.getNumSamples();
+        const int maxBlock     = (int) spec.maximumBlockSize;
+        if (maxBlock > 0 && totalSamples > maxBlock)
+        {
+            constexpr int kMaxCh = 8;
+            const int numCh = juce::jmin (buffer.getNumChannels(), kMaxCh);
+            float* chans[kMaxCh] = {};
+            for (int start = 0; start < totalSamples; start += maxBlock)
+            {
+                const int len = juce::jmin (maxBlock, totalSamples - start);
+                for (int ch = 0; ch < numCh; ++ch)
+                    chans[ch] = buffer.getWritePointer (ch) + start;
+                juce::AudioBuffer<float> sub (chans, numCh, len);
+                processBlock (sub, midiMessages);   // re-entrant lock is fine
+            }
+            return;
+        }
+    }
+
     chainTempBuffer.setSize(
         chainTempBuffer.getNumChannels(),
         buffer.getNumSamples(),
@@ -578,9 +605,19 @@ void ADSREchoAudioProcessor::loadFromValueTree (const juce::ValueTree& state)
                                 cm->forceReloadIR(p.pendingIRIndex);
                     }
                 }
+                catch (const std::exception& e)
+                {
+                    // Unconditional (not DBG): visible in DebugView even in Release.
+                    juce::Logger::outputDebugString(
+                        juce::String("ADSREcho PATH B loader exception: ") + e.what());
+                    for (auto& p : incoming)
+                        if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
+                            cm->signalConvolversToStop();
+                    return;
+                }
                 catch (...)
                 {
-                    DBG("PATH B loader: exception during prepare/IR load — swap aborted");
+                    juce::Logger::outputDebugString("ADSREcho PATH B loader: unknown exception");
                     for (auto& p : incoming)
                         if (auto* cm = dynamic_cast<ConvolutionModule*>(p.module.get()))
                             cm->signalConvolversToStop();
@@ -637,134 +674,143 @@ juce::AudioProcessorValueTreeState::ParameterLayout ADSREchoAudioProcessor::crea
     {
         // Per Chain Controls (id "chain_1.gain")
         juce::String chainPrefix = "chain_" + juce::String(j);
-        layout.add(std::make_unique<juce::AudioParameterFloat>(chainPrefix + ".gain", "Gain",
+
+        // Display-name prefixes. FL Studio shows parameter TITLES in its
+        // browse/link UI; with 16 slots the bare names ("Mix" x16) are
+        // ambiguous to both the user and the host. Names are display-only:
+        // ParamIDs (and therefore saved state + VST3 automation IDs) are
+        // derived from the string IDs above, NOT from these titles.
+        const juce::String cn = "C" + juce::String(j + 1) + " ";
+
+        layout.add(std::make_unique<juce::AudioParameterFloat>(chainPrefix + ".gain", cn + "Gain",
             juce::NormalisableRange<float>(-12.f, 12.f, .01f, 1.f), 0.f));
 
-        layout.add(std::make_unique<juce::AudioParameterFloat>(chainPrefix + ".masterMix", "Master Mix",
+        layout.add(std::make_unique<juce::AudioParameterFloat>(chainPrefix + ".masterMix", cn + "Master Mix",
             juce::NormalisableRange<float>(0.f, 1.f, .01f, 1.f), 1.0f));  // Default 100% wet
 
-        layout.add(std::make_unique<juce::AudioParameterBool>(chainPrefix + ".enabled", "Enabled", true));
+        layout.add(std::make_unique<juce::AudioParameterBool>(chainPrefix + ".enabled", cn + "Enabled", true));
 
         // Per Module Controls (id "chain_0.slot_1.mix")
         for (int i = 0; i < MAX_SLOTS; i++)
         {
             juce::String prefix = chainPrefix + ".slot_" + juce::String(i);
+            const juce::String sn = "C" + juce::String(j + 1) + "S" + juce::String(i + 1) + " ";
 
-            layout.add(std::make_unique<juce::AudioParameterBool>(prefix + ".enabled", "Enabled", true));
+            layout.add(std::make_unique<juce::AudioParameterBool>(prefix + ".enabled", sn + "Enabled", true));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".mix", "Mix",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".mix", sn + "Mix",
                 juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayTime", "Delay Time",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayTime", sn + "Delay Time",
                 juce::NormalisableRange<float>(1.0f, 2000.0f, 0.1f, 0.4f), 250.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".feedback", "Feedback",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".feedback", sn + "Feedback",
                 juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 0.3f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".roomSize", "Room Size",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".roomSize", sn + "Room Size",
                 juce::NormalisableRange<float>(0.25f, 1.75f, 0.01f), 1.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".decayTime", "Decay Time (s)",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".decayTime", sn + "Decay Time (s)",
                 juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f), 5.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".preDelay", "Pre Delay (ms)",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".preDelay", sn + "Pre Delay (ms)",
                 juce::NormalisableRange<float>(0.0f, 200.0f, 0.1f), 0.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".damping", "Damping",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".damping", sn + "Damping",
                 juce::NormalisableRange<float>(500.0f, 10000.0f, 1.f, 0.5f), 8000.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".modRate", "Mod Rate",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".modRate", sn + "Mod Rate",
                 juce::NormalisableRange<float>(0.05f, 5.0f, 0.001f), 0.30f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".modDepth", "Mod Depth",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".modDepth", sn + "Mod Depth",
                 juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.15f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".convIrIndex", "Conv IR Index",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".convIrIndex", sn + "Conv IR Index",
                 juce::NormalisableRange<float>(0.0f, 150.0f, 1.0f), 0.0f));  // adjust max index as needed
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".convIrGain", "Conv IR Gain (dB)",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".convIrGain", sn + "Conv IR Gain (dB)",
                 juce::NormalisableRange<float>(-18.0f, 18.0f, 0.1f), 0.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".convLowCut", "Conv Low Cut (Hz)",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".convLowCut", sn + "Conv Low Cut (Hz)",
                 juce::NormalisableRange<float>(20.0f, 1000.0f, 1.0f, 0.3f), 80.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".convHighCut", "Conv High Cut (Hz)",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".convHighCut", sn + "Conv High Cut (Hz)",
                 juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.3f), 12000.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".reverbType", "Type",
+            layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".reverbType", sn + "Type",
                 juce::StringArray{ "Datorro Hall", "Hybrid Plate" }, 0));
 
             // Delay BPM Sync
-            layout.add(std::make_unique<juce::AudioParameterBool>(prefix + ".delaySyncEnabled", "Delay BPM Sync", false));
+            layout.add(std::make_unique<juce::AudioParameterBool>(prefix + ".delaySyncEnabled", sn + "Delay BPM Sync", false));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayBpm", "BPM Override",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayBpm", sn + "BPM Override",
                 juce::NormalisableRange<float>(20.0f, 300.0f, 0.1f), 120.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".delayNoteDiv", "Delay Note Division",
+            layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".delayNoteDiv", sn + "Delay Note Division",
                 juce::StringArray{ "1/1", "1/2", "1/4", "1/8", "1/16", "1/32",
                                    "1/2 Dotted", "1/4 Dotted", "1/8 Dotted", "1/16 Dotted",
                                    "1/2 Triplet", "1/4 Triplet", "1/8 Triplet", "1/16 Triplet" }, 2));
 
             // Delay Mode
-            layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".delayMode", "Delay Mode",
+            layout.add(std::make_unique<juce::AudioParameterChoice>(prefix + ".delayMode", sn + "Delay Mode",
                 juce::StringArray{ "Normal", "Ping Pong", "Inverted" }, 0));
 
             // Delay Pan
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayPan", "Delay Pan",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayPan", sn + "Delay Pan",
                 juce::NormalisableRange<float>(-1.0f, 1.0f, 0.01f), 0.0f));
 
             // Delay Filters
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayLowpass", "Delay Lowpass",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayLowpass", sn + "Delay Lowpass",
                 juce::NormalisableRange<float>(200.0f, 20000.0f, 1.0f, 0.3f), 20000.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayHighpass", "Delay Highpass",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".delayHighpass", sn + "Delay Highpass",
                 juce::NormalisableRange<float>(20.0f, 5000.0f, 1.0f, 0.3f), 20.0f));
 
             // 3-Band EQ
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowFreq", "Low Freq",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowFreq", sn + "Low Freq",
                 juce::NormalisableRange<float>(20.0f, 500.0f, 1.0f, 0.4f), 200.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowGain", "Low Gain",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowGain", sn + "Low Gain",
                 juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowQ", "Low Q",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqLowQ", sn + "Low Q",
                 juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f), 0.707f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidFreq", "Mid Freq",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidFreq", sn + "Mid Freq",
                 juce::NormalisableRange<float>(200.0f, 8000.0f, 1.0f, 0.4f), 1000.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidGain", "Mid Gain",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidGain", sn + "Mid Gain",
                 juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidQ", "Mid Q",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqMidQ", sn + "Mid Q",
                 juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f), 0.707f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighFreq", "High Freq",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighFreq", sn + "High Freq",
                 juce::NormalisableRange<float>(2000.0f, 20000.0f, 1.0f, 0.4f), 8000.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighGain", "High Gain",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighGain", sn + "High Gain",
                 juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighQ", "High Q",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".eqHighQ", sn + "High Q",
                 juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f, 0.5f), 0.707f));
 
             // Compressor
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compThreshold", "Threshold",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compThreshold", sn + "Threshold",
                 juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f, 0.5f), -18.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compRatio", "Ratio",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compRatio", sn + "Ratio",
                 juce::NormalisableRange<float>(1.0f, 20.0f, 0.1f, 0.5f), 4.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compAttack", "Attack",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compAttack", sn + "Attack",
                 juce::NormalisableRange<float>(1.0f, 200.0f, 0.1f, 0.5f), 10.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compRelease", "Release",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compRelease", sn + "Release",
                 juce::NormalisableRange<float>(10.0f, 2000.0f, 1.0f, 0.4f), 100.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compInput", "Comp Input",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compInput", sn + "Comp Input",
                 juce::NormalisableRange<float>(-18.0f, 18.0f, 0.1f), 0.0f));
 
-            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compOutput", "Comp Output",
+            layout.add(std::make_unique<juce::AudioParameterFloat>(prefix + ".compOutput", sn + "Comp Output",
                 juce::NormalisableRange<float>(-18.0f, 18.0f, 0.1f), 0.0f));
         }
     }
@@ -1035,9 +1081,16 @@ void ADSREchoAudioProcessor::requestIRChange(const juce::String& slotID,
                 if (genPtr->load(std::memory_order_acquire) == myGeneration && bankIndex >= 0)
                     mod->forceReloadIR(bankIndex);
             }
+            catch (const std::exception& e)
+            {
+                juce::Logger::outputDebugString(
+                    juce::String("ADSREcho requestIRChange loader exception: ") + e.what());
+                mod->signalConvolversToStop();
+                return;
+            }
             catch (...)
             {
-                DBG("requestIRChange loader: exception during prepare/IR load — swap aborted");
+                juce::Logger::outputDebugString("ADSREcho requestIRChange loader: unknown exception");
                 mod->signalConvolversToStop();
                 return;
             }
